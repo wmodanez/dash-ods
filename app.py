@@ -1,20 +1,60 @@
-import dash
-from dash import html, dcc
-from dash.dependencies import Input, Output, State
+from dash import html, Dash, callback_context
+from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 from config import DEBUG, USE_RELOADER, PORT, HOST
 import pandas as pd
-import base64
+
+# Adicione esta função após as importações
+def capitalize_words(text):
+    return ' '.join(word.capitalize() for word in text.split())
 
 # Inicializa o aplicativo Dash com tema Bootstrap
-app = dash.Dash(
+app = Dash(
     __name__, 
     external_stylesheets=[dbc.themes.MATERIA],
     assets_folder='assets',
     assets_url_path='/assets/'
 )
 
-# Lê o arquivo CSV
+# Adicione o CSS personalizado
+app.index_string = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>Painel ODS</title>
+        <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+        <style>
+            .meta-button {
+                background-color: #0d6efd !important;
+                color: white !important;
+                border: none !important;
+                padding: 0.375rem 0.75rem !important;
+                border-radius: 0.25rem !important;
+                text-decoration: none !important;
+                transition: all 0.2s ease-in-out !important;
+                text-transform: capitalize !important;
+            }
+            .meta-button:hover {
+                background-color: #0b5ed7 !important;
+                color: white !important;
+            }
+        </style>
+        {%favicon%}
+        {%css%}
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
+# Lê o arquivo CSV de objetivos
 try:
     df = pd.read_csv('db/objetivos.csv', 
                      low_memory=False, 
@@ -23,8 +63,20 @@ try:
                      sep=';',  # Usa ponto e vírgula como separador
                      on_bad_lines='skip')   
 except Exception as e:
-    print(f"Erro ao ler o arquivo CSV: {e}")
+    print(f"Erro ao ler o arquivo de objetivos: {e}")
     df = pd.DataFrame()  # DataFrame vazio em caso de erro
+
+# Lê o arquivo CSV de metas
+try:
+    df_metas = pd.read_csv('db/metas.csv', 
+                          low_memory=False, 
+                          encoding='utf-8',
+                          dtype=str,
+                          sep=';',  # Usa ponto e vírgula como separador
+                          on_bad_lines='skip')
+except Exception as e:
+    print(f"Erro ao ler o arquivo de metas: {e}")
+    df_metas = pd.DataFrame()  # DataFrame vazio em caso de erro
 
 # Define o conteúdo inicial do card
 initial_header = "Selecione um objetivo"
@@ -104,7 +156,9 @@ app.layout = dbc.Container([
                             dbc.Card([
                                 dbc.CardHeader(html.H3(id='card-header', children=initial_header)),
                                 dbc.CardBody([
-                                    html.P(id='card-content', children=initial_content)
+                                    html.P(id='card-content', children=initial_content),
+                                    html.Hr(),
+                                    dbc.Nav(id='metas-nav', pills=True, className="d-flex flex-wrap gap-2")
                                 ])
                             ])
                         ], lg=10)
@@ -118,18 +172,19 @@ app.layout = dbc.Container([
 # Callback para atualizar o conteúdo do card
 @app.callback(
     [Output('card-header', 'children'),
-     Output('card-content', 'children')],
+     Output('card-content', 'children'),
+     Output('metas-nav', 'children')],  # Novo output para as metas
     [Input(f"objetivo{i}", "n_clicks") for i in range(len(df))],
     prevent_initial_call=True
 )
 def update_card_content(*args):
-    ctx = dash.callback_context
+    ctx = callback_context
     if not ctx.triggered:
-        return "Selecione um objetivo", ""
+        return "Selecione um objetivo", "", []
     
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     if not button_id:
-        return "Selecione um objetivo", ""
+        return "Selecione um objetivo", "", []
     
     index = int(button_id.replace('objetivo', ''))
     row = df.iloc[index]
@@ -137,32 +192,36 @@ def update_card_content(*args):
     # Define o cabeçalho baseado no índice
     if index == 0:
         header = row['RES_OBJETIVO']
+        metas = []  # Lista vazia para o objetivo 0
     else:
         header = f"{row['ID_OBJETIVO']} - {row['RES_OBJETIVO']}"
+        # Filtra as metas relacionadas ao objetivo selecionado
+        metas = [
+            dbc.NavItem(
+                dbc.NavLink(
+                    meta['ID_META'],  # Retorna o texto original
+                    id=f"meta_{meta['ID_META']}",
+                    n_clicks=0,
+                    className="meta-button m-1",  # Usa a classe meta-button
+                    style={
+                        'width': 'auto',
+                        'background-color': '#0d6efd',
+                        'color': 'white',
+                        'border': 'none',
+                        'padding': '0.375rem 0.75rem',
+                        'border-radius': '0.25rem',
+                        'text-decoration': 'none',
+                        'transition': 'all 0.2s ease-in-out',
+                        ':hover': {
+                            'background-color': '#0b5ed7',
+                            'color': 'white'
+                        }
+                    }
+                )
+            ) for _, meta in df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']].iterrows()
+        ]
     
-    return header, row['DESC_OBJETIVO']
-
-# Configura o favicon
-app.index_string = '''
-<!DOCTYPE html>
-<html>
-    <head>
-        {%metas%}
-        <title>Painel ODS</title>
-        <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
-        {%favicon%}
-        {%css%}
-    </head>
-    <body>
-        {%app_entry%}
-        <footer>
-            {%config%}
-            {%scripts%}
-            {%renderer%}
-        </footer>
-    </body>
-</html>
-'''
+    return header, row['DESC_OBJETIVO'], metas
 
 if __name__ == '__main__':
     app.run_server(
