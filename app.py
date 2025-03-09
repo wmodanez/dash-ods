@@ -3,6 +3,7 @@ from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 from config import DEBUG, USE_RELOADER, PORT, HOST
 import pandas as pd
+from functools import lru_cache
 
 # Adicione esta função após as importações
 def capitalize_words(text):
@@ -55,16 +56,54 @@ app.index_string = '''
 '''
 
 # Lê o arquivo CSV de objetivos
-try:
-    df = pd.read_csv('db/objetivos.csv', 
-                     low_memory=False, 
-                     encoding='utf-8',
-                     dtype=str,
-                     sep=';',  # Usa ponto e vírgula como separador
-                     on_bad_lines='skip')   
-except Exception as e:
-    print(f"Erro ao ler o arquivo de objetivos: {e}")
-    df = pd.DataFrame()  # DataFrame vazio em caso de erro
+@lru_cache(maxsize=1)
+def load_objetivos():
+    try:
+        df = pd.read_csv('db/objetivos.csv', 
+                         low_memory=False, 
+                         encoding='utf-8',
+                         dtype=str,
+                         sep=';',  # Usa ponto e vírgula como separador
+                         on_bad_lines='skip')   
+    except Exception as e:
+        print(f"Erro ao ler o arquivo de objetivos: {e}")
+        df = pd.DataFrame()  # DataFrame vazio em caso de erro
+    return df
+
+@lru_cache(maxsize=1)
+def load_metas():
+    try:
+        df_metas = pd.read_csv('db/metas.csv', 
+                               low_memory=False, 
+                               encoding='utf-8',
+                               dtype=str,
+                               sep=';',  # Usa ponto e vírgula como separador
+                               on_bad_lines='skip')
+    except Exception as e:
+        print(f"Erro ao ler o arquivo de metas: {e}")
+        df_metas = pd.DataFrame()  # DataFrame vazio em caso de erro
+    return df_metas
+
+@lru_cache(maxsize=1)
+def load_indicadores():
+    try:
+        df_indicadores = pd.read_csv('db/indicadores.csv', 
+                                     low_memory=False, 
+                                     encoding='utf-8',
+                                     dtype=str,
+                                     sep=';',  # Usa ponto e vírgula como separador
+                                     on_bad_lines='skip')
+        df_indicadores['RBC'] = pd.to_numeric(df_indicadores['RBC'], errors='coerce')
+        df_indicadores = df_indicadores.loc[df_indicadores['RBC'] == 1]  # Filtra os indicadores RBC
+    except Exception as e:
+        print(f"Erro ao ler o arquivo de indicadores: {e}")
+        df_indicadores = pd.DataFrame()  # DataFrame vazio em caso de erro
+    return df_indicadores
+
+# Lê os arquivos CSV
+df = load_objetivos()
+df_metas = load_metas()
+df_indicadores = load_indicadores()
 
 # Lê o arquivo CSV de metas
 try:
