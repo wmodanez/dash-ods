@@ -207,7 +207,7 @@ app.layout = dbc.Container([
                         # Main
                         dbc.Col([
                             dbc.Card([
-                                dbc.CardHeader(html.H3(id='card-header', children=initial_header)),
+                                dbc.CardHeader(html.H2(id='card-header', children=initial_header)),
                                 dbc.CardBody([
                                     html.P(id='card-content', children=initial_content),
                                     html.Hr(),
@@ -251,29 +251,40 @@ def update_card_content(*args):
         # Filtra as metas relacionadas ao objetivo selecionado
         metas = [
             dbc.NavItem(
-                dbc.NavLink(
-                    meta['ID_META'],  # Retorna o texto original
-                    id=f"meta_{meta['ID_META']}",
-                    n_clicks=0,
-                    className="meta-button m-1",  # Usa a classe meta-button
-                    style={
-                        'width': 'auto',
-                        'background-color': '#0d6efd',
-                        'color': 'white',
-                        'border': 'none',
-                        'padding': '0.375rem 0.75rem',
-                        'border-radius': '0.25rem',
-                        'text-decoration': 'none',
-                        'transition': 'all 0.2s ease-in-out',
-                        ':hover': {
-                            'background-color': '#0b5ed7',
-                            'color': 'white'
-                        }
-                    }
-                )
+            dbc.NavLink(
+                meta['ID_META'],  # Retorna o texto original
+                id=f"meta_{meta['ID_META']}",
+                n_clicks=0,
+                className="meta-button m-1",  # Usa a classe meta-button
+                style={
+                'width': 'auto',
+                'background-color': '#0d6efd',
+                'color': 'white',
+                'border': 'none',
+                'padding': '0.375rem 0.75rem',
+                'border-radius': '0.25rem',
+                'text-decoration': 'none',
+                'transition': 'all 0.2s ease-in-out',
+                ':hover': {
+                    'background-color': '#0b5ed7',
+                    'color': 'white'
+                }
+                }
+            )
             ) for _, meta in df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']].iterrows()
             if not df_indicadores[(df_indicadores['ID_META'] == meta['ID_META'])].empty
         ]
+        
+        if not metas:
+            metas = [
+            dbc.Card(
+                dbc.CardBody(
+                html.H3("Não existem indicadores que atendam os requisitos deste estudo.", className="text-center fw-bold")
+                ),
+                className="m-2",
+                style={'width': '100%'}
+            )
+            ]
     
     return header, row['DESC_OBJETIVO'], metas
 
