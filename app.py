@@ -78,6 +78,20 @@ except Exception as e:
     print(f"Erro ao ler o arquivo de metas: {e}")
     df_metas = pd.DataFrame()  # DataFrame vazio em caso de erro
 
+# Lê o arquivo CSV de indicadores
+try:
+    df_indicadores = pd.read_csv('db/indicadores.csv', 
+                                 low_memory=False, 
+                                 encoding='utf-8',
+                                 dtype=str,
+                                 sep=';',  # Usa ponto e vírgula como separador
+                                 on_bad_lines='skip')
+    df_indicadores['RBC'] = pd.to_numeric(df_indicadores['RBC'], errors='coerce')
+    df_indicadores = df_indicadores.loc[df_indicadores['RBC'] == 1]  # Filtra os indicadores RBC
+except Exception as e:
+    print(f"Erro ao ler o arquivo de indicadores: {e}")
+    df_indicadores = pd.DataFrame()  # DataFrame vazio em caso de erro
+
 # Define o conteúdo inicial do card
 initial_header = "Selecione um objetivo"
 initial_content = ""
@@ -219,6 +233,7 @@ def update_card_content(*args):
                     }
                 )
             ) for _, meta in df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']].iterrows()
+            if not df_indicadores[(df_indicadores['ID_META'] == meta['ID_META'])].empty
         ]
     
     return header, row['DESC_OBJETIVO'], metas
