@@ -79,10 +79,11 @@ def load_indicadores():
                                      on_bad_lines='skip')
         df_indicadores['RBC'] = pd.to_numeric(df_indicadores['RBC'], errors='coerce')
         df_indicadores = df_indicadores.loc[df_indicadores['RBC'] == 1]  # Filtra os indicadores RBC
+        return df_indicadores
     except Exception as e:
         print(f"Erro ao ler o arquivo de indicadores: {e}")
         df_indicadores = pd.DataFrame()  # DataFrame vazio em caso de erro
-    return df_indicadores
+        return df_indicadores
 
 # Lê os arquivos CSV
 df = load_objetivos()
@@ -192,7 +193,7 @@ app.layout = dbc.Container([
                         # Main
                         dbc.Col([
                             dbc.Card([
-                                dbc.CardHeader(html.H2(id='card-header', children=initial_header)),
+                                dbc.CardHeader(html.H3(id='card-header', children=initial_header)),
                                 dbc.CardBody([
                                     html.P(id='card-content', children=initial_content),
                                     dbc.Nav(
@@ -205,7 +206,8 @@ app.layout = dbc.Container([
                                             'marginBottom': '1rem'
                                         }
                                     ),
-                                    html.P(id='meta-description', className="text-justify mt-4")
+                                    html.P(id='meta-description', className="text-justify mt-4"),
+                                    html.Div(id='indicadores-section', children=[])
                                 ])
                             ])
                         ], lg=10)
@@ -221,7 +223,8 @@ app.layout = dbc.Container([
     [Output('card-header', 'children'),
      Output('card-content', 'children'),
      Output('metas-nav', 'children'),
-     Output('meta-description', 'children')],
+     Output('meta-description', 'children'),
+     Output('indicadores-section', 'children')],
     [Input(f"objetivo{i}", "n_clicks") for i in range(len(df))] +
     [Input({'type': 'meta-button', 'index': ALL}, 'n_clicks')],
     [State({'type': 'meta-button', 'index': ALL}, 'active')],
@@ -230,7 +233,7 @@ app.layout = dbc.Container([
 def update_card_content(*args):
     ctx = callback_context
     if not ctx.triggered:
-        return initial_header, initial_content, [], initial_meta_description
+        return initial_header, initial_content, [], initial_meta_description, []
     
     triggered_id = ctx.triggered[0]['prop_id']
     
@@ -261,18 +264,43 @@ def update_card_content(*args):
                         className="nav-link"
                     ) for meta in metas_com_indicadores
                 ]
+
+                # Criar tabs de indicadores
+                indicadores_meta = df_indicadores[df_indicadores['ID_META'] == meta_id]
+                if not indicadores_meta.empty:
+                    tabs_indicadores = [
+                        dbc.Tab(
+                            html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                            label=row['ID_INDICADOR'],
+                            tab_id=f"tab-{row['ID_INDICADOR']}"
+                        ) for idx, row in indicadores_meta.iterrows()
+                    ]
+                    indicadores_section = [
+                        html.H5("Indicadores", className="mt-4 mb-3"),
+                        dbc.Card(
+                            dbc.CardBody(
+                                dbc.Tabs(
+                                    children=tabs_indicadores,
+                                    active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None
+                                )
+                            ),
+                            className="mt-3"
+                        )
+                    ]
+                else:
+                    indicadores_section = []
                 
-                return no_update, no_update, metas_atualizadas, meta_desc
+                return no_update, no_update, metas_atualizadas, meta_desc, indicadores_section
             else:
-                return no_update, no_update, no_update, "Não foi possível encontrar a descrição desta meta."
+                return no_update, no_update, no_update, "Não foi possível encontrar a descrição desta meta.", []
         except Exception as e:
             print(f"Erro ao processar meta: {e}")
-            return no_update, no_update, no_update, "Ocorreu um erro ao carregar a descrição da meta."
+            return no_update, no_update, no_update, "Ocorreu um erro ao carregar a descrição da meta.", []
     
     # Se for um clique em um objetivo
     button_id = triggered_id.split('.')[0]
     if not button_id.startswith('objetivo'):
-        return initial_header, initial_content, [], initial_meta_description
+        return initial_header, initial_content, [], initial_meta_description, []
     
     index = int(button_id.replace('objetivo', ''))
     row = df.iloc[index]
@@ -282,6 +310,7 @@ def update_card_content(*args):
         header = row['RES_OBJETIVO']
         metas = []  # Lista vazia para o objetivo 0
         meta_description = ""
+        indicadores_section = []
     else:
         header = f"{row['ID_OBJETIVO']} - {row['RES_OBJETIVO']}"
         # Filtra as metas relacionadas ao objetivo selecionado
@@ -306,6 +335,31 @@ def update_card_content(*args):
             
             # Define a descrição da meta selecionada
             meta_description = meta_selecionada['DESC_META']
+
+            # Criar tabs de indicadores para a primeira meta
+            indicadores_meta = df_indicadores[df_indicadores['ID_META'] == meta_selecionada['ID_META']]
+            if not indicadores_meta.empty:
+                tabs_indicadores = [
+                    dbc.Tab(
+                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                        label=row['ID_INDICADOR'],
+                        tab_id=f"tab-{row['ID_INDICADOR']}"
+                    ) for idx, row in indicadores_meta.iterrows()
+                ]
+                indicadores_section = [
+                    html.H5("Indicadores", className="mt-4 mb-3"),
+                    dbc.Card(
+                        dbc.CardBody(
+                            dbc.Tabs(
+                                children=tabs_indicadores,
+                                active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None
+                            )
+                        ),
+                        className="mt-3"
+                    )
+                ]
+            else:
+                indicadores_section = []
         else:
             metas = [
                 dbc.Card(
@@ -318,8 +372,9 @@ def update_card_content(*args):
                 )
             ]
             meta_description = ""
+            indicadores_section = []
     
-    return header, row['DESC_OBJETIVO'], metas, meta_description
+    return header, row['DESC_OBJETIVO'], metas, meta_description, indicadores_section
 
 if __name__ == '__main__':
     app.run_server(
