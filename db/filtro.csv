@@ -3,21 +3,6 @@ CODG_VAR,DESC_VAR
 9948,Proporção da população abaixo da linha de pobreza nacional
 "9619,""Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes"""
 9600,Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres
-800,Domicílios particulares
-9591,Domicílios particulares urbanos
-9592,Domicílios particulares rurais
-2133,Moradores em domicílios particulares
-9593,Moradores em domicílios particulares urbanos
-9594,Moradores em domicílios particulares rurais
-9996,Número total de acessos únicos de recursos genéticos de plantas protegidos em instalações de conservação de médio a longo prazo
-9965,Índice de orientação agrícola para a despesa totais
-9963,Índice de Orientação Agrícola (PIB)
-9964,Índice de orientação agrícola calculado
-10104,Ajuda Oficial ao Desenvolvimento (AOD)
-10105,Outros Fluxos Oficiais (OFO)
-10106,Total de fluxos oficiais para o setor agrícola
-10066,Subsídios às exportações agrícolas - desembolsos orçamentários
-10325,Subsídios às exportações agrícolas - quantidade subsidiada
 9730,Razão de morte materna
 9435,Número de óbitos de mulheres residentes por causas e condições consideradas de morte materna
 9436,Número de nascidos vivos de mães residentes
@@ -52,7 +37,6 @@ CODG_VAR,DESC_VAR
 "12360,""Prevalência do consumo atual de tabaco na população de 15 anos ou mais, considerando um intervalo de confiança de 95% - limite inferior"""
 "12361,""Prevalência do consumo atual de tabaco na população de 15 anos ou mais, considerando um intervalo de confiança de 95% - limite superior"""
 4721,Taxa de conclusão de nível de ensino
-9310,Proporção das pessoas de 5 anos de idade que frequentam escola
 4775,Pessoas de 5 anos de idade que frequentam a escola
 4796,Percentual de pessoas de 5 anos de idade que frequentam a escola
 "9601,""Índice de paridade de frequência à escola das pessoas de 5 anos de idade, por sexo (mulher/homem)"""
@@ -93,7 +77,6 @@ CODG_VAR,DESC_VAR
 "10821,""Municípios sem conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses"""
 "10822,""Municípios com conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses"""
 "10823,""Proporção de municípios com conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses"""
-12341,Emissões de gases do efeito estufa diretos
 9502,Número de vítimas de homicídios intencionais por 100 mil habitantes
 11392,Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses
 "11393,""Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite inferior"""
