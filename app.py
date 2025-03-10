@@ -1,11 +1,11 @@
-from dash import html, Dash, callback_context
+from dash import html, Dash, callback_context, ALL, no_update, dash, State
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 from config import DEBUG, USE_RELOADER, PORT, HOST
 import pandas as pd
 from functools import lru_cache
+import json
 
-# Adicione esta função após as importações
 def capitalize_words(text):
     return ' '.join(word.capitalize() for word in text.split())
 
@@ -17,7 +17,7 @@ app = Dash(
     assets_url_path='/assets/'
 )
 
-# Adicione o CSS personalizado
+# Template HTML básico
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -25,22 +25,6 @@ app.index_string = '''
         {%metas%}
         <title>Painel ODS</title>
         <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
-        <style>
-            .meta-button {
-                background-color: #0d6efd !important;
-                color: white !important;
-                border: none !important;
-                padding: 0.375rem 0.75rem !important;
-                border-radius: 0.25rem !important;
-                text-decoration: none !important;
-                transition: all 0.2s ease-in-out !important;
-                text-transform: capitalize !important;
-            }
-            .meta-button:hover {
-                background-color: #0b5ed7 !important;
-                color: white !important;
-            }
-        </style>
         {%favicon%}
         {%css%}
     </head>
@@ -134,6 +118,7 @@ except Exception as e:
 # Define o conteúdo inicial do card
 initial_header = "Selecione um objetivo"
 initial_content = ""
+initial_meta_description = ""
 if not df.empty:
     row = df.iloc[0]
     initial_header = row['RES_OBJETIVO']
@@ -172,7 +157,7 @@ app.layout = dbc.Container([
                         ], width=6, className="d-flex align-items-center")
                     ], className="align-items-center")
                 ])
-            ], className="mb-4", style={'margin-top': '15px', 'margin-left': '15px', 'margin-right': '15px'})
+            ], className="mb-4", style={'marginTop': '15px', 'marginLeft': '15px', 'marginRight': '15px'})
         ])
     ]),
     
@@ -192,7 +177,7 @@ app.layout = dbc.Container([
                                             html.Div([
                                                 html.Img(
                                                     src=row['BASE64'],
-                                                    style={'width': '100%', 'margin-bottom': '10px', 'cursor': 'pointer'},
+                                                    style={'width': '100%', 'marginBottom': '10px', 'cursor': 'pointer'},
                                                     className="img-fluid",
                                                     id=f"objetivo{idx}",
                                                     n_clicks=0
@@ -210,8 +195,17 @@ app.layout = dbc.Container([
                                 dbc.CardHeader(html.H2(id='card-header', children=initial_header)),
                                 dbc.CardBody([
                                     html.P(id='card-content', children=initial_content),
-                                    html.Hr(),
-                                    dbc.Nav(id='metas-nav', pills=True, className="d-flex flex-wrap gap-2")
+                                    dbc.Nav(
+                                        id='metas-nav',
+                                        pills=True,
+                                        className="nav nav-pills gap-2",
+                                        style={
+                                            'display': 'flex',
+                                            'flexWrap': 'wrap',
+                                            'marginBottom': '1rem'
+                                        }
+                                    ),
+                                    html.P(id='meta-description', className="text-justify mt-4")
                                 ])
                             ])
                         ], lg=10)
@@ -226,18 +220,59 @@ app.layout = dbc.Container([
 @app.callback(
     [Output('card-header', 'children'),
      Output('card-content', 'children'),
-     Output('metas-nav', 'children')],  # Novo output para as metas
-    [Input(f"objetivo{i}", "n_clicks") for i in range(len(df))],
-    prevent_initial_call=True
+     Output('metas-nav', 'children'),
+     Output('meta-description', 'children')],
+    [Input(f"objetivo{i}", "n_clicks") for i in range(len(df))] +
+    [Input({'type': 'meta-button', 'index': ALL}, 'n_clicks')],
+    [State({'type': 'meta-button', 'index': ALL}, 'active')],
+    prevent_initial_call=False
 )
 def update_card_content(*args):
     ctx = callback_context
     if not ctx.triggered:
-        return "Selecione um objetivo", "", []
+        return initial_header, initial_content, [], initial_meta_description
     
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    if not button_id:
-        return "Selecione um objetivo", "", []
+    triggered_id = ctx.triggered[0]['prop_id']
+    
+    # Se for um clique em uma meta
+    if 'meta-button' in triggered_id:
+        try:
+            # Extrair o ID da meta do triggered_id de forma mais robusta
+            meta_id = triggered_id.split('"index":"')[1].split('"')[0]
+            # Buscar a descrição da meta
+            meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
+            if not meta_filtrada.empty:
+                meta_desc = meta_filtrada['DESC_META'].iloc[0]
+                
+                # Atualizar todas as metas com a nova meta ativa
+                objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[0]
+                metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == objetivo_id]
+                metas_com_indicadores = [
+                    meta for _, meta in metas_filtradas.iterrows()
+                    if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
+                ]
+                
+                metas_atualizadas = [
+                    dbc.NavLink(
+                        meta['ID_META'],
+                        id={'type': 'meta-button', 'index': meta['ID_META']},
+                        href="#",
+                        active=meta['ID_META'] == meta_id,
+                        className="nav-link"
+                    ) for meta in metas_com_indicadores
+                ]
+                
+                return no_update, no_update, metas_atualizadas, meta_desc
+            else:
+                return no_update, no_update, no_update, "Não foi possível encontrar a descrição desta meta."
+        except Exception as e:
+            print(f"Erro ao processar meta: {e}")
+            return no_update, no_update, no_update, "Ocorreu um erro ao carregar a descrição da meta."
+    
+    # Se for um clique em um objetivo
+    button_id = triggered_id.split('.')[0]
+    if not button_id.startswith('objetivo'):
+        return initial_header, initial_content, [], initial_meta_description
     
     index = int(button_id.replace('objetivo', ''))
     row = df.iloc[index]
@@ -246,47 +281,45 @@ def update_card_content(*args):
     if index == 0:
         header = row['RES_OBJETIVO']
         metas = []  # Lista vazia para o objetivo 0
+        meta_description = ""
     else:
         header = f"{row['ID_OBJETIVO']} - {row['RES_OBJETIVO']}"
         # Filtra as metas relacionadas ao objetivo selecionado
-        metas = [
-            dbc.NavItem(
-            dbc.NavLink(
-                meta['ID_META'],  # Retorna o texto original
-                id=f"meta_{meta['ID_META']}",
-                n_clicks=0,
-                className="meta-button m-1",  # Usa a classe meta-button
-                style={
-                'width': 'auto',
-                'background-color': '#0d6efd',
-                'color': 'white',
-                'border': 'none',
-                'padding': '0.375rem 0.75rem',
-                'border-radius': '0.25rem',
-                'text-decoration': 'none',
-                'transition': 'all 0.2s ease-in-out',
-                ':hover': {
-                    'background-color': '#0b5ed7',
-                    'color': 'white'
-                }
-                }
-            )
-            ) for _, meta in df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']].iterrows()
-            if not df_indicadores[(df_indicadores['ID_META'] == meta['ID_META'])].empty
+        metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']]
+        metas_com_indicadores = [
+            meta for _, meta in metas_filtradas.iterrows()
+            if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
         ]
         
-        if not metas:
+        if metas_com_indicadores:
+            # Seleciona a primeira meta como ativa
+            meta_selecionada = metas_com_indicadores[0]
             metas = [
-            dbc.Card(
-                dbc.CardBody(
-                html.H3("Não existem indicadores que atendam os requisitos deste estudo.", className="text-center fw-bold")
-                ),
-                className="m-2",
-                style={'width': '100%'}
-            )
+                dbc.NavLink(
+                    meta['ID_META'],
+                    id={'type': 'meta-button', 'index': meta['ID_META']},
+                    href="#",
+                    active=meta['ID_META'] == meta_selecionada['ID_META'],
+                    className="nav-link"
+                ) for meta in metas_com_indicadores
             ]
+            
+            # Define a descrição da meta selecionada
+            meta_description = meta_selecionada['DESC_META']
+        else:
+            metas = [
+                dbc.Card(
+                    dbc.CardBody(
+                        html.H3("Não existem indicadores que atendam os requisitos deste estudo.", 
+                               className="text-center fw-bold")
+                    ),
+                    className="m-2",
+                    style={'width': '100%'}
+                )
+            ]
+            meta_description = ""
     
-    return header, row['DESC_OBJETIVO'], metas
+    return header, row['DESC_OBJETIVO'], metas, meta_description
 
 if __name__ == '__main__':
     app.run_server(
