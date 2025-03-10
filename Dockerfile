@@ -1,23 +1,50 @@
-# Use the official Python image as the base image
+# Use uma imagem base Python oficial
 FROM python:3.9-slim
 
-# Install system dependencies
+# Define variáveis de ambiente
+ENV DEBUG=False \
+    PORT=8050 \
+    HOST=0.0.0.0 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# Instala as dependências do sistema
 RUN apt-get update && apt-get install -y \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libxml2-dev
+    build-essential \
+    python3-dev \
+    nginx \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
-
-COPY . /app/
-
+# Cria diretório da aplicação
 WORKDIR /app
 
-RUN python3 -m venv /opt/venv
-RUN . /opt/venv/bin/activate && pip install --upgrade pip
-RUN . /opt/venv/bin/activate && pip install -r requirements.txt
+# Copia os arquivos de requisitos primeiro para aproveitar o cache do Docker
+COPY requirements.txt .
 
-EXPOSE 3838
+# Instala as dependências Python
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install uwsgi
 
-# # Set the entrypoint to activate the virtual environment and run the shiny command
-ENTRYPOINT ["/bin/sh", "-c", ". /opt/venv/bin/activate && exec shiny run --reload app.py --host 0.0.0.0 --port 3838"]
+# Copia o resto dos arquivos da aplicação
+COPY . .
+
+# Cria diretório para logs do uWSGI
+RUN mkdir -p /var/log/uwsgi \
+    && chown -R www-data:www-data /var/log/uwsgi
+
+# Configura o Nginx
+COPY nginx.conf /etc/nginx/sites-available/default
+RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
+
+# Configura o Supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Dá permissão de execução ao script de inicialização
+RUN chmod +x start.sh
+
+# Expõe a porta 80 para o Nginx
+EXPOSE 80
+
+# Comando para iniciar o Supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
