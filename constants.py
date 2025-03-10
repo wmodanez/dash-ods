@@ -38,9 +38,6 @@ LIST_INDICADORES = {
             'Indicador 3.4.1': '/t/4277/n1/all/n3/11,21,17,51,52,53,50/v/11754,12948/p/last%205/c2/all/c58/all/d/v11754%202',
             'Indicador 3.4.2': '/t/8183/n1/all/n3/11,21,17,51,52,53,50/v/11704,11705/p/last%205/c2/all/c58/all/d/v11704%201'
         },
-        'Meta 3.5': {
-            'Indicador 3.5.2': '/t/5878/n1/all/v/all/p/all/d/v7068%201'
-        },
         'Meta3.6': {
             'Indicador 3.6.1': '/t/4408/n1/all/n3/11,21,17,51,52,53,50/v/9734,11728/p/last%205/c2/all/c58/all/d/v9734%201'
         },
@@ -80,8 +77,7 @@ LIST_INDICADORES = {
         },
         'Meta 5.5': {
             'Indicador 5.5.1': '/t/6692/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9726%201',
-            'Indicador 5.5.1.1': '/t/6693/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9729%201',
-            'Indicador 5.5.2': '/t/9752/n1/all/n2/all/v/9437/p/all/c58/all/d/v9437%201'
+            'Indicador 5.5.1.1': '/t/6693/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9729%201'
         },
         'Meta 5.b': {
             'Indicador 5.b.1': '/t/6863/n1/all/n2/all/v/5039/p/all/c2/all/c1/6795/d/v5039%201',
@@ -94,49 +90,20 @@ LIST_INDICADORES = {
         'Meta 6.2': {
             'Indicador 6.2.1': '/t/6835/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v10107%201'
         },
-        'Meta 6.3': {
-            'Indicador 6.3.2': '/t/7076/n121/all/n1/all/v/all/p/all/d/v10232%202'
-        },
         'Meta 6.4': {
-            'Indicador 6.4.1': '/t/6968/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/c4/all/d/v10564%202,v12771%202',
-            'Indicador 6.4.2': '/t/7077/n121/all/n1/all/v/all/p/all/d/v10233%201'
-        },
-        'Meta 6.5': {
-            'Indicador 6.5.1': '/t/6724/n1/all/v/all/p/all/d/v9772%201,v10228%201,v10229%201,v10230%201,v10231%201',
-            'Indicador 6.5.2': '/t/6725/n1/all/v/all/p/all/d/v6839%202,v6840%202,v6841%202'
+            'Indicador 6.4.1': '/t/6968/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/c4/all/d/v10564%202,v12771%202'
         },
         'Meta 6.6': {
             'Indicador 6.6.1': '/t/9042/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/c1499/all/c1500/all/d/v12769%201,v12770%201'
-        },
-        'Meta 6.a': {
-            'Indicador 6.a.1': '/t/7145/n1/all/v/all/p/all/c873/all/d/v10284%201'
-        },
-        'Meta 6.b': {
-            'Indicador 6.b.1': '/t/9044/n1/all/v/all/p/all/c1/all'
         }
     },
     'Objetivo 7': {
         'Meta 7.1': {
             'Indicador 7.1.1': '/t/9740/n1/all/n3/11,21,17,51,52,53,50/v/10137/p/all/d/v10137%201',
             'Indicador 7.1.2': '/t/9731/n1/all/n3/11,21,17,51,52,53,50/v/9135/p/all/d/v9135%201'
-        },
-        'Meta 7.2': {
-            'Indicador 7.2.1': '/t/6592/n1/all/v/all/p/all/d/v9340%201'
-        },
-        'Meta 7.3': {
-            'Indicador 7.3.1': '/t/6593/n1/all/v/all/p/all/d/v9338%203'
-        },
-        'Meta 7.b': {
-            'Indicador 7.b.1': '/t/7283/n1/all/v/all/p/all/d/v10527%202'
         }
     },
     'Objetivo 8': {
-        'Meta 8.1': {
-            'Indicador 8.1.1': '/t/6601/n1/all/v/all/p/all/d/v9347%201'
-        },
-        'Meta 8.2': {
-            'Indicador 8.2.1': '/t/6602/n1/all/v/all/p/all/d/v9348%202'
-        },
         'Meta 8.3': {
             'Indicador 8.3.1': '/t/9535/n1/all/n3/11,21,17,51,52,53,50/v/8883/p/all/c2/all/d/v8883%201',
             'Indicador 8.3.1.2': '/t/9538/n1/all/n3/11,21,17,51,52,53,50/v/8883/p/all/c12028/all/d/v8883%201',
@@ -153,36 +120,15 @@ LIST_INDICADORES = {
         },
         'Meta 8.6': {
             'Indicador 8.6.1': '/t/9415/n1/all/n3/11,21,17,51,52,53,50/v/8840/p/all/d/v8840%201'
-        },
-        'Meta 8.7': {
-            'Indicador 8.7.1': '/t/9785/n1/all/v/9480,9482/p/all/c2/all/d/v9480%201',
-            'Indicador 8.7.1.2': '/t/9786/n1/all/v/9480,9482/p/all/c58/all/d/v9480%201'
         }
     },
     'Objetivo 9': {
-        'Meta 9.1': {
-            'Indicador 9.1.2': '/t/9041/n1/all/v/all/p/all/c1501/all/c12607/all'
-        },
         'Meta 9.2': {
             'Indicador 9.2.1': '/t/6587/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9312%201',
             'Indicador 9.2.2': '/t/6608/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9314%201'
         },
-        'Meta 9.3': {
-            'Indicador 9.3.1': '/t/8262/n1/all/v/all/p/all/c696/all/d/v11905%202',
-            'Indicador 9.3.2': '/t/6842/n1/all/v/all/p/all/d/v12580%201'
-        },
-        'Meta 9.4': {
-            'Indicador 9.4.1': '/t/6795/n1/all/v/all/p/all/d/v9792%203'
-        },
-        'Meta 9.5': {
-            'Indicador 9.5.1': '/t/6610/n1/all/v/all/p/all/d/v9316%202',
-            'Indicador 9.5.2': '/t/6611/n1/all/v/all/p/all'
-        },
         'Meta 9.b': {
             'Indicador 9.b.1': '/t/6609/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9315%201'
-        },
-        'Meta 9.c': {
-            'Indicador 9.c.1': '/t/7271/n1/all/v/all/p/all/c912/all/d/v10472%202'
         }
     },
     'Objetivo 10': {
@@ -207,28 +153,13 @@ LIST_INDICADORES = {
         }
     },
     'Objetivo 11': {
-        'Meta 11.1': {
-            'Indicador 11.1.1': '/t/6585/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9326%201'
-        },
         'Meta 11.3': {
             'Indicador 11.3.2': '/t/7520/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v10823%201'
         },
-        'Meta 11.4': {
-            'Indicador 11.4.1': '/t/7800/n1/all/v/all/p/all/c1124/all/c11227/all/d/v11122%201'
-        },
         'Meta 11.5': {
-            'Indicador 11.5.1': '/t/6689/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9619%201',
-            'Indicador 11.5.2': '/t/8754/n1/all/v/all/p/all/d/v12581%202'
-        },
-        'Meta 11.6': {
-            'Indicador 11.6.1': '/t/8687/n1/all/n2/all/v/all/p/all/d/v6843%202,v6846%202',
-            'Indicador 11.6.1.1': '/t/5904/n1/all/n2/all/v/all/p/all/c1425/all/d/v6844%202,v6845%202'
-        },
-        'Meta 11.a': {
-            'Indicador 11.a.1': '/t/7459/n1/all/v/all/p/all'
+            'Indicador 11.5.1': '/t/6689/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9619%201'
         },
         'Meta 11.b': {
-            'Indicador 11.b.1': '/t/6749/n1/all/v/all/p/all',
             'Indicador 11.b.2': '/t/6673/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9600%201'
         }
     },
@@ -254,7 +185,6 @@ LIST_INDICADORES = {
     'Objetivo 13': {
         'Meta 13.1': {
             'Indicador 13.1.1': '/t/6689/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9619%201',
-            'Indicador 13.1.2': '/t/6749/n1/all/v/all/p/all',
             'Indicador 13.1.3': '/t/6673/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9600%201'
         },
         'Meta 13.2': {
@@ -303,18 +233,8 @@ LIST_INDICADORES = {
             'Indicador 16.1.3.3': '/t/8025/n1/all/n3/11,21,17,51,52,53,50/v/11392,11393,11394,11396,11397,11398/p/all/c86/all/c1/all/d/v11392%203,v11393%203,v11394%203,v11396%201,v11397%201,v11398%201',
             'Indicador 16.1.3.4': '/t/8027/n1/all/n3/11,21,17,51,52,53,50/v/11392,11393,11394,11396,11397,11398/p/all/c652/all/c1/all/d/v11392%203,v11393%203,v11394%203,v11396%201,v11397%201,v11398%201'
         },
-        'Meta 16.6': {
-            'Indicador 16.6.1': '/t/6605/n1/all/v/all/p/all/d/v9500%201,v11432%201'
-        },
-        'Meta 16.7': {
-            'Indicador 16.7.1': '/t/4710/n1/all/v/all/p/all/c1776/all/c2/all/d/v8980%201',
-            'Indicador 16.7.1.1': '/t/4749/n1/all/v/all/p/all/c1776/all/c58/all/d/v8980%201'
-        },
         'Meta 16.9': {
             'Indicador 16.9.1': '/t/9544/n1/all/n3/11,21,17,51,52,53,50/v/all/p/all/d/v353%201,v373%201'
-        },
-        'Meta 16.10': {
-            'Indicador 16.10.2': '/t/6819/n1/all/v/all/p/all'
         }
     },
     'Objetivo 17': {
