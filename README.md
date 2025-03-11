@@ -14,10 +14,11 @@ Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustent
 .
 ├── app/                    # Código fonte da aplicação
 ├── db/                     # Arquivos de dados
+├── k8s/                    # Arquivos de configuração do OpenShift
+│   ├── openshift.yaml     # Manifesto do OpenShift
+│   └── .openshiftignore   # Arquivos a serem ignorados no deploy
 ├── Dockerfile             # Configuração do container
-├── requirements.txt       # Dependências Python
-├── openshift.yaml        # Configuração do OpenShift
-└── openshift-entrypoint.sh # Script de inicialização
+└── requirements.txt       # Dependências Python
 ```
 
 ## Desenvolvimento Local
@@ -73,7 +74,7 @@ oc start-build painel-ods --from-dir=. --follow
 
 2. Deploy dos recursos:
 ```bash
-oc apply -f openshift.yaml
+oc apply -f k8s/openshift.yaml
 ```
 
 3. Verificar status:
@@ -85,7 +86,7 @@ oc get routes
 
 ### Configurações do OpenShift
 
-O arquivo `openshift.yaml` contém as seguintes configurações:
+O arquivo `k8s/openshift.yaml` contém as seguintes configurações:
 
 - **Deployment**:
   - Replicas: 1 (ajustável conforme necessidade)
@@ -93,6 +94,10 @@ O arquivo `openshift.yaml` contém as seguintes configurações:
     - Memória: 512Mi (request) / 1Gi (limit)
     - CPU: 250m (request) / 500m (limit)
   - Health checks configurados
+
+- **ConfigMap**:
+  - Contém o script de inicialização
+  - Montado no container em `/k8s`
 
 - **Service**:
   - Porta: 8050
@@ -140,6 +145,7 @@ oc describe route painel-ods
    - Verificar se as portas estão corretas (8050)
    - Confirmar se os recursos (CPU/memória) são suficientes
    - Verificar permissões do usuário não-root (UID 1001)
+   - Verificar se o ConfigMap foi criado corretamente
 
 ### Segurança
 
@@ -151,9 +157,8 @@ A aplicação segue as melhores práticas de segurança do OpenShift:
 ### Arquivos de Configuração
 
 - `.dockerignore`: Otimiza o build da imagem
-- `.openshiftignore`: Controla quais arquivos são enviados ao OpenShift
-- `openshift.yaml`: Define os recursos do OpenShift
-- `openshift-entrypoint.sh`: Script de inicialização
+- `k8s/.openshiftignore`: Controla quais arquivos são enviados ao OpenShift
+- `k8s/openshift.yaml`: Define os recursos do OpenShift (Deployment, Service, Route e ConfigMap)
 
 ## Manutenção
 
@@ -167,6 +172,7 @@ git pull origin main
 2. Rebuild e redeploy:
 ```bash
 oc start-build painel-ods --from-dir=. --follow
+oc apply -f k8s/openshift.yaml
 ```
 
 ### Backup

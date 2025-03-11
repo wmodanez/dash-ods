@@ -17,6 +17,7 @@ spec:
       containers:
       - name: painel-ods
         image: painel-ods:latest
+        command: ["/k8s/openshift-entrypoint.sh"]
         ports:
         - containerPort: 8050
         resources:
@@ -26,6 +27,9 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "500m"
+        volumeMounts:
+        - name: entrypoint
+          mountPath: /k8s
         readinessProbe:
           httpGet:
             path: /
@@ -38,6 +42,30 @@ spec:
             port: 8050
           initialDelaySeconds: 15
           periodSeconds: 20
+      volumes:
+      - name: entrypoint
+        configMap:
+          name: openshift-entrypoint
+          defaultMode: 0755
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openshift-entrypoint
+data:
+  openshift-entrypoint.sh: |
+    #!/bin/bash
+    set -e
+    
+    # Adiciona o usuário atual ao /etc/passwd se necessário
+    if ! whoami &> /dev/null; then
+      if [ -w /etc/passwd ]; then
+        echo "${USER_NAME:-default}:x:$(id -u):0:${USER_NAME:-default} user:${HOME}:/sbin/nologin" >> /etc/passwd
+      fi
+    fi
+    
+    # Inicia o Gunicorn
+    exec gunicorn -w 4 -b 0.0.0.0:8050 app:server --timeout 120
 ---
 apiVersion: v1
 kind: Service
