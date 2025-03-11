@@ -1,0 +1,101 @@
+# Ambientes virtuais e dependências
+/venv
+/env
+/.env
+/.venv
+/node_modules
+/dist
+/build
+/coverage
+/logs
+/tmp
+
+# Arquivos Python compilados
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.dylib
+*.egg
+*.egg-info/
+*.eggs/
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Arquivos de desenvolvimento
+.git
+.gitignore
+.github
+.gitlab-ci.yml
+.travis.yml
+.circleci
+.vscode
+.idea
+*.sublime-project
+*.sublime-workspace
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+*.ipynb_checkpoints
+
+# Logs e arquivos temporários
+*.log
+*.log.*
+*.tmp
+*.temp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Documentação e arquivos de teste
+README.md
+CHANGELOG.md
+LICENSE
+docs/
+tests/
+test/
+testing/
+*.test.js
+*.spec.js
+*.test.py
+*.spec.py
+
+# Arquivos de configuração de desenvolvimento
+.editorconfig
+.eslintrc
+.prettierrc
+.pylintrc
+.flake8
+mypy.ini
+pytest.ini
+tox.ini
+
+# Arquivos de backup
+*~
+*.bak
+*.backup
+
+# Arquivos grandes ou desnecessários para produção
+*.csv
+*.parquet
+*.xlsx
+*.xls
+*.pdf
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# Exceto arquivos específicos necessários
+!db/*.csv
+!db/resultados/*.parquet
+!requirements.txt
+!uwsgi.ini
+!nginx.conf
+!supervisord.conf
