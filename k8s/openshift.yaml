@@ -1,7 +1,22 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: painel-ods-data
+  namespace: colocation-imb
+  labels:
+    app: painel-ods
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: painel-ods
+  namespace: colocation-imb
   labels:
     app: painel-ods
 spec:
@@ -14,6 +29,8 @@ spec:
       labels:
         app: painel-ods
     spec:
+      restartPolicy: Always
+      serviceAccountName: imb-anyuid
       containers:
       - name: painel-ods
         image: painel-ods:latest
@@ -25,11 +42,13 @@ spec:
             memory: "512Mi"
             cpu: "250m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "2Gi"
+            cpu: "1000m"
         volumeMounts:
         - name: entrypoint
           mountPath: /k8s
+        - name: data
+          mountPath: /app/db
         readinessProbe:
           httpGet:
             path: /
@@ -47,11 +66,15 @@ spec:
         configMap:
           name: openshift-entrypoint
           defaultMode: 0755
+      - name: data
+        persistentVolumeClaim:
+          claimName: painel-ods-data
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: openshift-entrypoint
+  namespace: colocation-imb
 data:
   openshift-entrypoint.sh: |
     #!/bin/bash
@@ -71,21 +94,24 @@ apiVersion: v1
 kind: Service
 metadata:
   name: painel-ods
+  namespace: colocation-imb
 spec:
   selector:
     app: painel-ods
   ports:
-    - protocol: TCP
-      port: 8050
+    - name: http-80
+      protocol: TCP
+      port: 80
       targetPort: 8050
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: painel-ods
+  namespace: colocation-imb
 spec:
   to:
     kind: Service
     name: painel-ods
   port:
-    targetPort: 8050 
+    targetPort: http-80 

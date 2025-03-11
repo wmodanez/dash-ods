@@ -16,6 +16,7 @@ Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustent
 ├── db/                     # Arquivos de dados
 ├── k8s/                    # Arquivos de configuração do OpenShift
 │   ├── openshift.yaml     # Manifesto do OpenShift
+│   ├── buildconfig.yaml   # Configuração de build
 │   └── .openshiftignore   # Arquivos a serem ignorados no deploy
 ├── Dockerfile             # Configuração do container
 └── requirements.txt       # Dependências Python
@@ -55,21 +56,21 @@ oc login <cluster-url>
 
 ### Configuração Inicial
 
-1. Criar novo projeto (se necessário):
+1. Usar o projeto colocation-imb:
 ```bash
-oc new-project painel-ods
+oc project colocation-imb
 ```
 
-2. Criar build configuration:
+2. Criar recursos de build:
 ```bash
-oc new-build --binary --name=painel-ods --strategy=docker
+oc apply -f k8s/buildconfig.yaml
 ```
 
 ### Deploy da Aplicação
 
-1. Build da imagem:
+1. Iniciar o build:
 ```bash
-oc start-build painel-ods --from-dir=. --follow
+oc start-build painel-ods --follow
 ```
 
 2. Deploy dos recursos:
@@ -82,18 +83,36 @@ oc apply -f k8s/openshift.yaml
 oc get pods
 oc get services
 oc get routes
+oc get builds
+oc get imagestreams
 ```
 
 ### Configurações do OpenShift
 
-O arquivo `k8s/openshift.yaml` contém as seguintes configurações:
+O arquivo `k8s/buildconfig.yaml` contém:
+- **BuildConfig**:
+  - Estratégia: Docker
+  - Fonte: Git (https://github.com/wmodanez/dash-ods.git, branch: openshift)
+  - Recursos:
+    - Memória: 512Mi (request) / 2Gi (limit)
+    - CPU: 250m (request) / 1000m (limit)
+  - Variáveis de ambiente configuradas
+  - Output: ImageStream painel-ods:latest
 
+O arquivo `k8s/openshift.yaml` contém:
 - **Deployment**:
   - Replicas: 1 (ajustável conforme necessidade)
   - Recursos:
-    - Memória: 512Mi (request) / 1Gi (limit)
-    - CPU: 250m (request) / 500m (limit)
+    - Memória: 512Mi (request) / 2Gi (limit)
+    - CPU: 250m (request) / 1000m (limit)
   - Health checks configurados
+  - Volume persistente montado em `/app/db`
+
+- **PersistentVolumeClaim**:
+  - Nome: painel-ods-data
+  - Tamanho: 20Gi
+  - Modo de acesso: ReadWriteOnce
+  - Montado no Deployment em `/app/db`
 
 - **ConfigMap**:
   - Contém o script de inicialização
@@ -109,12 +128,17 @@ O arquivo `k8s/openshift.yaml` contém as seguintes configurações:
 
 ### Monitoramento
 
-1. Verificar logs:
+1. Verificar logs do build:
+```bash
+oc logs -f bc/painel-ods
+```
+
+2. Verificar logs da aplicação:
 ```bash
 oc logs -f dc/painel-ods
 ```
 
-2. Verificar status dos pods:
+3. Verificar status dos pods:
 ```bash
 oc get pods
 oc describe pod <nome-do-pod>
@@ -129,23 +153,35 @@ oc scale deployment painel-ods --replicas=3
 
 ### Troubleshooting
 
-1. Se o pod não iniciar:
+1. Se o build falhar:
+```bash
+oc logs -f bc/painel-ods
+oc describe build <nome-do-build>
+```
+
+2. Se o pod não iniciar:
 ```bash
 oc describe pod <nome-do-pod>
 oc logs <nome-do-pod>
 ```
 
-2. Se a rota não estiver acessível:
+3. Se a rota não estiver acessível:
 ```bash
 oc get route painel-ods
 oc describe route painel-ods
 ```
 
-3. Problemas comuns:
+4. Problemas comuns:
    - Verificar se as portas estão corretas (8050)
    - Confirmar se os recursos (CPU/memória) são suficientes
    - Verificar permissões do usuário não-root (UID 1001)
    - Verificar se o ConfigMap foi criado corretamente
+   - Verificar se o ImageStream foi criado e está atualizado
+   - Verificar se o PVC foi provisionado corretamente:
+     ```bash
+     oc get pvc painel-ods-data
+     oc describe pvc painel-ods-data
+     ```
 
 ### Segurança
 
@@ -158,27 +194,27 @@ A aplicação segue as melhores práticas de segurança do OpenShift:
 
 - `.dockerignore`: Otimiza o build da imagem
 - `k8s/.openshiftignore`: Controla quais arquivos são enviados ao OpenShift
-- `k8s/openshift.yaml`: Define os recursos do OpenShift (Deployment, Service, Route e ConfigMap)
+- `k8s/buildconfig.yaml`: Define a configuração do build
+- `k8s/openshift.yaml`: Define os recursos do OpenShift
 
 ## Manutenção
 
 ### Atualizações
 
-1. Atualizar código:
+1. Atualizar a aplicação:
 ```bash
-git pull origin main
+oc start-build painel-ods --follow
 ```
 
-2. Rebuild e redeploy:
+2. Deploy dos recursos (se necessário):
 ```bash
-oc start-build painel-ods --from-dir=. --follow
 oc apply -f k8s/openshift.yaml
 ```
 
 ### Backup
 
 Os dados importantes estão em:
-- `/app/db/`: Arquivos CSV e Parquet
+- Volume persistente `painel-ods-data` montado em `/app/db/`: Arquivos CSV e Parquet
 - Logs: Disponíveis através do OpenShift
 
 ## Suporte
