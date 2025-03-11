@@ -1,0 +1,58 @@
+ # Ambiente virtual Python
+venv/
+.env/
+.venv/
+env/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Arquivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos temporários
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Arquivos de desenvolvimento
+.git/
+.gitignore
+README.md
+LICENSE
+*.md
+*.rst
+
+# Arquivos de teste
+tests/
+test_*.py
+*_test.py
+
+# Arquivos de configuração local
+docker-compose*.yml
+.env*
+.flake8
+.pylintrc
+.editorconfig
+
+# Diretórios de build
+build/
+dist/
+*.egg-info/
+
+# Diretório k8s (arquivos de configuração do OpenShift)
+k8s/
+
+# Arquivos do Docker
+.dockerignore
+Dockerfile.local
+Dockerfile.dev

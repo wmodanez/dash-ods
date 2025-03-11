@@ -16,9 +16,9 @@ Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustent
 ├── db/                     # Arquivos de dados
 ├── k8s/                    # Arquivos de configuração do OpenShift
 │   ├── openshift.yaml     # Manifesto do OpenShift
-│   ├── buildconfig.yaml   # Configuração de build
-│   └── .openshiftignore   # Arquivos a serem ignorados no deploy
+│   └── buildconfig.yaml   # Configuração de build
 ├── Dockerfile             # Configuração do container
+├── .openshiftignore       # Arquivos a serem ignorados no build do OpenShift
 └── requirements.txt       # Dependências Python
 ```
 
@@ -193,7 +193,13 @@ A aplicação segue as melhores práticas de segurança do OpenShift:
 ### Arquivos de Configuração
 
 - `.dockerignore`: Otimiza o build da imagem
-- `k8s/.openshiftignore`: Controla quais arquivos são enviados ao OpenShift
+- `.openshiftignore`: Controla quais arquivos são enviados ao OpenShift
+  - Ignora arquivos de desenvolvimento (venv, __pycache__, etc.)
+  - Ignora arquivos de IDE e temporários
+  - Ignora arquivos de teste e documentação
+  - Ignora arquivos de configuração local
+  - Ignora o diretório k8s (não necessário no build)
+  - Melhora a performance do build e reduz o tamanho do contexto
 - `k8s/buildconfig.yaml`: Define a configuração do build
 - `k8s/openshift.yaml`: Define os recursos do OpenShift
 
