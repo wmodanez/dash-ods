@@ -137,10 +137,67 @@ df = load_objetivos()
 df_metas = load_metas()
 df_indicadores = load_indicadores()
 
-# Define o conteúdo inicial do card
-initial_header = "Selecione um objetivo"
-initial_content = "Selecione um dos objetivos ao lado para visualizar suas informações."
+# Define o conteúdo inicial do card com os dados do objetivo 0
+row_objetivo_0 = df.iloc[0]
+initial_header = row_objetivo_0['RES_OBJETIVO']
+initial_content = row_objetivo_0['DESC_OBJETIVO']
 initial_meta_description = ""
+
+# Prepara as metas iniciais do objetivo 0
+metas_filtradas_inicial = df_metas[df_metas['ID_OBJETIVO'] == row_objetivo_0['ID_OBJETIVO']]
+metas_com_indicadores_inicial = [
+    meta for _, meta in metas_filtradas_inicial.iterrows()
+    if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
+]
+
+# Define a meta inicial e sua descrição
+meta_inicial = metas_com_indicadores_inicial[0] if metas_com_indicadores_inicial else None
+initial_meta_description = meta_inicial['DESC_META'] if meta_inicial else ""
+
+# Prepara os indicadores iniciais
+initial_indicadores_section = []
+if meta_inicial:
+    indicadores_meta_inicial = df_indicadores[df_indicadores['ID_META'] == meta_inicial['ID_META']]
+    if not indicadores_meta_inicial.empty:
+        tabs_indicadores = []
+        for _, row in indicadores_meta_inicial.iterrows():
+            df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
+            tab_content = [
+                html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+            ]
+
+            if df_dados is not None:
+                grid = create_ag_grid(df_dados)
+                tab_content.append(grid)
+            else:
+                tab_content.append(
+                    html.P(
+                        "Erro ao carregar os dados do indicador.",
+                        className="text-danger"
+                    )
+                )
+
+            tabs_indicadores.append(
+                dbc.Tab(
+                    tab_content,
+                    label=row['ID_INDICADOR'],
+                    tab_id=f"tab-{row['ID_INDICADOR']}",
+                    id={'type': 'tab-indicador', 'index': row['ID_INDICADOR']}
+                )
+            )
+
+        initial_indicadores_section = [
+            html.H5("Indicadores", className="mt-4 mb-3"),
+            dbc.Card(
+                dbc.CardBody(
+                    dbc.Tabs(
+                        children=tabs_indicadores,
+                        active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None
+                    )
+                ),
+                className="mt-3"
+            )
+        ]
 
 # Define o layout do aplicativo
 app.layout = dbc.Container([
@@ -212,7 +269,7 @@ app.layout = dbc.Container([
                                                     },
                                                     className="img-fluid",
                                                     id=f"objetivo{idx}",
-                                                    n_clicks=0
+                                                    n_clicks=1 if idx == 0 else 0
                                                 )
                                             ])
                                         ], width=4) for idx, row in df.iterrows()
@@ -237,10 +294,12 @@ app.layout = dbc.Container([
                                             'display': 'flex',
                                             'flexWrap': 'wrap',
                                             'marginBottom': '1rem'
-                                        }
+                                        },
+                                        children=[]
                                     ),
                                     html.P(
                                         id='meta-description',
+                                        children=initial_meta_description,
                                         className="text-justify mt-4"
                                     ),
                                     html.Div(id='loading-indicator', children=[]),
@@ -426,13 +485,17 @@ def update_card_content(*args):
             header = f"{row['ID_OBJETIVO']} - {row['RES_OBJETIVO']}" if index > 0 else row['RES_OBJETIVO']
             content = row['DESC_OBJETIVO']
 
+            # Se for o objetivo 0, retorna apenas o header e content
+            if index == 0:
+                return header, content, [], "", []
+
             metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']]
             metas_com_indicadores = [
                 meta for _, meta in metas_filtradas.iterrows()
                 if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
             ]
 
-            if not metas_com_indicadores:
+            if not metas_com_indicadores and index != 0:
                 metas = [
                     dbc.Card(
                         dbc.CardBody(
