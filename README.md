@@ -1,200 +1,180 @@
-# Painel ODS - IMB
+# Painel ODS
 
-Painel interativo para visualização de dados dos Objetivos de Desenvolvimento Sustentável (ODS) do Instituto Mauro Borges.
+Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustentável (ODS).
 
-## Execução com Docker (Recomendado)
+## Requisitos
+
+- Python 3.9+
+- Docker (para desenvolvimento local)
+- OpenShift CLI (oc) para deploy no OpenShift
+
+## Estrutura do Projeto
+
+```
+.
+├── app/                    # Código fonte da aplicação
+├── db/                     # Arquivos de dados
+├── Dockerfile             # Configuração do container
+├── requirements.txt       # Dependências Python
+├── openshift.yaml        # Configuração do OpenShift
+└── openshift-entrypoint.sh # Script de inicialização
+```
+
+## Desenvolvimento Local
+
+1. Criar ambiente virtual:
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+```
+
+2. Instalar dependências:
+```bash
+pip install -r requirements.txt
+```
+
+3. Executar com Docker:
+```bash
+docker compose up --build
+```
+
+A aplicação estará disponível em `http://localhost:8050`
+
+## Deploy no OpenShift
 
 ### Pré-requisitos
-- Docker
-- Docker Compose (opcional)
 
-### Construindo e Executando com Docker
-
-1. Construa a imagem:
+1. OpenShift CLI (oc) instalado
+2. Acesso a um cluster OpenShift
+3. Login no cluster:
 ```bash
-docker build -t painel-ods .
+oc login <cluster-url>
 ```
 
-2. Execute o container:
+### Configuração Inicial
+
+1. Criar novo projeto (se necessário):
 ```bash
-docker run -d -p 80:80 --name painel-ods painel-ods
+oc new-project painel-ods
 ```
 
-3. Acesse a aplicação em:
-```
-http://localhost
-```
-
-### Gerenciamento do Container
-
-- Para parar o container:
+2. Criar build configuration:
 ```bash
-docker stop painel-ods
+oc new-build --binary --name=painel-ods --strategy=docker
 ```
 
-- Para iniciar o container:
+### Deploy da Aplicação
+
+1. Build da imagem:
 ```bash
-docker start painel-ods
+oc start-build painel-ods --from-dir=. --follow
 ```
 
-- Para ver os logs:
+2. Deploy dos recursos:
 ```bash
-docker logs -f painel-ods
+oc apply -f openshift.yaml
 ```
 
-## Configuração do Ambiente de Produção com uWSGI (Instalação Manual)
-
-### Pré-requisitos
-
-- Python 3.x
-- uWSGI
-- Ambiente Linux
-
-### Estrutura de Arquivos
-
-O projeto deve conter os seguintes arquivos de configuração:
-
-- `app.py`: Aplicação principal
-- `uwsgi.ini`: Configurações do uWSGI
-- `start.sh`: Script de inicialização
-
-### Configuração do uWSGI
-
-O arquivo `uwsgi.ini` contém as configurações necessárias para o servidor:
-
-```ini
-[uwsgi]
-# Nome da aplicação
-project = painel-ods
-
-# Configurações do Python
-plugin = python3
-pythonpath = /caminho/para/seu/projeto
-module = app:server
-
-# Configurações do processo
-master = true
-processes = 4
-threads = 2
-enable-threads = true
-
-# Socket
-http = :8050
-
-# Configurações de logging
-logto = /var/log/uwsgi/%n.log
-log-date = true
-
-# Configurações de reinicialização
-reload-mercy = 8
-max-requests = 5000
-reload-on-rss = 2048
-
-# Configurações de buffer
-buffer-size = 32768
-
-# Configurações de timeout
-harakiri = 60
-socket-timeout = 60
-http-timeout = 60
-```
-
-### Configuração do Diretório de Logs
-
-Antes de iniciar a aplicação, configure o diretório de logs:
-
+3. Verificar status:
 ```bash
-sudo mkdir -p /var/log/uwsgi
-sudo chown -R $USER:$USER /var/log/uwsgi
+oc get pods
+oc get services
+oc get routes
 ```
 
-### Script de Inicialização
+### Configurações do OpenShift
 
-O arquivo `start.sh` contém as configurações de ambiente e comando de inicialização:
+O arquivo `openshift.yaml` contém as seguintes configurações:
 
+- **Deployment**:
+  - Replicas: 1 (ajustável conforme necessidade)
+  - Recursos:
+    - Memória: 512Mi (request) / 1Gi (limit)
+    - CPU: 250m (request) / 500m (limit)
+  - Health checks configurados
+
+- **Service**:
+  - Porta: 8050
+  - Protocolo: TCP
+
+- **Route**:
+  - Expõe a aplicação externamente
+  - Configurado para a porta 8050
+
+### Monitoramento
+
+1. Verificar logs:
 ```bash
-#!/bin/bash
-
-# Ativa o ambiente virtual (se estiver usando)
-# source /caminho/para/seu/venv/bin/activate
-
-# Define variáveis de ambiente
-export DEBUG=False
-export PORT=8050
-export HOST=0.0.0.0
-
-# Inicia o uWSGI
-uwsgi --ini uwsgi.ini
+oc logs -f dc/painel-ods
 ```
 
-### Execução
-
-1. Dê permissão de execução ao script:
+2. Verificar status dos pods:
 ```bash
-chmod +x start.sh
+oc get pods
+oc describe pod <nome-do-pod>
 ```
 
-2. Execute o script:
+### Escalonamento
+
+Para ajustar o número de réplicas:
 ```bash
-./start.sh
+oc scale deployment painel-ods --replicas=3
 ```
-
-### Monitoramento e Gerenciamento
-
-#### Logs
-Para monitorar os logs da aplicação:
-```bash
-tail -f /var/log/uwsgi/painel-ods.log
-```
-
-#### Gerenciamento do Processo
-- Para parar o servidor:
-```bash
-uwsgi --stop /tmp/painel-ods.pid
-```
-
-- Para reiniciar:
-```bash
-uwsgi --reload /tmp/painel-ods.pid
-```
-
-### Configuração com Nginx (Recomendado)
-
-Para usar o Nginx como proxy reverso, adicione a seguinte configuração:
-
-```nginx
-server {
-    listen 80;
-    server_name seu_dominio.com;
-
-    location / {
-        include uwsgi_params;
-        uwsgi_pass 127.0.0.1:8050;
-        uwsgi_read_timeout 60s;
-        uwsgi_send_timeout 60s;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-### Considerações de Segurança
-
-1. Certifique-se de que o arquivo `config.py` não expõe informações sensíveis
-2. Configure corretamente as variáveis de ambiente em produção
-3. Use HTTPS se a aplicação for acessível pela internet
-4. Mantenha as dependências atualizadas
-5. Faça backup regular dos dados
 
 ### Troubleshooting
 
-Se encontrar problemas:
+1. Se o pod não iniciar:
+```bash
+oc describe pod <nome-do-pod>
+oc logs <nome-do-pod>
+```
 
-1. Verifique os logs em `/var/log/uwsgi/painel-ods.log`
-2. Confirme se todas as dependências estão instaladas
-3. Verifique as permissões dos diretórios
-4. Certifique-se de que as portas necessárias estão liberadas
-5. Verifique se o ambiente virtual (se usado) está ativado corretamente
+2. Se a rota não estiver acessível:
+```bash
+oc get route painel-ods
+oc describe route painel-ods
+```
 
-### Contato
+3. Problemas comuns:
+   - Verificar se as portas estão corretas (8050)
+   - Confirmar se os recursos (CPU/memória) são suficientes
+   - Verificar permissões do usuário não-root (UID 1001)
 
-Para suporte ou dúvidas, entre em contato com a equipe do IMB.
+### Segurança
+
+A aplicação segue as melhores práticas de segurança do OpenShift:
+- Executa como usuário não-root (UID 1001)
+- Não requer privilégios especiais
+- Utiliza volumes com permissões apropriadas
+
+### Arquivos de Configuração
+
+- `.dockerignore`: Otimiza o build da imagem
+- `.openshiftignore`: Controla quais arquivos são enviados ao OpenShift
+- `openshift.yaml`: Define os recursos do OpenShift
+- `openshift-entrypoint.sh`: Script de inicialização
+
+## Manutenção
+
+### Atualizações
+
+1. Atualizar código:
+```bash
+git pull origin main
+```
+
+2. Rebuild e redeploy:
+```bash
+oc start-build painel-ods --from-dir=. --follow
+```
+
+### Backup
+
+Os dados importantes estão em:
+- `/app/db/`: Arquivos CSV e Parquet
+- Logs: Disponíveis através do OpenShift
+
+## Suporte
+
+Para problemas ou sugestões, abra uma issue no repositório.

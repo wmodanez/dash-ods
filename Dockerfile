@@ -8,24 +8,27 @@ ENV DEBUG=False \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
+# Define um usuário não-root para OpenShift
+ENV USER_UID=1001 \
+    USER_NAME=python
+
 # Instala as dependências do sistema
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
     nginx \
     supervisor \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app /var/log/nginx /var/log/supervisor \
+    && chown -R ${USER_UID}:0 /app /var/log/nginx /var/log/supervisor /var/lib/nginx \
+    && chmod -R g+w /app /var/log/nginx /var/log/supervisor /var/lib/nginx \
+    && chmod g+w /etc/passwd
 
 # Cria diretório da aplicação
 WORKDIR /app
 
-# Cria diretórios necessários
-RUN mkdir -p /var/log/nginx /var/log/supervisor \
-    && chown -R www-data:www-data /var/log/nginx \
-    && chown -R www-data:www-data /app
-
 # Copia os arquivos de requisitos primeiro para aproveitar o cache do Docker
-COPY requirements.txt .
+COPY --chown=${USER_UID}:0 requirements.txt .
 
 # Atualiza o pip e instala as dependências
 RUN pip install --upgrade pip \
@@ -33,22 +36,28 @@ RUN pip install --upgrade pip \
     && pip install gunicorn
 
 # Copia os arquivos de configuração
-COPY supervisord.conf /etc/supervisor/conf.d/
-COPY nginx.conf /etc/nginx/sites-available/default
+COPY --chown=${USER_UID}:0 supervisord.conf /etc/supervisor/conf.d/
+COPY --chown=${USER_UID}:0 nginx.conf /etc/nginx/sites-available/default
 
 # Configura o Nginx
 RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default \
     && rm -f /etc/nginx/sites-enabled/default
 
 # Copia o resto dos arquivos da aplicação
-COPY . .
+COPY --chown=${USER_UID}:0 . .
 
-# Ajusta as permissões
-RUN chown -R www-data:www-data /app \
-    && chmod -R 755 /app
+# Ajusta as permissões finais
+RUN chmod -R g+w /app
 
-# Expõe as portas
-EXPOSE 80 8050
+# Adiciona script de inicialização
+COPY --chown=${USER_UID}:0 openshift-entrypoint.sh /
+RUN chmod g+x /openshift-entrypoint.sh
 
-# Comando para iniciar o Supervisor
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+# Define usuário não-root
+USER ${USER_UID}
+
+# Expõe a porta da aplicação
+EXPOSE 8050
+
+# Define o entrypoint
+ENTRYPOINT ["/openshift-entrypoint.sh"]
