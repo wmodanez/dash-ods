@@ -1,6 +1,7 @@
 from dash import html, Dash, callback_context, ALL, no_update
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
+import dash_ag_grid as dag
 from config import DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG
 import pandas as pd
 from functools import lru_cache
@@ -15,7 +16,11 @@ def capitalize_words(text):
 # Inicializa o aplicativo Dash com tema Bootstrap
 app = Dash(
     __name__,
-    external_stylesheets=[dbc.themes.MATERIA],
+    external_stylesheets=[
+        dbc.themes.MATERIA,
+        "https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/styles/ag-grid.min.css",
+        "https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/styles/ag-theme-alpine.min.css",
+    ],
     assets_folder='assets',
     assets_url_path='/assets/',
     **DASH_CONFIG  # Aplica as configurações de performance
@@ -251,7 +256,59 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# Callback para atualizar o conteúdo do card
+# Função com cache para carregar dados do indicador
+@lru_cache(maxsize=100)
+def load_dados_indicador_cache(indicador_id):
+    try:
+        df_dados = pd.read_parquet(
+            f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
+        )
+        return df_dados
+    except Exception as e:
+        print(f"Erro ao carregar dados do indicador: {e}")
+        return None
+
+def create_ag_grid(df):
+    """Função auxiliar para criar uma grid AG Grid padronizada"""
+    if df is None or df.empty:
+        return html.P(
+            "Erro ao carregar os dados do indicador.",
+            className="text-danger"
+        )
+    
+    # Configurações da grid
+    grid_options = {
+        "columnDefs": [{"field": col} for col in df.columns],
+        "rowData": df.to_dict("records"),
+        "defaultColDef": {
+            "resizable": True,
+            "sortable": True,
+            "filter": True,
+            "minWidth": 100,
+        },
+        "pagination": True,
+        "paginationPageSize": 20,  # Define o tamanho da página como 20
+        "enableRangeSelection": True,
+        "domLayout": "autoHeight",
+    }
+    
+    return dag.AgGrid(
+        id="ag-grid",
+        columnDefs=[{"field": col} for col in df.columns],
+        rowData=df.to_dict("records"),
+        columnSize="sizeToFit",
+        defaultColDef={
+            "resizable": True,
+            "sortable": True,
+            "filter": True,
+            "minWidth": 100,
+        },
+        dashGridOptions=grid_options,
+        className="ag-theme-alpine",
+        style={"height": "100%", "width": "100%"}
+    )
+
+# Modifica o callback de atualização do card para usar AG Grid
 @app.callback(
     [
         Output('card-header', 'children'),
@@ -311,15 +368,8 @@ def update_card_content(*args):
                             ]
 
                             if df_dados is not None:
-                                tabela = dbc.Table.from_dataframe(
-                                    df_dados,
-                                    striped=True,
-                                    bordered=True,
-                                    hover=True,
-                                    responsive=True,
-                                    className="table-sm"
-                                )
-                                tab_content.append(tabela)
+                                grid = create_ag_grid(df_dados)
+                                tab_content.append(grid)
                             else:
                                 tab_content.append(
                                     html.P(
@@ -420,15 +470,8 @@ def update_card_content(*args):
                     ]
 
                     if df_dados is not None:
-                        tabela = dbc.Table.from_dataframe(
-                            df_dados,
-                            striped=True,
-                            bordered=True,
-                            hover=True,
-                            responsive=True,
-                            className="table-sm"
-                        )
-                        tab_content.append(tabela)
+                        grid = create_ag_grid(df_dados)
+                        tab_content.append(grid)
                     else:
                         tab_content.append(
                             html.P(
@@ -471,19 +514,6 @@ def update_card_content(*args):
         return initial_header, "Ocorreu um erro ao processar sua solicitação.", [], "", []
 
 
-# Função com cache para carregar dados do indicador
-@lru_cache(maxsize=100)
-def load_dados_indicador_cache(indicador_id):
-    try:
-        df_dados = pd.read_parquet(
-            f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
-        )
-        return df_dados
-    except Exception as e:
-        print(f"Erro ao carregar dados do indicador: {e}")
-        return None
-
-
 # Callback para carregar os dados de cada indicador
 @app.callback(
     Output({'type': 'dados-indicador', 'index': ALL}, 'children'),
@@ -506,15 +536,8 @@ def load_dados_indicador(*args):
         if not indicador.empty:
             df_dados = load_dados_indicador_cache(indicador_id)
             if df_dados is not None:
-                tabela = dbc.Table.from_dataframe(
-                    df_dados,
-                    striped=True,
-                    bordered=True,
-                    hover=True,
-                    responsive=True,
-                    className="table-sm"
-                )
-                return [[tabela]]
+                grid = create_ag_grid(df_dados)
+                return [[grid]]
             else:
                 return [[
                     html.P(
