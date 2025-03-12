@@ -21,12 +21,13 @@ spec:
       - name: painel-ods
         image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshifthom_colocation-imb/painel-ods:latest
         command: ["/k8s/openshift-entrypoint.sh"]
+        workingDir: /app
         ports:
         - containerPort: 8050
         resources:
           requests:
             memory: "512Mi"
-            cpu: "250m"
+            cpu: "500m"
           limits:
             memory: "2Gi"
             cpu: "1000m"
