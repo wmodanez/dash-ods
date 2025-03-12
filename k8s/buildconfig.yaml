@@ -42,11 +42,3 @@ spec:
     to:
       kind: ImageStreamTag
       name: painel-ods:latest
----
-apiVersion: image.openshift.io/v1
-kind: ImageStream
-metadata:
-  name: painel-ods
-  namespace: colocation-imb
-  labels:
-    app: painel-ods 
