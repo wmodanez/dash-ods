@@ -34,18 +34,23 @@ RUN pip install --upgrade pip \
     && pip install gunicorn
 
 # Primeiro, copia APENAS os arquivos da pasta db
-COPY --chown=${USER_UID}:0 db/objetivos.csv db/metas.csv db/indicadores.csv db/filtro.csv db/unidade_medida.csv /app/db/
+COPY --chown=${USER_UID}:0 db/*.csv /app/db/
 COPY --chown=${USER_UID}:0 db/resultados/*.parquet /app/db/resultados/
 
-# Garante as permissões corretas para a pasta db e seus arquivos
-RUN chown -R ${USER_UID}:0 /app/db \
-    && chmod -R g+w /app/db
+# Verifica se os arquivos foram copiados e ajusta as permissões
+RUN ls -la /app/db/ && \
+    ls -la /app/db/resultados/ && \
+    chown -R ${USER_UID}:0 /app/db && \
+    chmod -R g+w /app/db
 
 # Copia o resto dos arquivos da aplicação
 COPY --chown=${USER_UID}:0 . .
 
 # Define usuário não-root
 USER ${USER_UID}
+
+# Comando para iniciar a aplicação com logs detalhados
+CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "4", "--log-level", "debug", "app:server"]
 
 # Expõe a porta da aplicação
 EXPOSE 8050

@@ -7,6 +7,7 @@ import pandas as pd
 from functools import lru_cache
 from flask import session, redirect
 from dash.exceptions import PreventUpdate
+import os
 
 
 def capitalize_words(text):
@@ -73,6 +74,9 @@ app.index_string = '''
 @lru_cache(maxsize=1)
 def load_objetivos():
     try:
+        print(f"Tentando carregar objetivos.csv. Diretório atual: {os.getcwd()}")
+        print(f"Conteúdo do diretório db: {os.listdir('db')}")
+        
         df = pd.read_csv(
             'db/objetivos.csv',
             low_memory=False,
@@ -81,6 +85,8 @@ def load_objetivos():
             sep=';',
             on_bad_lines='skip'
         )
+        print(f"Arquivo objetivos.csv carregado com sucesso. Shape: {df.shape}")
+        
         # Remover a primeira linha se ela contiver #
         if df.iloc[0].name == '#':
             df = df.iloc[1:]
@@ -92,7 +98,9 @@ def load_objetivos():
                 return pd.DataFrame(columns=required_columns)
         return df
     except Exception as e:
+        import traceback
         print(f"Erro ao ler o arquivo de objetivos: {e}")
+        print(f"Traceback completo: {traceback.format_exc()}")
         return pd.DataFrame(columns=['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64'])
 
 
@@ -133,31 +141,50 @@ def load_indicadores():
 
 
 # Carrega os dados
+print("Iniciando carregamento dos dados...")
 df = load_objetivos()
+print(f"DataFrame de objetivos carregado. Vazio? {df.empty}")
+
 df_metas = load_metas()
+print(f"DataFrame de metas carregado. Vazio? {df_metas.empty}")
+
 df_indicadores = load_indicadores()
+print(f"DataFrame de indicadores carregado. Vazio? {df_indicadores.empty}")
 
 # Define o conteúdo inicial do card
 if not df.empty:
+    print("DataFrame de objetivos não está vazio, carregando dados iniciais...")
     row_objetivo_0 = df.iloc[0]
     initial_header = row_objetivo_0['RES_OBJETIVO']
     initial_content = row_objetivo_0['DESC_OBJETIVO']
 else:
+    print("DataFrame de objetivos está vazio, usando mensagem de erro...")
     initial_header = "Erro ao carregar dados"
     initial_content = "Não foi possível carregar os dados dos objetivos. Por favor, verifique se os arquivos CSV estão presentes na pasta db."
 
 initial_meta_description = ""
 
 # Prepara as metas iniciais do objetivo 0
-metas_filtradas_inicial = df_metas[df_metas['ID_OBJETIVO'] == row_objetivo_0['ID_OBJETIVO']]
-metas_com_indicadores_inicial = [
-    meta for _, meta in metas_filtradas_inicial.iterrows()
-    if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
-]
-
-# Define a meta inicial e sua descrição
-meta_inicial = metas_com_indicadores_inicial[0] if metas_com_indicadores_inicial else None
-initial_meta_description = meta_inicial['DESC_META'] if meta_inicial else ""
+if not df.empty and not df_metas.empty:
+    print("Preparando metas iniciais...")
+    try:
+        metas_filtradas_inicial = df_metas[df_metas['ID_OBJETIVO'] == df.iloc[0]['ID_OBJETIVO']]
+        metas_com_indicadores_inicial = [
+            meta for _, meta in metas_filtradas_inicial.iterrows()
+            if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
+        ]
+        
+        # Define a meta inicial e sua descrição
+        meta_inicial = metas_com_indicadores_inicial[0] if metas_com_indicadores_inicial else None
+        initial_meta_description = meta_inicial['DESC_META'] if meta_inicial else ""
+    except Exception as e:
+        print(f"Erro ao preparar metas iniciais: {e}")
+        meta_inicial = None
+        initial_meta_description = ""
+else:
+    print("DataFrames vazios, não é possível preparar metas iniciais")
+    meta_inicial = None
+    initial_meta_description = ""
 
 # Prepara os indicadores iniciais
 initial_indicadores_section = []

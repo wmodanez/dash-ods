@@ -18,10 +18,9 @@ spec:
         app: painel-ods
     spec:
       restartPolicy: Always
-      serviceAccountName: imb-anyuid
       containers:
       - name: painel-ods
-        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshifthom_colocation-imb/painel-ods:latest
+        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshiftprod_colocation-imb/painel-ods:latest
         command: ["/k8s/openshift-entrypoint.sh"]
         workingDir: /app
         ports:
