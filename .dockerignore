@@ -81,8 +81,6 @@ tox.ini
 *.backup
 
 # Arquivos grandes ou desnecessários para produção
-*.csv
-*.parquet
 *.xlsx
 *.xls
 *.pdf
