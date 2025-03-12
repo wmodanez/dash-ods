@@ -345,8 +345,8 @@ def create_ag_grid(df):
             "filter": True,
             "minWidth": 100,
         },
-        "pagination": True,
-        "paginationPageSize": 20,  # Define o tamanho da página como 20
+        # "pagination": True,
+        # "paginationPageSize": 20,  # Define o tamanho da página como 20
         "enableRangeSelection": True,
         "domLayout": "autoHeight",
     }
