@@ -33,6 +33,9 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install gunicorn
 
+# Copia explicitamente a pasta db primeiro
+COPY --chown=${USER_UID}:0 db/ ./db/
+
 # Copia o resto dos arquivos da aplicação
 COPY --chown=${USER_UID}:0 . .
 
