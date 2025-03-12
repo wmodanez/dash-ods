@@ -1,0 +1,14 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: painel-external
+  namespace: colocation-imb
+spec:
+  host: odshomolog.imb.go.gov.br
+  to:
+    kind: Service
+    name: painel-ods
+    weight: 100
+  port:
+    targetPort: 80-tcp
+  wildcardPolicy: None
