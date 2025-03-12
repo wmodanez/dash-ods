@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app \
+    && mkdir -p /app/db \
     && chown -R ${USER_UID}:0 /app \
     && chmod -R g+w /app \
     && chmod g+w /etc/passwd
@@ -33,14 +33,18 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install gunicorn
 
-# Copia explicitamente a pasta db primeiro
-COPY --chown=${USER_UID}:0 db/ ./db/
+# Copia explicitamente os arquivos CSV da pasta db
+COPY --chown=${USER_UID}:0 db/*.csv ./db/
+COPY --chown=${USER_UID}:0 db/resultados/*.parquet ./db/resultados/
 
 # Copia o resto dos arquivos da aplicação
 COPY --chown=${USER_UID}:0 . .
 
-# Ajusta as permissões finais
-RUN chmod -R g+w /app
+# Ajusta as permissões finais e garante que a pasta db existe com as permissões corretas
+RUN chmod -R g+w /app \
+    && mkdir -p /app/db/resultados \
+    && chown -R ${USER_UID}:0 /app/db \
+    && chmod -R g+w /app/db
 
 # Define usuário não-root
 USER ${USER_UID}
