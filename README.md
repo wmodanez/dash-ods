@@ -15,8 +15,13 @@ Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustent
 ├── app/                    # Código fonte da aplicação
 ├── db/                     # Arquivos de dados
 ├── k8s/                    # Arquivos de configuração do OpenShift
-│   ├── openshift.yaml     # Manifesto do OpenShift
-│   └── buildconfig.yaml   # Configuração de build
+│   ├── buildconfig.yaml   # Configuração de build
+│   ├── configmap.yaml     # ConfigMap com script de inicialização
+│   ├── deployment.yaml    # Configuração do Deployment
+│   ├── imagestream.yaml   # Configuração do ImageStream
+│   ├── pvc.yaml          # Configuração do Volume Persistente
+│   ├── route.yaml        # Configuração da Rota
+│   └── service.yaml      # Configuração do Serviço
 ├── Dockerfile             # Configuração do container
 ├── .openshiftignore       # Arquivos a serem ignorados no build do OpenShift
 └── requirements.txt       # Dependências Python
@@ -63,6 +68,7 @@ oc project colocation-imb
 
 2. Criar recursos de build:
 ```bash
+oc apply -f k8s/imagestream.yaml
 oc apply -f k8s/buildconfig.yaml
 ```
 
@@ -75,7 +81,16 @@ oc start-build painel-ods --follow
 
 2. Deploy dos recursos:
 ```bash
-oc apply -f k8s/openshift.yaml
+oc apply -f k8s/pvc.yaml
+oc apply -f k8s/configmap.yaml
+oc apply -f k8s/deployment.yaml
+oc apply -f k8s/service.yaml
+oc apply -f k8s/route.yaml
+```
+
+Ou aplicar todos de uma vez:
+```bash
+oc apply -f k8s/
 ```
 
 3. Verificar status:
@@ -99,7 +114,13 @@ O arquivo `k8s/buildconfig.yaml` contém:
   - Variáveis de ambiente configuradas
   - Output: ImageStream painel-ods:latest
 
-O arquivo `k8s/openshift.yaml` contém:
+O arquivo `k8s/imagestream.yaml` contém:
+- **ImageStream**:
+  - Nome: painel-ods
+  - Armazena as imagens construídas pelo BuildConfig
+  - Usado como referência pelo Deployment
+
+O arquivo `k8s/deployment.yaml` contém:
 - **Deployment**:
   - Replicas: 1 (ajustável conforme necessidade)
   - Recursos:
@@ -201,7 +222,7 @@ A aplicação segue as melhores práticas de segurança do OpenShift:
   - Ignora o diretório k8s (não necessário no build)
   - Melhora a performance do build e reduz o tamanho do contexto
 - `k8s/buildconfig.yaml`: Define a configuração do build
-- `k8s/openshift.yaml`: Define os recursos do OpenShift
+- `k8s/deployment.yaml`: Define os recursos do OpenShift
 
 ## Manutenção
 
@@ -214,7 +235,7 @@ oc start-build painel-ods --follow
 
 2. Deploy dos recursos (se necessário):
 ```bash
-oc apply -f k8s/openshift.yaml
+oc apply -f k8s/deployment.yaml
 ```
 
 ### Backup

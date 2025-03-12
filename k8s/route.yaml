@@ -1,0 +1,11 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: painel-ods
+  namespace: colocation-imb
+spec:
+  to:
+    kind: Service
+    name: painel-ods
+  port:
+    targetPort: http-80 
