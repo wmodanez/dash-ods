@@ -247,3 +247,75 @@ Os dados importantes estão em:
 ## Suporte
 
 Para problemas ou sugestões, abra uma issue no repositório.
+
+## Gerenciamento dos Dados (ConfigMaps)
+
+Os arquivos de dados da aplicação (CSVs e parquets) são gerenciados através de ConfigMaps no OpenShift. Existem dois ConfigMaps principais:
+
+1. `painel-ods-db`: Contém os arquivos CSV principais
+   - objetivos.csv
+   - metas.csv
+   - indicadores.csv
+   - filtro.csv
+   - unidade_medida.csv
+
+2. `painel-ods-resultados`: Contém os arquivos parquet da pasta resultados
+
+### Atualizando os Dados
+
+Para atualizar os arquivos de dados, siga os passos:
+
+1. Primeiro, remova os ConfigMaps existentes:
+```bash
+oc delete configmap painel-ods-db painel-ods-resultados
+```
+
+2. Crie novamente os ConfigMaps com os novos arquivos:
+```bash
+# Para os arquivos CSV
+oc create configmap painel-ods-db \
+  --from-file=objetivos.csv=db/objetivos.csv \
+  --from-file=metas.csv=db/metas.csv \
+  --from-file=indicadores.csv=db/indicadores.csv \
+  --from-file=filtro.csv=db/filtro.csv \
+  --from-file=unidade_medida.csv=db/unidade_medida.csv
+
+# Para os arquivos parquet
+oc create configmap painel-ods-resultados --from-file=db/resultados/
+```
+
+3. Reinicie o deployment para aplicar as alterações:
+```bash
+oc rollout restart deployment/painel-ods
+```
+
+### Verificando os Dados
+
+Para verificar os dados atuais nos ConfigMaps:
+
+1. Listar os ConfigMaps:
+```bash
+oc get configmaps
+```
+
+2. Ver detalhes de um ConfigMap específico:
+```bash
+oc describe configmap painel-ods-db
+oc describe configmap painel-ods-resultados
+```
+
+3. Verificar os arquivos no pod:
+```bash
+# Listar arquivos CSV
+oc exec <nome-do-pod> -- ls -la /app/db
+
+# Listar arquivos parquet
+oc exec <nome-do-pod> -- ls -la /app/db/resultados
+```
+
+### Observações Importantes
+
+- Os ConfigMaps têm um limite de tamanho de 1MB por arquivo. Se seus arquivos forem maiores, considere usar um Volume Persistente ou dividir os dados em arquivos menores.
+- A atualização dos ConfigMaps não afeta automaticamente os pods em execução. É necessário reiniciar o deployment para que as alterações sejam aplicadas.
+- Mantenha um backup dos arquivos de dados antes de fazer qualquer atualização.
+- É recomendado testar as atualizações em um ambiente de desenvolvimento antes de aplicar em produção.
