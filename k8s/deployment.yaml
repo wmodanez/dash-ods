@@ -7,53 +7,49 @@ metadata:
     app: painel-ods
 spec:
   replicas: 1
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app: painel-ods
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: painel-ods
     spec:
-      restartPolicy: Always
       containers:
       - name: painel-ods
         image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshiftprod_colocation-imb/painel-ods:latest
-        command: ["/k8s/openshift-entrypoint.sh"]
-        workingDir: /app
         ports:
         - containerPort: 8050
         resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
           limits:
-            memory: "2Gi"
             cpu: "1000m"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
         volumeMounts:
-        - name: entrypoint
-          mountPath: /k8s
-        - name: data
+        - name: db-files
           mountPath: /app/db
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 8050
-          initialDelaySeconds: 10
-          periodSeconds: 10
+        - name: resultados-files
+          mountPath: /app/db/resultados
         livenessProbe:
           httpGet:
             path: /
             port: 8050
           initialDelaySeconds: 15
           periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8050
+          initialDelaySeconds: 10
+          periodSeconds: 10
       volumes:
-      - name: entrypoint
+      - name: db-files
         configMap:
-          name: openshift-entrypoint
-          defaultMode: 0755
-      - name: data
-        persistentVolumeClaim:
-          claimName: painel-ods-data 
+          name: painel-ods-db
+      - name: resultados-files
+        configMap:
+          name: painel-ods-resultados 
