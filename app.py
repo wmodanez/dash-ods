@@ -137,10 +137,15 @@ df = load_objetivos()
 df_metas = load_metas()
 df_indicadores = load_indicadores()
 
-# Define o conteúdo inicial do card com os dados do objetivo 0
-row_objetivo_0 = df.iloc[0]
-initial_header = row_objetivo_0['RES_OBJETIVO']
-initial_content = row_objetivo_0['DESC_OBJETIVO']
+# Define o conteúdo inicial do card
+if not df.empty:
+    row_objetivo_0 = df.iloc[0]
+    initial_header = row_objetivo_0['RES_OBJETIVO']
+    initial_content = row_objetivo_0['DESC_OBJETIVO']
+else:
+    initial_header = "Erro ao carregar dados"
+    initial_content = "Não foi possível carregar os dados dos objetivos. Por favor, verifique se os arquivos CSV estão presentes na pasta db."
+
 initial_meta_description = ""
 
 # Prepara as metas iniciais do objetivo 0
