@@ -1,261 +1,331 @@
-ID_INDICADOR;TIPO_GRAFICO;DESC_MOTIVO_GRAFICO
-Indicador 1.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 11 anos disponíveis.
-Indicador 1.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 1.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 1.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 1.2.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 11 anos disponíveis.
-Indicador 1.2.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 1.2.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 1.2.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 1.5.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 9 anos disponíveis.
-Indicador 1.5.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 1.5.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 1.5.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 1.5.4;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 3 anos disponíveis.
-Indicador 1.5.4;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 1.5.4;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 1.5.4;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 11.3.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 11.3.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 11.3.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 11.3.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 11.5.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 9 anos disponíveis.
-Indicador 11.5.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 11.5.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 11.5.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 11.b.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 3 anos disponíveis.
-Indicador 11.b.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 11.b.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 11.b.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 13.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 9 anos disponíveis.
-Indicador 13.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 13.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 13.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 13.1.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 3 anos disponíveis.
-Indicador 13.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 13.1.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 13.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 13.2.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 31 anos disponíveis.
-Indicador 13.2.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 23 anos disponíveis.
-Indicador 16.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 16.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 23 anos disponíveis.
-Indicador 16.1.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 16.1.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.1.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 16.1.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.1.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 16.1.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.1.4;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 23 anos disponíveis.
-Indicador 16.1.1.4;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.1.4;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 16.1.1.4;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.3.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.3.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.3.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.3.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.3.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.3.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.1.3.4;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.1.3.4;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 16.9.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 2 anos disponíveis.
-Indicador 16.9.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 16.9.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 16.9.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 2.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 2.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 2.5.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 6 anos disponíveis.
-Indicador 2.5.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 2.a.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 13 anos disponíveis.
-Indicador 2.a.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 2.a.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 21 anos disponíveis.
-Indicador 2.a.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 2.b.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 28 anos disponíveis.
-Indicador 2.b.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 14 anos disponíveis.
-Indicador 3.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 10 anos disponíveis.
-Indicador 3.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.2.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 33 anos disponíveis.
-Indicador 3.2.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.2.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.2.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.2.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 33 anos disponíveis.
-Indicador 3.2.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.2.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.2.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.3.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.3.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.3.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.3.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.3.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 19 anos disponíveis.
-Indicador 3.3.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 10 estados.
-Indicador 3.3.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.3.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.3.4;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.3.4;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.3.4;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.3.4;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.3.5;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 2 anos disponíveis.
-Indicador 3.3.5;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.3.5;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.3.5;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.4.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.4.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.4.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.4.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.4.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.4.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.4.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.4.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.6.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.6.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.6.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.6.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.7.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 23 anos disponíveis.
-Indicador 3.7.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.7.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.7.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.9.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.9.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.9.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.9.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.9.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 3.9.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.9.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 3.9.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 3.a.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 3.a.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 6 anos disponíveis.
-Indicador 4.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.2.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 8 anos disponíveis.
-Indicador 4.2.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.2.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.2.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.2.1.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 8 anos disponíveis.
-Indicador 4.2.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.2.1.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.2.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.2.1.4;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 4 anos disponíveis.
-Indicador 4.2.1.4;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.2.1.4;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.2.1.4;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.2.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 6 anos disponíveis.
-Indicador 4.2.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.2.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.2.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.5.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 8 anos disponíveis.
-Indicador 4.5.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.5.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.5.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.a.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 4.a.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.a.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.a.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 4.c.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 16 anos disponíveis.
-Indicador 4.c.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 4.c.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 4.c.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 5.4.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 5.4.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 5.4.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 5.4.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 5.4.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 5.4.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 5.4.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 5.4.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 5.4.1.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 5 anos disponíveis.
-Indicador 5.4.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 5.4.1.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 5.4.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 5.5.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 2 anos disponíveis.
-Indicador 5.5.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 5.5.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 5.5.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 5.5.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 2 anos disponíveis.
-Indicador 5.5.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 27 estados.
-Indicador 5.5.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 5.5.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 6.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 6 anos disponíveis.
-Indicador 6.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 6.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 6.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 6.2.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 2 anos disponíveis.
-Indicador 6.2.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 6.2.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 6.2.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 6.4.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 9 anos disponíveis.
-Indicador 6.4.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 6.4.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 6.4.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 6.6.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 6.6.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 7.1.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 6 anos disponíveis.
-Indicador 7.1.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 7.1.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 7.1.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 7.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 2 anos disponíveis.
-Indicador 7.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 7.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 7.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.3.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 9 anos disponíveis.
-Indicador 8.3.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.3.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.3.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.3.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 9 anos disponíveis.
-Indicador 8.3.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.3.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.3.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.3.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.3.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 13 anos disponíveis.
-Indicador 8.5.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.5.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.1.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 13 anos disponíveis.
-Indicador 8.5.1.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.1.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.5.1.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.1.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 13 anos disponíveis.
-Indicador 8.5.1.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.1.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.5.1.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.1.4;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.1.4;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.2.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 13 anos disponíveis.
-Indicador 8.5.2.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.2.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.5.2.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.5.2.3;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 13 anos disponíveis.
-Indicador 8.5.2.3;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.5.2.3;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.5.2.3;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 8.6.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 6 anos disponíveis.
-Indicador 8.6.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 8.6.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 8.6.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 9.2.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 12 anos disponíveis.
-Indicador 9.2.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 9.2.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 9.2.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 9.2.2;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 12 anos disponíveis.
-Indicador 9.2.2;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 9.2.2;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 9.2.2;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
-Indicador 9.b.1;linha;Gráfico de linha ideal para visualizar a evolução temporal do indicador ao longo dos 12 anos disponíveis.
-Indicador 9.b.1;mapa;Mapa coroplético permite visualizar a distribuição geográfica entre os 28 estados.
-Indicador 9.b.1;barra;Gráfico de barras permite comparar valores entre estados e anos de forma direta.
-Indicador 9.b.1;tabela;Tabela interativa permite visualizar os dados brutos e realizar ordenações e filtros.
+ID_INDICADOR;tipo;titulo;descricao;config
+Indicador 1.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 1.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 1.2.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.2.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.2.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 1.2.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 1.5.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 1.5.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 1.5.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.5.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.5.4;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 1.5.4;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.5.4;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 1.5.4;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 11.3.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 11.3.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 11.3.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 11.3.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 11.5.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 11.5.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 11.5.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 11.5.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 11.b.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 11.b.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 11.b.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 11.b.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 13.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 13.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 13.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 13.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 13.1.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 13.1.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 13.1.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 13.1.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.1.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.1.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.1.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.4;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.4;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.4;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.1.4;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.1.4;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1.4;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.3.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.3.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.3.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.3.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.3.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.3.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.3.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.4;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.4;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.3.4;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.4;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.4;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3.4;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.1.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 16.1.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 16.1.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 16.9.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.9.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 16.9.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 16.9.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.2.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.2.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.2.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.2.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.2.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.2.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.2.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.2.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.3.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.3.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.3.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.3.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.3.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.3.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.3.4;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.3.4;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.3.4;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.3.4;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.3.4;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.4;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.5;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.5;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.3.5;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.3.5;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.3.5;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.3.5;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.4.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.4.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.4.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.4.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.4.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.4.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.4.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.4.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.4.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.4.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.4.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.4.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.6.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.6.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.6.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.6.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.6.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.6.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.7.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.7.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.7.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.7.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.7.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.7.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.9.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.9.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.9.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.9.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.9.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.9.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.9.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.9.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.9.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.9.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.9.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 3.9.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.a.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 3.a.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 3.a.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 3.a.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.a.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 3.a.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 4.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 4.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 4.1.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 4.1.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 4.2.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 4.2.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 4.2.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 4.2.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.2.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.2.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 4.5.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.5.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.5.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 4.5.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 4.a.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 4.a.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 4.a.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 4.a.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.a.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.a.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 4.c.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.c.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 4.c.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 4.c.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 4.c.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 4.c.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 5.4.1.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 5.4.1.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 5.4.1.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 5.4.1.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 5.4.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.4.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 5.5.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 5.5.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.5.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.5.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 5.5.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 5.5.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 5.5.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 5.5.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 6.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 6.2.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.2.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.2.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 6.2.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 6.4.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 6.4.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 6.4.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 6.4.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.4.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.4.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 6.6.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.6.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 6.6.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 6.6.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 6.6.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 6.6.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 7.1.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 7.1.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 7.1.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 7.1.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 7.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 7.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 7.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 7.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.3.1.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.3.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.3.1.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.3.1.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.3.1.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.3.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.3.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.1.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.1.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.1.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.1.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.1.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.4;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.4;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.4;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.1.4;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.4;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1.4;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.1;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.1;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.2.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.2.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.3;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.3;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.3;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.2.3;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.2.3;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2.3;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.5.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.5.2;scatter;Gráfico de Dispersão;Correlação entre variáveis;{'x': 'VLR_VAR', 'y': 'CODG_ANO', 'color': 'CODG_UND_FED'}
+Indicador 8.5.2;bubble;Gráfico de Bolhas;Visualização multidimensional;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'size': 'CODG_UND_MED', 'color': 'CODG_UND_FED'}
+Indicador 8.6.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 8.6.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 8.6.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 8.6.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.2.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 9.2.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.2.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.2.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 9.2.2;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 9.2.2;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}
+Indicador 9.2.2;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.2.2;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.b.1;line;Gráfico de Linha;Evolução temporal dos valores;{'x': 'CODG_ANO', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.b.1;histogram;Histograma;Distribuição dos valores;{'x': 'VLR_VAR', 'nbinsx': 30}
+Indicador 9.b.1;bar;Gráfico de Barras;Visualização em barras dos valores por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR', 'color': 'CODG_UND_FED'}
+Indicador 9.b.1;box;Box Plot;Distribuição estatística por unidade federativa;{'x': 'CODG_UND_FED', 'y': 'VLR_VAR'}

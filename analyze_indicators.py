@@ -37,6 +37,7 @@ def analyze_indicator(file_path):
         colunas_adicionais = colunas_arquivo - colunas_basicas
         tem_colunas_temporais = bool(colunas_adicionais & colunas_temporais)
         tem_colunas_categoricas = bool(colunas_adicionais & colunas_categoricas)
+        tem_colunas_adicionais = bool(colunas_adicionais)
         
         # Gera sugestões de visualização
         sugestoes = []
@@ -163,7 +164,7 @@ def analyze_indicator(file_path):
         
         return {
             'tem_estrutura_padrao': tem_estrutura_padrao,
-            'tem_colunas_adicionais': bool(colunas_adicionais),
+            'tem_colunas_adicionais': tem_colunas_adicionais,
             'colunas_adicionais': list(colunas_adicionais),
             'tem_colunas_temporais': tem_colunas_temporais,
             'tem_colunas_categoricas': tem_colunas_categoricas,
@@ -175,40 +176,72 @@ def analyze_indicator(file_path):
         return None
 
 def main():
+    """
+    Função principal que analisa os indicadores e gera sugestões de visualização.
+    """
     # Diretório dos indicadores
-    indicators_dir = 'db'
+    indicators_dir = Path('db/resultados')
     
-    # Lista para armazenar todas as sugestões
-    all_suggestions = []
+    # Lista para armazenar todas as análises
+    todas_analises = []
+    
+    # Lista para armazenar a ordem dos arquivos
+    ordem_arquivos = []
     
     # Analisa cada arquivo parquet no diretório
-    for file in os.listdir(indicators_dir):
-        if file.endswith('.parquet') and file.startswith('indicador'):
-            file_path = os.path.join(indicators_dir, file)
-            suggestions = analyze_indicator(file_path)
-            all_suggestions.extend(suggestions)
+    for arquivo in indicators_dir.glob('*.parquet'):
+        if arquivo.name.startswith('indicador'):
+            ordem_arquivos.append(arquivo.name)
+            print(f"Analisando arquivo: {arquivo.name}")
+            analise = analyze_indicator(str(arquivo))
+            if analise:
+                # Adiciona o ID do indicador à análise
+                analise['id_indicador'] = arquivo.name.replace('.parquet', '').replace('indicador', '')
+                todas_analises.append(analise)
+    
+    if not todas_analises:
+        print("Nenhuma análise foi realizada com sucesso.")
+        return
     
     # Converte para DataFrame
-    df_suggestions = pd.DataFrame(all_suggestions)
+    df_analises = pd.DataFrame(todas_analises)
     
-    # Ordena por ID_INDICADOR e PRIORIDADE
-    df_suggestions = df_suggestions.sort_values(['ID_INDICADOR', 'PRIORIDADE'])
+    # Cria um DataFrame com as sugestões expandidas
+    sugestoes_expandidas = []
+    for _, row in df_analises.iterrows():
+        id_indicador = row['id_indicador']
+        for sugestao in row['sugestoes_visualizacao']:
+            sugestao['ID_INDICADOR'] = f"Indicador {id_indicador}"
+            sugestoes_expandidas.append(sugestao)
     
-    # Remove a coluna de prioridade
-    df_suggestions = df_suggestions.drop('PRIORIDADE', axis=1)
+    if not sugestoes_expandidas:
+        print("Nenhuma sugestão foi gerada.")
+        return
     
-    # Salva as sugestões
-    df_suggestions.to_csv('db/sugestoes_visualizacao.csv', sep=';', index=False)
+    df_sugestoes = pd.DataFrame(sugestoes_expandidas)
     
-    # Cria um arquivo com sugestões aleatórias (máximo 3 por indicador)
-    random_suggestions = []
-    for indicator in df_suggestions['ID_INDICADOR'].unique():
-        indicator_suggestions = df_suggestions[df_suggestions['ID_INDICADOR'] == indicator]
-        num_suggestions = min(3, len(indicator_suggestions))
-        random_suggestions.extend(indicator_suggestions.sample(n=num_suggestions).to_dict('records'))
+    # Reordena as colunas para colocar ID_INDICADOR primeiro
+    colunas = ['ID_INDICADOR'] + [col for col in df_sugestoes.columns if col != 'ID_INDICADOR']
+    df_sugestoes = df_sugestoes[colunas]
     
-    # Salva as sugestões aleatórias
-    pd.DataFrame(random_suggestions).to_csv('db/sugestoes_visualizacao_aleatorias.csv', sep=';', index=False)
+    # Ordena os indicadores conforme a ordem de leitura
+    ordem_indicadores = [f"Indicador {nome.replace('.parquet', '').replace('indicador', '')}" for nome in ordem_arquivos]
+    df_sugestoes['ordem'] = df_sugestoes['ID_INDICADOR'].map(lambda x: ordem_indicadores.index(x))
+    df_sugestoes = df_sugestoes.sort_values('ordem')
+    df_sugestoes = df_sugestoes.drop('ordem', axis=1)
+    
+    # Salva as sugestões completas
+    df_sugestoes.to_csv('db/sugestoes_visualizacao.csv', sep=';', index=False, encoding='utf-8')
+    print(f"\nArquivo sugestoes_visualizacao.csv atualizado com sucesso!")
+    print(f"Total de sugestões geradas: {len(df_sugestoes)}")
+      
+    # Mostra estatísticas
+    print("\nEstatísticas:")
+    print(f"Total de indicadores analisados: {len(df_analises)}")
+    print(f"Indicadores com estrutura padrão: {df_analises['tem_estrutura_padrao'].sum()}")
+    print(f"Indicadores com colunas temporais: {df_analises['tem_colunas_temporais'].sum()}")
+    print(f"Indicadores com colunas categóricas: {df_analises['tem_colunas_categoricas'].sum()}")
+    print(f"Indicadores com colunas adicionais: {df_analises['tem_colunas_adicionais'].sum()}")
 
 if __name__ == '__main__':
     main() 
