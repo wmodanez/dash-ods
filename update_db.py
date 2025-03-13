@@ -115,7 +115,7 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                 link = url_base + str(filtered_list_indicadores[objetivo][meta].get(indicador))
                 try:
                     df_temp = pd.DataFrame(get_sidra_data(link))
-                    df_temp.columns = df_temp.iloc[0]
+                    df_temp.columns = df_temp.iloc[(0,)]
                     df_temp = df_temp[1:]
                     df_temp = df_temp.rename(columns=list_colunas)
                     df_temp.insert(0, 'ID_INDICADOR',
