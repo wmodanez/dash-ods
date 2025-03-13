@@ -27,6 +27,47 @@ Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustent
 └── requirements.txt       # Dependências Python
 ```
 
+## Scripts de Análise
+
+### analyze_indicators.py
+
+Este script analisa os arquivos parquet dos indicadores e gera sugestões de visualização. Suas principais funcionalidades são:
+
+1. **Análise de Estrutura**:
+   - Verifica a estrutura padrão dos arquivos parquet
+   - Identifica colunas adicionais
+   - Detecta colunas temporais e categóricas
+
+2. **Geração de Sugestões**:
+   - Cria sugestões de visualização baseadas na estrutura dos dados
+   - Inclui configurações detalhadas para cada tipo de gráfico
+   - Gera sugestões específicas para:
+     - Dados temporais
+     - Dados categóricos
+     - Análise de distribuição
+     - Análise de correlação
+
+3. **Arquivos de Saída**:
+   - `db/sugestoes_visualizacao.csv`: Contém todas as sugestões geradas
+   - `db/sugestoes_visualizacao_aleatorias.csv`: Contém até 3 sugestões aleatórias por indicador
+
+4. **Tipos de Visualizações Sugeridas**:
+   - Gráficos de Barras
+   - Gráficos de Linha
+   - Gráficos de Área Temporal
+   - Heatmaps
+   - Gráficos de Pizza
+   - Treemaps
+   - Histogramas
+   - Box Plots
+   - Gráficos de Dispersão
+   - Gráficos de Bolhas
+
+Para executar o script:
+```bash
+python analyze_indicators.py
+```
+
 ## Desenvolvimento Local
 
 1. Criar ambiente virtual:
@@ -319,3 +360,169 @@ oc exec <nome-do-pod> -- ls -la /app/db/resultados
 - A atualização dos ConfigMaps não afeta automaticamente os pods em execução. É necessário reiniciar o deployment para que as alterações sejam aplicadas.
 - Mantenha um backup dos arquivos de dados antes de fazer qualquer atualização.
 - É recomendado testar as atualizações em um ambiente de desenvolvimento antes de aplicar em produção.
+
+# Dicionário de Dados
+
+## Estrutura Básica
+
+Todos os arquivos parquet seguem uma estrutura básica comum com as seguintes colunas:
+
+| Coluna | Descrição | Tipo |
+|--------|-----------|------|
+| ID_INDICADOR | Identificador único do indicador | Categoria |
+| CODG_UND_MED | Código da unidade de medida | Categoria |
+| VLR_VAR | Valor da variável | Numérico |
+| CODG_UND_FED | Código da unidade federativa | Categoria |
+| CODG_VAR | Código da variável | Categoria |
+| CODG_ANO | Código do ano | Inteiro |
+
+## Campos Adicionais
+
+Além da estrutura básica, os indicadores podem conter campos adicionais para desagregação dos dados:
+
+| Campo | Descrição | Tipo |
+|-------|-----------|------|
+| CODG_ATV_TRAB | Código da atividade de trabalho | Categoria |
+| CODG_DEF | Código do tipo de deficiência | Categoria |
+| CODG_ECO_REL_AGUA | Código do ecossistema relacionado à água | Categoria |
+| CODG_ETAPA_ENS | Código da etapa de ensino | Categoria |
+| CODG_GRUP_OCUP_TRAB_PNAD | Campo de desagregação específico do indicador | Categoria |
+| CODG_IDADE | Código da faixa etária | Categoria |
+| CODG_INF_ESC | Código da infraestrutura escolar | Categoria |
+| CODG_NIV_INSTR | Código do nível de instrução | Categoria |
+| CODG_RACA | Código da raça/cor | Categoria |
+| CODG_REND_MENSAL_DOM_PER_CAP | Código da renda mensal domiciliar per capita | Categoria |
+| CODG_SET_ATIV | Código do setor de atividade | Categoria |
+| CODG_SEXO | Código do sexo | Categoria |
+| CODG_SIT_DOM | Código da situação do domicílio (urbano/rural) | Categoria |
+| CODG_TIPO_DOENCA | Código do tipo de doença | Categoria |
+| CODG_TIP_DIN_ECO_REL_AGUA | Código do tipo de dinâmica do ecossistema relacionado à água | Categoria |
+| COD_GRU_IDADE_NIV_ENS | Código do grupo de idade por nível de ensino | Categoria |
+
+## Estatísticas dos Indicadores
+
+### ODS 1 - Erradicação da Pobreza
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 1.1.1 | 35 | - | Básico |
+| 1.2.1 | 35 | - | Básico |
+| 1.5.1 | 35 | - | Básico |
+| 1.5.4 | 21 | - | Básico |
+
+### ODS 3 - Saúde e Bem-estar
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 3.1.1 | 105 | - | Médio |
+| 3.1.2 | 105 | - | Médio |
+| 3.2.1 | 105 | - | Médio |
+| 3.2.2 | 105 | - | Médio |
+| 3.3.2 | 4,410 | CODG_SEXO, CODG_IDADE | Alto |
+| 3.3.3 | 304 | - | Médio |
+| 3.3.4 | 2,940 | CODG_IDADE, CODG_SEXO | Alto |
+| 3.3.5 | 7,056 | CODG_SEXO, CODG_IDADE, CODG_TIPO_DOENCA | Muito Alto |
+| 3.4.1 | 1,890 | CODG_SEXO, CODG_IDADE | Alto |
+| 3.4.2 | 2,730 | CODG_SEXO, CODG_IDADE | Alto |
+| 3.6.1 | 2,940 | CODG_SEXO, CODG_IDADE | Alto |
+| 3.7.2 | 966 | CODG_IDADE | Médio |
+| 3.9.2 | 2,940 | CODG_SEXO, CODG_IDADE | Alto |
+| 3.9.3 | 2,940 | CODG_SEXO, CODG_IDADE | Alto |
+| 3.a.1 | 63 | CODG_SEXO | Básico |
+
+### ODS 4 - Educação de Qualidade
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 4.1.2 | 126 | COD_GRU_IDADE_NIV_ENS | Médio |
+| 4.2.2 | 252 | CODG_SEXO | Médio |
+| 4.5.1 | 168 | - | Médio |
+| 4.a.1 | 1,470 | CODG_INF_ESC | Alto |
+| 4.c.1 | 448 | CODG_ETAPA_ENS | Médio |
+
+### ODS 5 - Igualdade de Gênero
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 5.4.1.2 | 315 | CODG_SEXO, CODG_RACA | Médio |
+| 5.4.1.3 | 315 | CODG_SEXO, CODG_SIT_DOM | Médio |
+| 5.4.1 | 525 | CODG_SEXO, CODG_IDADE | Médio |
+| 5.5.1.1 | 42 | - | Básico |
+| 5.5.1 | 42 | - | Básico |
+
+### ODS 6 - Água Potável e Saneamento
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 6.1.1 | 42 | - | Básico |
+| 6.2.1 | 14 | - | Básico |
+| 6.4.1 | 504 | CODG_SET_ATIV | Médio |
+| 6.6.1 | 112 | CODG_ECO_REL_AGUA, CODG_TIP_DIN_ECO_REL_AGUA | Médio |
+
+### ODS 7 - Energia Acessível e Limpa
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 7.1.1 | 42 | - | Básico |
+| 7.1.2 | 14 | - | Básico |
+
+### ODS 8 - Trabalho Decente e Crescimento Econômico
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 8.3.1.2 | 189 | CODG_ATV_TRAB | Médio |
+| 8.3.1.3 | 21 | CODG_DEF | Básico |
+| 8.3.1 | 189 | CODG_SEXO | Médio |
+| 8.5.1.2 | 728 | CODG_IDADE | Médio |
+| 8.5.1.3 | 1,001 | CODG_GRUP_OCUP_TRAB_PNAD | Alto |
+| 8.5.1.4 | 21 | CODG_DEF | Básico |
+| 8.5.1 | 273 | CODG_SEXO | Médio |
+| 8.5.2.2 | 273 | CODG_SEXO | Médio |
+| 8.5.2.3 | 728 | CODG_IDADE | Médio |
+| 8.5.2 | 21 | CODG_DEF | Básico |
+| 8.6.1 | 42 | - | Básico |
+
+### ODS 9 - Indústria, Inovação e Infraestrutura
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 9.2.1 | 168 | - | Médio |
+| 9.2.2 | 84 | - | Básico |
+| 9.b.1 | 84 | - | Básico |
+
+### ODS 11 - Cidades e Comunidades Sustentáveis
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 11.3.2 | 175 | - | Médio |
+| 11.5.1 | 63 | - | Básico |
+| 11.b.2 | 21 | - | Básico |
+
+### ODS 13 - Ação Contra a Mudança Global do Clima
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 13.1.1 | 63 | - | Básico |
+| 13.1.3 | 21 | - | Básico |
+
+### ODS 16 - Paz, Justiça e Instituições Eficazes
+| Indicador | Total de Registros | Desagregações | Nível de Desagregação |
+|-----------|-------------------|---------------|----------------------|
+| 16.1.1.2 | 455 | CODG_IDADE | Médio |
+| 16.1.1.3 | 910 | CODG_SEXO, CODG_IDADE | Médio |
+| 16.1.1.4 | 70 | CODG_SEXO | Básico |
+| 16.1.1 | 35 | - | Básico |
+| 16.1.3.1 | 630 | CODG_IDADE, CODG_SIT_DOM | Médio |
+| 16.1.3.2 | 630 | CODG_NIV_INSTR, CODG_SIT_DOM | Médio |
+| 16.1.3.3 | 504 | CODG_RACA, CODG_SIT_DOM | Médio |
+| 16.1.3.4 | 1,008 | CODG_REND_MENSAL_DOM_PER_CAP, CODG_SIT_DOM | Alto |
+| 16.1.3 | 441 | CODG_SEXO, CODG_SIT_DOM | Médio |
+| 16.9.1 | 28 | - | Básico |
+
+## Legenda do Nível de Desagregação
+
+- **Básico**: Apenas com as colunas padrão (até 100 registros)
+- **Médio**: Com uma desagregação adicional (100-1.000 registros)
+- **Alto**: Com duas desagregações adicionais (1.000-5.000 registros)
+- **Muito Alto**: Com três ou mais desagregações (mais de 5.000 registros)
+
+## Observações
+
+1. Os campos são armazenados em tipos de dados apropriados:
+   - Valores numéricos (VLR_VAR): float64
+   - Anos (CODG_ANO): Int64
+   - Códigos e identificadores: category
+2. A estrutura básica é comum a todos os indicadores
+3. As colunas adicionais variam de acordo com a especificidade de cada indicador
+4. O número de registros varia significativamente entre os indicadores
+5. A desagregação dos dados permite análises mais detalhadas por diferentes dimensões
