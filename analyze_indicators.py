@@ -122,7 +122,7 @@ def analyze_indicator(file_path):
                 'descricao': 'Distribuição dos valores',
                 'config': {
                     'x': 'VLR_VAR',
-                    'nbinsx': 30
+                    'nbins': 30
                 }
             },
             {
