@@ -237,7 +237,7 @@ if meta_inicial:
             ]
 
             if df_dados is not None:
-                grid = create_ag_grid(df_dados)
+                grid = create_visualization(df_dados, row['ID_INDICADOR'])
                 tab_content.append(grid)
             else:
                 tab_content.append(
@@ -385,18 +385,21 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-def create_ag_grid(df, indicador_id=None):
-    """Cria um grid AG Grid com os dados do DataFrame"""
+def create_visualization(df, indicador_id=None):
+    """Cria uma visualização (gráfico ou tabela) com os dados do DataFrame"""
     if df is None or df.empty:
         return html.Div("Nenhum dado disponível")
     
     # Carrega as sugestões de visualização
     df_sugestoes = load_sugestoes_visualizacao()
     
-    # Se tiver um indicador específico, tenta encontrar sua primeira sugestão
+    # Se tiver um indicador específico, tenta encontrar suas sugestões
     if indicador_id and not df_sugestoes.empty:
-        sugestao = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id].iloc[(0,)]
-        if sugestao is not None:
+        sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
+        if not sugestoes_indicador.empty:
+            # Seleciona uma sugestão aleatória
+            sugestao = sugestoes_indicador.sample(n=1).iloc[0]
+            
             # Cria o gráfico baseado na sugestão
             config = json.loads(sugestao['config'].replace("'", '"'))
             
@@ -542,7 +545,7 @@ def update_card_content(*args):
                             ]
 
                             if df_dados is not None:
-                                grid = create_ag_grid(df_dados, row['ID_INDICADOR'])
+                                grid = create_visualization(df_dados, row['ID_INDICADOR'])
                                 tab_content.append(grid)
                             else:
                                 tab_content.append(
@@ -648,7 +651,7 @@ def update_card_content(*args):
                     ]
 
                     if df_dados is not None:
-                        grid = create_ag_grid(df_dados, row['ID_INDICADOR'])
+                        grid = create_visualization(df_dados, row['ID_INDICADOR'])
                         tab_content.append(grid)
                     else:
                         tab_content.append(
@@ -715,7 +718,7 @@ def load_dados_indicador(*args):
         if not indicador.empty:
             df_dados = load_dados_indicador_cache(indicador_id)
             if df_dados is not None:
-                grid = create_ag_grid(df_dados)
+                grid = create_visualization(df_dados, indicador_id)
                 return [[grid]]
             else:
                 return [[
