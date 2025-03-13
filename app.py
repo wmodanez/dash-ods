@@ -1,4 +1,4 @@
-from dash import html, Dash, callback_context, ALL, no_update
+from dash import html, Dash, callback_context, ALL, no_update, dcc
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
@@ -8,6 +8,8 @@ from functools import lru_cache
 from flask import session, redirect
 from dash.exceptions import PreventUpdate
 import os
+import plotly.express as px
+import json
 
 
 def capitalize_words(text):
@@ -35,11 +37,41 @@ for key, value in SERVER_CONFIG.items():
 app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 
 
-# Rota para limpar o cache de sessão
+# Cache em memória para os dados dos indicadores
+indicadores_cache = {}
+
+# Função com cache para carregar dados do indicador
+@lru_cache(maxsize=10000)
+def load_dados_indicador_cache(indicador_id):
+    try:
+        # Verifica se os dados já estão no cache
+        if indicador_id in indicadores_cache:
+            return indicadores_cache[indicador_id]
+            
+        # Se não estiver no cache, carrega do arquivo
+        df_dados = pd.read_parquet(
+            f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
+        )
+        
+        # Armazena no cache
+        indicadores_cache[indicador_id] = df_dados
+        return df_dados
+    except Exception as e:
+        print(f"Erro ao carregar dados do indicador: {e}")
+        return None
+
+# Função para limpar o cache dos indicadores
+def limpar_cache_indicadores():
+    global indicadores_cache
+    indicadores_cache.clear()
+    load_dados_indicador_cache.cache_clear()
+
+# Modifica a rota de limpar cache para também limpar o cache dos indicadores
 @app.server.route('/limpar-cache')
 def limpar_cache():
     try:
         session.clear()
+        limpar_cache_indicadores()
         return redirect('/')  # Redireciona para a página inicial
     except Exception as e:
         print(f"Erro ao limpar cache: {e}")
@@ -74,9 +106,6 @@ app.index_string = '''
 @lru_cache(maxsize=1)
 def load_objetivos():
     try:
-        print(f"Tentando carregar objetivos.csv. Diretório atual: {os.getcwd()}")
-        print(f"Conteúdo do diretório db: {os.listdir('db')}")
-        
         df = pd.read_csv(
             'db/objetivos.csv',
             low_memory=False,
@@ -85,10 +114,9 @@ def load_objetivos():
             sep=';',
             on_bad_lines='skip'
         )
-        print(f"Arquivo objetivos.csv carregado com sucesso. Shape: {df.shape}")
         
         # Remover a primeira linha se ela contiver #
-        if df.iloc[0].name == '#':
+        if df.iloc[(0,)].name == '#':
             df = df.iloc[1:]
         # Garantir que as colunas necessárias existam
         required_columns = ['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64']
@@ -140,21 +168,32 @@ def load_indicadores():
         return pd.DataFrame()
 
 
+@lru_cache(maxsize=1)
+def load_sugestoes_visualizacao():
+    try:
+        df_sugestoes = pd.read_csv(
+            'db/sugestoes_visualizacao.csv',
+            low_memory=False,
+            encoding='utf-8',
+            dtype=str,
+            sep=';',
+            on_bad_lines='skip'
+        )
+        return df_sugestoes
+    except Exception as e:
+        print(f"Erro ao ler o arquivo de sugestões: {e}")
+        return pd.DataFrame()
+
+
 # Carrega os dados
-print("Iniciando carregamento dos dados...")
 df = load_objetivos()
-print(f"DataFrame de objetivos carregado. Vazio? {df.empty}")
 
 df_metas = load_metas()
-print(f"DataFrame de metas carregado. Vazio? {df_metas.empty}")
-
 df_indicadores = load_indicadores()
-print(f"DataFrame de indicadores carregado. Vazio? {df_indicadores.empty}")
 
 # Define o conteúdo inicial do card
 if not df.empty:
-    print("DataFrame de objetivos não está vazio, carregando dados iniciais...")
-    row_objetivo_0 = df.iloc[0]
+    row_objetivo_0 = df.iloc[(0,)]
     initial_header = row_objetivo_0['RES_OBJETIVO']
     initial_content = row_objetivo_0['DESC_OBJETIVO']
 else:
@@ -166,9 +205,8 @@ initial_meta_description = ""
 
 # Prepara as metas iniciais do objetivo 0
 if not df.empty and not df_metas.empty:
-    print("Preparando metas iniciais...")
     try:
-        metas_filtradas_inicial = df_metas[df_metas['ID_OBJETIVO'] == df.iloc[0]['ID_OBJETIVO']]
+        metas_filtradas_inicial = df_metas[df_metas['ID_OBJETIVO'] == df.iloc[(0,)]['ID_OBJETIVO']]
         metas_com_indicadores_inicial = [
             meta for _, meta in metas_filtradas_inicial.iterrows()
             if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
@@ -347,57 +385,102 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-# Função com cache para carregar dados do indicador
-@lru_cache(maxsize=100)
-def load_dados_indicador_cache(indicador_id):
-    try:
-        df_dados = pd.read_parquet(
-            f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
-        )
-        return df_dados
-    except Exception as e:
-        print(f"Erro ao carregar dados do indicador: {e}")
-        return None
-
-def create_ag_grid(df):
-    """Função auxiliar para criar uma grid AG Grid padronizada"""
+def create_ag_grid(df, indicador_id=None):
+    """Cria um grid AG Grid com os dados do DataFrame"""
     if df is None or df.empty:
-        return html.P(
-            "Erro ao carregar os dados do indicador.",
-            className="text-danger"
-        )
+        return html.Div("Nenhum dado disponível")
     
-    # Configurações da grid
-    grid_options = {
-        "columnDefs": [{"field": col} for col in df.columns],
-        "rowData": df.to_dict("records"),
-        "defaultColDef": {
-            "resizable": True,
-            "sortable": True,
-            "filter": True,
-            "minWidth": 100,
-        },
-        "pagination": True,
-        "paginationPageSize": 20,  # Define o tamanho da página como 20
-        "enableRangeSelection": True,
-        "domLayout": "autoHeight",
+    # Carrega as sugestões de visualização
+    df_sugestoes = load_sugestoes_visualizacao()
+    
+    # Se tiver um indicador específico, tenta encontrar sua primeira sugestão
+    if indicador_id and not df_sugestoes.empty:
+        sugestao = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id].iloc[(0,)]
+        if sugestao is not None:
+            # Cria o gráfico baseado na sugestão
+            config = json.loads(sugestao['config'].replace("'", '"'))
+            
+            # Converte todas as colunas numéricas
+            for col in df.columns:
+                if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR':
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+            # Tratamento genérico para dados anuais
+            if 'CODG_ANO' in df.columns and 'VLR_VAR' in df.columns:
+                # Garante que o DataFrame está ordenado por ano
+                df = df.sort_values('CODG_ANO')
+                
+                # Se tiver dados por unidade federativa, mantém essa informação
+                if 'CODG_UND_FED' in df.columns:
+                    # Mantém todas as colunas numéricas durante o agrupamento
+                    colunas_agregacao = {col: 'mean' for col in df.columns if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR'}
+                    df = df.groupby(['CODG_ANO', 'CODG_UND_FED'], as_index=False).agg(colunas_agregacao)
+                else:
+                    # Mantém todas as colunas numéricas durante o agrupamento
+                    colunas_agregacao = {col: 'mean' for col in df.columns if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR'}
+                    df = df.groupby('CODG_ANO', as_index=False).agg(colunas_agregacao)
+            
+            if sugestao['tipo'] == 'bar':
+                fig = px.bar(df, **config)
+            elif sugestao['tipo'] == 'line':
+                fig = px.line(df, **config)
+            elif sugestao['tipo'] == 'histogram':
+                # Remove nbinsx do config se existir e usa nbins
+                if 'nbinsx' in config:
+                    nbins = config.pop('nbinsx')
+                    fig = px.histogram(df, **config, nbins=nbins)
+                else:
+                    fig = px.histogram(df, **config)
+            elif sugestao['tipo'] == 'box':
+                fig = px.box(df, **config)
+            elif sugestao['tipo'] == 'scatter':
+                fig = px.scatter(df, **config)
+            elif sugestao['tipo'] == 'bubble':
+                fig = px.scatter(df, **config)
+            else:
+                fig = px.bar(df, **config)  # Fallback para gráfico de barras
+            
+            fig.update_layout(
+                title=sugestao['titulo'],
+                xaxis_title=config.get('x', ''),
+                yaxis_title=config.get('y', ''),
+                showlegend=True
+            )
+            
+            return html.Div([
+                html.H5(sugestao['descricao'], className="mb-3"),
+                dcc.Graph(figure=fig)
+            ])
+    
+    # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
+    columnDefs = [
+        {"field": col, "headerName": capitalize_words(col), "sortable": True, "filter": True}
+        for col in df.columns
+    ]
+    
+    defaultColDef = {
+        "flex": 1,
+        "minWidth": 100,
+        "resizable": True,
     }
     
-    return dag.AgGrid(
-        id="ag-grid",
-        columnDefs=[{"field": col} for col in df.columns],
-        rowData=df.to_dict("records"),
-        columnSize="sizeToFit",
-        defaultColDef={
-            "resizable": True,
-            "sortable": True,
-            "filter": True,
-            "minWidth": 100,
+    grid = dag.AgGrid(
+        rowData=df.to_dict('records'),
+        columnDefs=columnDefs,
+        defaultColDef=defaultColDef,
+        dashGridOptions={
+            "pagination": True,
+            "paginationPageSize": 10,
+            "rowHeight": 48,
+            "domLayout": "autoHeight",
+            "suppressMovableColumns": True,
+            "animateRows": True,
         },
-        dashGridOptions=grid_options,
-        className="ag-theme-alpine",
-        style={"height": "100%", "width": "100%"}
+        style={"height": "100%", "width": "100%"},
     )
+    
+    return grid
+
 
 # Modifica o callback de atualização do card para usar AG Grid
 @app.callback(
@@ -428,8 +511,8 @@ def update_card_content(*args):
                 meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
 
                 if not meta_filtrada.empty:
-                    meta_desc = meta_filtrada['DESC_META'].iloc[0]
-                    objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[0]
+                    meta_desc = meta_filtrada['DESC_META'].iloc[(0,)]
+                    objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[(0,)]
                     metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == objetivo_id]
                     metas_com_indicadores = [
                         meta for _, meta in metas_filtradas.iterrows()
@@ -459,7 +542,7 @@ def update_card_content(*args):
                             ]
 
                             if df_dados is not None:
-                                grid = create_ag_grid(df_dados)
+                                grid = create_ag_grid(df_dados, row['ID_INDICADOR'])
                                 tab_content.append(grid)
                             else:
                                 tab_content.append(
@@ -531,7 +614,7 @@ def update_card_content(*args):
                 metas = [
                     dbc.Card(
                         dbc.CardBody(
-                            html.H3(
+                            html.P(
                                 "Não existem indicadores que atendam os requisitos deste estudo.",
                                 className="text-center fw-bold"
                             )
@@ -565,7 +648,7 @@ def update_card_content(*args):
                     ]
 
                     if df_dados is not None:
-                        grid = create_ag_grid(df_dados)
+                        grid = create_ag_grid(df_dados, row['ID_INDICADOR'])
                         tab_content.append(grid)
                     else:
                         tab_content.append(
@@ -600,13 +683,14 @@ def update_card_content(*args):
                 indicadores_section = []
 
             return header, content, metas, meta_description, indicadores_section
+
         except Exception as e:
             print(f"Erro ao processar objetivo: {e}")
-            return initial_header, "Ocorreu um erro ao carregar os dados do objetivo.", [], "", []
+            return initial_header, "Erro ao processar o objetivo selecionado.", [], "", []
 
     except Exception as e:
         print(f"Erro geral no callback: {e}")
-        return initial_header, "Ocorreu um erro ao processar sua solicitação.", [], "", []
+        return initial_header, "Ocorreu um erro ao processar a solicitação.", [], "", []
 
 
 # Callback para carregar os dados de cada indicador
