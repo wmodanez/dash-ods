@@ -168,6 +168,8 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                         df_combined = pd.DataFrame()
                         for cod_var in list_var:
                             df_temp_var = df_temp[df_temp['CODG_VAR'] == cod_var].copy()
+                            # Converte os tipos de dados antes de concatenar
+                            df_temp_var = converter_tipos_dados(df_temp_var)
                             df_combined = pd.concat([df_combined, df_temp_var],
                                                   ignore_index=True)
                         df_combined.to_parquet(
@@ -182,6 +184,8 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                         df_indicadores.to_csv(Path(__file__).parent / 'db/indicadores.csv',
                                             sep=';', index=False)
                     else:
+                        # Converte os tipos de dados antes de salvar
+                        df_temp = converter_tipos_dados(df_temp)
                         df_temp.to_parquet(
                             str(Path(__file__).parent) +
                             f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
