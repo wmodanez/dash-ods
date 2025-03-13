@@ -63,6 +63,50 @@ def filter_indicadores(list_indicadores, indicadores_ids):
     }
 
 
+def converter_tipos_dados(df):
+    """
+    Converte os tipos de dados do DataFrame para formatos mais apropriados.
+    
+    Args:
+        df (pd.DataFrame): DataFrame com os dados a serem convertidos
+        
+    Returns:
+        pd.DataFrame: DataFrame com os tipos de dados convertidos
+    """
+    # Colunas que devem ser numéricas
+    colunas_numericas = ['VLR_VAR']
+    
+    # Colunas que devem ser inteiras
+    colunas_inteiras = ['CODG_ANO']
+    
+    # Colunas que devem ser categóricas
+    colunas_categoricas = [
+        'ID_INDICADOR', 'CODG_UND_MED', 'CODG_UND_FED', 'CODG_VAR',
+        'CODG_SEXO', 'CODG_IDADE', 'CODG_RACA', 'CODG_SIT_DOM',
+        'CODG_NIV_INSTR', 'CODG_REND_MENSAL_DOM_PER_CAP',
+        'COD_GRU_IDADE_NIV_ENS', 'CODG_INF_ESC', 'CODG_ETAPA_ENS',
+        'CODG_SET_ATIV', 'CODG_ECO_REL_AGUA', 'CODG_TIP_DIN_ECO_REL_AGUA',
+        'CODG_TIPO_DOENCA', 'CODG_DEF', 'CODG_ATV_TRAB'
+    ]
+    
+    # Converter colunas numéricas
+    for col in colunas_numericas:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # Converter colunas inteiras
+    for col in colunas_inteiras:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    
+    # Converter colunas categóricas
+    for col in colunas_categoricas:
+        if col in df.columns:
+            df[col] = df[col].astype('category')
+    
+    return df
+
+
 def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                        df_und_med, df_filtro, df_indicadores):
     for objetivo in filtered_list_indicadores.keys():
