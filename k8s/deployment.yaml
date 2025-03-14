@@ -17,9 +17,11 @@ spec:
       labels:
         app: painel-ods
     spec:
+      securityContext:
+        fsGroup: 0
       containers:
       - name: painel-ods
-        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshiftprod_colocation-imb/painel-ods:latest
+        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshifthom_colocation-imb/painel-ods:latest
         ports:
         - containerPort: 8050
         resources:
@@ -30,10 +32,8 @@ spec:
             cpu: "500m"
             memory: "512Mi"
         volumeMounts:
-        - name: db-files
+        - name: app-data
           mountPath: /app/db
-        - name: resultados-files
-          mountPath: /app/db/resultados
         livenessProbe:
           httpGet:
             path: /
@@ -47,9 +47,6 @@ spec:
           initialDelaySeconds: 10
           periodSeconds: 10
       volumes:
-      - name: db-files
-        configMap:
-          name: painel-ods-db
-      - name: resultados-files
-        configMap:
-          name: painel-ods-resultados 
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: painel-ods-data 
