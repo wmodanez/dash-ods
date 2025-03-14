@@ -438,13 +438,7 @@ def create_visualization(df, indicador_id=None):
     """Cria uma visualização (gráfico ou tabela) com os dados do DataFrame"""
     if df is None or df.empty:
         return html.Div("Nenhum dado disponível")
-    
-    # # Força a conversão de todos os campos ID e CODG para inteiro
-    # for col in df.columns:
-    #     if col.startswith(('ID', 'CODG')):
-    #         if col != 'CODG_UND_FED':  # Não converte CODG_UND_FED para inteiro
-    #             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
-    
+ 
     # Garante que os dados estão ordenados por ano se existir
     if 'CODG_ANO' in df.columns:
         df = df.sort_values('CODG_ANO')
@@ -497,6 +491,9 @@ def create_visualization(df, indicador_id=None):
             # Sempre usa gráfico de linha
             fig = px.line(df, **config)
             
+            # Aplica suavização nas linhas
+            fig.update_traces(line_shape='spline')
+            
             # Aplica o layout padrão e adiciona títulos específicos
             layout = DEFAULT_LAYOUT.copy()
             layout.update({
@@ -544,7 +541,7 @@ def create_visualization(df, indicador_id=None):
             if 'DESC_UND_FED' in df.columns:
                 for trace in fig.data:
                     if hasattr(trace, 'name') and trace.name == 'Goiás':
-                        trace.line = dict(color='#229846', width=3)
+                        trace.line = dict(color='#229846', width=6)
                         trace.name = '<b>Goiás</b>'
             
             return dcc.Graph(figure=fig)
