@@ -10,6 +10,7 @@ from dash.exceptions import PreventUpdate
 import os
 import plotly.express as px
 import json
+from constants import COLUMN_NAMES, UF_NAMES
 
 
 def capitalize_words(text):
@@ -214,7 +215,6 @@ def load_sugestoes_visualizacao():
 
 # Carrega os dados
 df = load_objetivos()
-
 df_metas = load_metas()
 df_indicadores = load_indicadores()
 
@@ -448,6 +448,10 @@ def create_visualization(df, indicador_id=None):
     if 'CODG_ANO' in df.columns:
         df = df.sort_values('CODG_ANO')
     
+    # Substitui os códigos das UFs pelos nomes completos
+    if 'CODG_UND_FED' in df.columns:
+        df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
+    
     # Carrega as sugestões de visualização
     df_sugestoes = load_sugestoes_visualizacao()
     
@@ -463,19 +467,30 @@ def create_visualization(df, indicador_id=None):
             
             # Converte apenas o campo VLR_VAR para numérico (os outros já foram convertidos)
             if 'VLR_VAR' in df.columns:
-                df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
+                df[col] = pd.to_numeric(df[col], errors='coerce')
             
             # Tratamento genérico para dados anuais
             if 'CODG_ANO' in df.columns and 'VLR_VAR' in df.columns:
                 # Se tiver dados por unidade federativa, mantém essa informação
                 if 'CODG_UND_FED' in df.columns:
-                    # Mantém todas as colunas numéricas durante o agrupamento
+                    # Usa DESC_UND_FED em vez de CODG_UND_FED para o agrupamento
                     colunas_agregacao = {col: 'mean' for col in df.columns if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR'}
-                    df = df.groupby(['CODG_ANO', 'CODG_UND_FED'], as_index=False).agg(colunas_agregacao)
+                    df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).agg(colunas_agregacao)
+                    # Atualiza a configuração para usar DESC_UND_FED
+                    if 'color' in config and config['color'] == 'CODG_UND_FED':
+                        config['color'] = 'DESC_UND_FED'
                 else:
                     # Mantém todas as colunas numéricas durante o agrupamento
                     colunas_agregacao = {col: 'mean' for col in df.columns if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR'}
                     df = df.groupby('CODG_ANO', as_index=False).agg(colunas_agregacao)
+            
+            # Atualiza os labels dos eixos com as descrições do COLUMN_NAMES
+            if 'x' in config and config['x'] in COLUMN_NAMES:
+                config['labels'] = config.get('labels', {})
+                config['labels']['x'] = COLUMN_NAMES[config['x']]
+            if 'y' in config and config['y'] in COLUMN_NAMES:
+                config['labels'] = config.get('labels', {})
+                config['labels']['y'] = COLUMN_NAMES[config['y']]
             
             if sugestao['tipo'] == 'bar':
                 fig = px.bar(df, **config)
@@ -501,8 +516,16 @@ def create_visualization(df, indicador_id=None):
             layout = DEFAULT_LAYOUT.copy()
             layout.update({
                 'title': sugestao['titulo'],
-                'xaxis_title': config.get('x', ''),
-                'yaxis_title': config.get('y', '')
+                'xaxis_title': config.get('labels', {}).get('x', config.get('x', '')),
+                'yaxis_title': config.get('labels', {}).get('y', config.get('y', '')),
+                'legend': dict(
+                    title="<b>Unidade Federativa</b>",
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=1.05,
+                    orientation="v"
+                )
             })
             
             fig.update_layout(layout)
@@ -511,16 +534,47 @@ def create_visualization(df, indicador_id=None):
             fig.update_xaxes(showgrid=False, zeroline=False)
             fig.update_yaxes(showgrid=False, zeroline=False)
             
+            # Destaca Goiás com cor específica e linha mais grossa
+            if 'DESC_UND_FED' in df.columns:
+                for trace in fig.data:
+                    if hasattr(trace, 'name') and trace.name == 'Goiás':
+                        # Configuração específica para cada tipo de gráfico
+                        if sugestao['tipo'] == 'line':
+                            trace.line = dict(color='#229846', width=7)
+                        elif sugestao['tipo'] in ['bar', 'histogram']:
+                            trace.marker = dict(color='#229846', line=dict(width=2, color='#1a7335'))
+                        elif sugestao['tipo'] in ['scatter', 'bubble']:
+                            trace.marker = dict(color='#229846', size=12, line=dict(width=2, color='#1a7335'))
+                        elif sugestao['tipo'] == 'box':
+                            trace.fillcolor = '#229846'
+                            trace.line = dict(color='#1a7335', width=2)
+                        
+                        # Adiciona negrito ao nome na legenda
+                        trace.name = '<b>Goiás</b>'
+            
             return html.Div([
                 html.H5(sugestao['descricao'], className="mb-3"),
                 dcc.Graph(figure=fig)
             ])
     
     # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
-    columnDefs = [
-        {"field": col, "headerName": capitalize_words(col), "sortable": True, "filter": True}
-        for col in df.columns
-    ]
+    columnDefs = []
+    for col in df.columns:
+        if col == 'CODG_UND_FED':
+            # Adiciona a coluna DESC_UND_FED em vez de CODG_UND_FED
+            columnDefs.append({
+                "field": "DESC_UND_FED",
+                "headerName": "Unidade Federativa",
+                "sortable": True,
+                "filter": True
+            })
+        else:
+            columnDefs.append({
+                "field": col,
+                "headerName": COLUMN_NAMES.get(col, capitalize_words(col)),
+                "sortable": True,
+                "filter": True
+            })
     
     defaultColDef = {
         "flex": 1,
