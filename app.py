@@ -497,6 +497,61 @@ def create_visualization(df, indicador_id=None):
             # Cria o gráfico de barras com a mesma configuração
             fig_bar = px.bar(df, **config)
             
+            # Carrega o GeoJSON do Brasil
+            with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+                geojson = json.load(f)
+            
+            # Cria o dropdown de anos
+            anos = sorted(df['CODG_ANO'].unique())
+            dropdown = dcc.Dropdown(
+                id={'type': 'year-dropdown', 'index': indicador_id},
+                options=[{'label': ano, 'value': ano} for ano in anos],
+                value=anos[-1],  # Seleciona o último ano por padrão
+                style={'width': '200px', 'margin': '10px'}
+            )
+            
+            # Cria o mapa coroplético inicial com o último ano
+            df_ultimo_ano = df[df['CODG_ANO'] == anos[-1]]
+            fig_map = px.choropleth(
+                df_ultimo_ano,
+                geojson=geojson,
+                locations='DESC_UND_FED',
+                featureidkey='properties.name',
+                color='VLR_VAR',
+                color_continuous_scale='Viridis',
+                scope="south america"
+            )
+            
+            # Adiciona a unidade de medida ao hover do mapa
+            if 'DESC_UND_MED' in df_ultimo_ano.columns:
+                unidade_medida = df_ultimo_ano['DESC_UND_MED'].dropna().iloc[0] if not df_ultimo_ano['DESC_UND_MED'].dropna().empty else ''
+                if unidade_medida:
+                    fig_map.update_traces(
+                        hovertemplate="<b>%{location}</b><br>" +
+                        f"Valor: %{{z}} {unidade_medida}<extra></extra>"
+                    )
+                else:
+                    fig_map.update_traces(
+                        hovertemplate="<b>%{location}</b><br>" +
+                        "Valor: %{z}<extra></extra>"
+                    )
+            else:
+                fig_map.update_traces(
+                    hovertemplate="<b>%{location}</b><br>" +
+                    "Valor: %{z}<extra></extra>"
+                )
+            
+            # Ajusta o layout do mapa
+            fig_map.update_geos(
+                fitbounds="locations",
+                visible=False,
+                showcoastlines=True,
+                coastlinecolor="Black",
+                showland=True,
+                landcolor="white",
+                showframe=False
+            )
+            
             # Aplica o layout padrão e adiciona títulos específicos
             layout = DEFAULT_LAYOUT.copy()
             layout.update({
@@ -558,8 +613,21 @@ def create_visualization(df, indicador_id=None):
                         trace.name = '<b>Goiás</b>'
             
             return html.Div([
-                dcc.Graph(figure=fig_line),
-                dcc.Graph(figure=fig_bar)
+                html.Div([
+                    html.Div([
+                        dcc.Graph(figure=fig_line),
+                        dcc.Graph(figure=fig_bar)
+                    ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
+                    html.Div([
+                        html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                        dropdown,
+                        dcc.Graph(
+                            id={'type': 'choropleth-map', 'index': indicador_id},
+                            figure=fig_map,
+                            style={'height': '600px'}  # Ajusta a altura do mapa
+                        )
+                    ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
+                ])
             ])
     
     # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
@@ -852,6 +920,89 @@ def load_dados_indicador(*args):
     except Exception as e:
         print(f"Erro ao carregar dados do indicador: {e}")
         return [[]]
+
+
+# Callback para atualizar o mapa coroplético quando o ano é alterado
+@app.callback(
+    Output({'type': 'choropleth-map', 'index': ALL}, 'figure'),
+    [Input({'type': 'year-dropdown', 'index': ALL}, 'value')],
+    [State({'type': 'choropleth-map', 'index': ALL}, 'figure')]
+)
+def update_map(selected_years, current_figures):
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+    
+    triggered_id = ctx.triggered[0]['prop_id']
+    if not triggered_id:
+        raise PreventUpdate
+    
+    try:
+        # Extrai o ID do indicador do triggered_id
+        indicador_id = triggered_id.split('"index":"')[1].split('"')[0]
+        selected_year = ctx.triggered[0]['value']
+        
+        # Carrega os dados do indicador
+        df = load_dados_indicador_cache(indicador_id)
+        if df is None:
+            raise PreventUpdate
+        
+        # Filtra os dados para o ano selecionado
+        df_ano = df[df['CODG_ANO'] == selected_year]
+        
+        # Substitui os códigos das UFs pelos nomes completos
+        if 'CODG_UND_FED' in df_ano.columns:
+            df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(UF_NAMES)
+        
+        # Carrega o GeoJSON
+        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+            geojson = json.load(f)
+        
+        # Cria o novo mapa
+        fig_map = px.choropleth(
+            df_ano,
+            geojson=geojson,
+            locations='DESC_UND_FED',
+            featureidkey='properties.name',
+            color='VLR_VAR',
+            color_continuous_scale='Viridis',
+            scope="south america"
+        )
+        
+        # Adiciona a unidade de medida ao hover do mapa
+        if 'DESC_UND_MED' in df_ano.columns:
+            unidade_medida = df_ano['DESC_UND_MED'].dropna().iloc[0] if not df_ano['DESC_UND_MED'].dropna().empty else ''
+            if unidade_medida:
+                fig_map.update_traces(
+                    hovertemplate="<b>%{location}</b><br>" +
+                    f"Valor: %{{z}} {unidade_medida}<extra></extra>"
+                )
+            else:
+                fig_map.update_traces(
+                    hovertemplate="<b>%{location}</b><br>" +
+                    "Valor: %{z}<extra></extra>"
+                )
+        else:
+            fig_map.update_traces(
+                hovertemplate="<b>%{location}</b><br>" +
+                "Valor: %{z}<extra></extra>"
+            )
+        
+        # Ajusta o layout do mapa
+        fig_map.update_geos(
+            fitbounds="locations",
+            visible=False,
+            showcoastlines=True,
+            coastlinecolor="Black",
+            showland=True,
+            landcolor="white",
+            showframe=False
+        )
+        
+        return [fig_map]
+    except Exception as e:
+        print(f"Erro ao atualizar o mapa: {e}")
+        raise PreventUpdate
 
 
 # Obtém a instância do servidor Flask
