@@ -439,10 +439,11 @@ def create_visualization(df, indicador_id=None):
     if df is None or df.empty:
         return html.Div("Nenhum dado disponível")
     
-    # Força a conversão de todos os campos ID e CODG para inteiro
-    for col in df.columns:
-        if col.startswith(('ID', 'CODG')):
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    # # Força a conversão de todos os campos ID e CODG para inteiro
+    # for col in df.columns:
+    #     if col.startswith(('ID', 'CODG')):
+    #         if col != 'CODG_UND_FED':  # Não converte CODG_UND_FED para inteiro
+    #             df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
     
     # Garante que os dados estão ordenados por ano se existir
     if 'CODG_ANO' in df.columns:
@@ -451,6 +452,9 @@ def create_visualization(df, indicador_id=None):
     # Substitui os códigos das UFs pelos nomes completos
     if 'CODG_UND_FED' in df.columns:
         df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
+        # Remove a coluna CODG_UND_FED para evitar confusão
+        if 'DESC_UND_FED' in df.columns:
+            df = df.drop('CODG_UND_FED', axis=1)
     
     # Carrega as sugestões de visualização
     df_sugestoes = load_sugestoes_visualizacao()
@@ -459,65 +463,45 @@ def create_visualization(df, indicador_id=None):
     if indicador_id and not df_sugestoes.empty:
         sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
         if not sugestoes_indicador.empty:
-            # Seleciona uma sugestão aleatória
-            sugestao = sugestoes_indicador.sample(n=1).iloc[0]
+            # Usa a primeira sugestão disponível
+            sugestao = sugestoes_indicador.iloc[0]
             
-            # Cria o gráfico baseado na sugestão
-            config = json.loads(sugestao['config'].replace("'", '"'))
+            # Configura o gráfico de linha
+            config = {
+                'x': 'CODG_ANO',
+                'y': 'VLR_VAR',
+                'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
+            }
             
             # Converte apenas o campo VLR_VAR para numérico (os outros já foram convertidos)
             if 'VLR_VAR' in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+                df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
             
             # Tratamento genérico para dados anuais
             if 'CODG_ANO' in df.columns and 'VLR_VAR' in df.columns:
                 # Se tiver dados por unidade federativa, mantém essa informação
-                if 'CODG_UND_FED' in df.columns:
-                    # Usa DESC_UND_FED em vez de CODG_UND_FED para o agrupamento
-                    colunas_agregacao = {col: 'mean' for col in df.columns if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR'}
-                    df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).agg(colunas_agregacao)
-                    # Atualiza a configuração para usar DESC_UND_FED
-                    if 'color' in config and config['color'] == 'CODG_UND_FED':
-                        config['color'] = 'DESC_UND_FED'
+                if 'DESC_UND_FED' in df.columns:
+                    # Usa DESC_UND_FED para o agrupamento sem agregação
+                    df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).first()
                 else:
-                    # Mantém todas as colunas numéricas durante o agrupamento
-                    colunas_agregacao = {col: 'mean' for col in df.columns if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR'}
-                    df = df.groupby('CODG_ANO', as_index=False).agg(colunas_agregacao)
+                    # Mantém todas as colunas durante o agrupamento sem agregação
+                    df = df.groupby('CODG_ANO', as_index=False).first()
             
             # Atualiza os labels dos eixos com as descrições do COLUMN_NAMES
-            if 'x' in config and config['x'] in COLUMN_NAMES:
-                config['labels'] = config.get('labels', {})
-                config['labels']['x'] = COLUMN_NAMES[config['x']]
-            if 'y' in config and config['y'] in COLUMN_NAMES:
-                config['labels'] = config.get('labels', {})
-                config['labels']['y'] = COLUMN_NAMES[config['y']]
+            config['labels'] = {
+                'x': COLUMN_NAMES.get('CODG_ANO', 'Ano'),
+                'y': COLUMN_NAMES.get('VLR_VAR', 'Valor'),
+                'color': COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa') if 'DESC_UND_FED' in df.columns else None
+            }
             
-            if sugestao['tipo'] == 'bar':
-                fig = px.bar(df, **config)
-            elif sugestao['tipo'] == 'line':
-                fig = px.line(df, **config)
-            elif sugestao['tipo'] == 'histogram':
-                # Remove nbinsx do config se existir e usa nbins
-                if 'nbinsx' in config:
-                    nbins = config.pop('nbinsx')
-                    fig = px.histogram(df, **config, nbins=nbins)
-                else:
-                    fig = px.histogram(df, **config)
-            elif sugestao['tipo'] == 'box':
-                fig = px.box(df, **config)
-            elif sugestao['tipo'] == 'scatter':
-                fig = px.scatter(df, **config)
-            elif sugestao['tipo'] == 'bubble':
-                fig = px.scatter(df, **config)
-            else:
-                fig = px.bar(df, **config)  # Fallback para gráfico de barras
+            # Sempre usa gráfico de linha
+            fig = px.line(df, **config)
             
             # Aplica o layout padrão e adiciona títulos específicos
             layout = DEFAULT_LAYOUT.copy()
             layout.update({
-                'title': sugestao['titulo'],
-                'xaxis_title': config.get('labels', {}).get('x', config.get('x', '')),
-                'yaxis_title': config.get('labels', {}).get('y', config.get('y', '')),
+                'xaxis_title': config['labels']['x'],
+                'yaxis_title': config['labels']['y'],
                 'legend': dict(
                     title="<b>Unidade Federativa</b>",
                     yanchor="top",
@@ -528,34 +512,42 @@ def create_visualization(df, indicador_id=None):
                 )
             })
             
+            # Atualiza os nomes das colunas no hover template
+            hovertemplate = []
+            x_label = config['labels']['x']
+            hovertemplate.append(f"{x_label}: %{{x}}")
+            y_label = config['labels']['y']
+            
+            # Verifica se as colunas de unidade de medida existem
+            if 'DESC_UND_MED' in df.columns:
+                # Pega o primeiro valor não nulo da coluna DESC_UND_MED
+                unidade_medida = df['DESC_UND_MED'].dropna().iloc[0] if not df['DESC_UND_MED'].dropna().empty else ''
+                if unidade_medida:
+                    hovertemplate.append(f"{y_label}: %{{y}} {unidade_medida}")
+                else:
+                    hovertemplate.append(f"{y_label}: %{{y}}")
+            else:
+                hovertemplate.append(f"{y_label}: %{{y}}")
+            
+            if hovertemplate:
+                fig.update_traces(
+                    hovertemplate="<br>".join(hovertemplate) + "<extra></extra>"
+                )
+            
             fig.update_layout(layout)
             
             # Remove linhas de grade e linhas do zero para todos os tipos de gráficos
             fig.update_xaxes(showgrid=False, zeroline=False)
             fig.update_yaxes(showgrid=False, zeroline=False)
             
-            # Destaca Goiás com cor específica e linha mais grossa
+            # Destaca Goiás com cor específica
             if 'DESC_UND_FED' in df.columns:
                 for trace in fig.data:
                     if hasattr(trace, 'name') and trace.name == 'Goiás':
-                        # Configuração específica para cada tipo de gráfico
-                        if sugestao['tipo'] == 'line':
-                            trace.line = dict(color='#229846', width=7)
-                        elif sugestao['tipo'] in ['bar', 'histogram']:
-                            trace.marker = dict(color='#229846', line=dict(width=2, color='#1a7335'))
-                        elif sugestao['tipo'] in ['scatter', 'bubble']:
-                            trace.marker = dict(color='#229846', size=12, line=dict(width=2, color='#1a7335'))
-                        elif sugestao['tipo'] == 'box':
-                            trace.fillcolor = '#229846'
-                            trace.line = dict(color='#1a7335', width=2)
-                        
-                        # Adiciona negrito ao nome na legenda
+                        trace.line = dict(color='#229846', width=3)
                         trace.name = '<b>Goiás</b>'
             
-            return html.Div([
-                html.H5(sugestao['descricao'], className="mb-3"),
-                dcc.Graph(figure=fig)
-            ])
+            return dcc.Graph(figure=fig)
     
     # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
     columnDefs = []
