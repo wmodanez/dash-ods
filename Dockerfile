@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     build-essential nano \
     python3-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app/db \
+    && mkdir -p /app/db /app/db-init \
     && chown -R ${USER_UID}:0 /app \
     && chmod -R g+w /app \
     && chmod g+w /etc/passwd
@@ -36,10 +36,12 @@ RUN pip install --upgrade pip \
 # Copia o resto dos arquivos da aplicação
 COPY --chown=${USER_UID}:0 . .
 
-# Garante que a pasta db existe e tem as permissões corretas
-RUN mkdir -p /app/db && \
-    chown -R ${USER_UID}:0 /app/db && \
-    chmod -R g+w /app/db
+# Copia os arquivos da pasta db para db-init
+RUN cp -r db/* db-init/ || true
+
+# Garante que as pastas têm as permissões corretas
+RUN chown -R ${USER_UID}:0 /app/db /app/db-init && \
+    chmod -R g+w /app/db /app/db-init
 
 # Define usuário não-root
 USER ${USER_UID}
