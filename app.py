@@ -488,11 +488,14 @@ def create_visualization(df, indicador_id=None):
                 'color': COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa') if 'DESC_UND_FED' in df.columns else None
             }
             
-            # Sempre usa gráfico de linha
-            fig = px.line(df, **config)
+            # Sempre usa gráfico de linha primeiro
+            fig_line = px.line(df, **config)
             
             # Aplica suavização nas linhas
-            fig.update_traces(line_shape='spline')
+            fig_line.update_traces(line_shape='spline')
+            
+            # Cria o gráfico de barras com a mesma configuração
+            fig_bar = px.bar(df, **config)
             
             # Aplica o layout padrão e adiciona títulos específicos
             layout = DEFAULT_LAYOUT.copy()
@@ -527,24 +530,37 @@ def create_visualization(df, indicador_id=None):
                 hovertemplate.append(f"{y_label}: %{{y}}")
             
             if hovertemplate:
-                fig.update_traces(
+                fig_line.update_traces(
+                    hovertemplate="<br>".join(hovertemplate) + "<extra></extra>"
+                )
+                fig_bar.update_traces(
                     hovertemplate="<br>".join(hovertemplate) + "<extra></extra>"
                 )
             
-            fig.update_layout(layout)
+            fig_line.update_layout(layout)
+            fig_bar.update_layout(layout)
             
             # Remove linhas de grade e linhas do zero para todos os tipos de gráficos
-            fig.update_xaxes(showgrid=False, zeroline=False)
-            fig.update_yaxes(showgrid=False, zeroline=False)
+            fig_line.update_xaxes(showgrid=False, zeroline=False)
+            fig_line.update_yaxes(showgrid=False, zeroline=False)
+            fig_bar.update_xaxes(showgrid=False, zeroline=False)
+            fig_bar.update_yaxes(showgrid=False, zeroline=False)
             
             # Destaca Goiás com cor específica
             if 'DESC_UND_FED' in df.columns:
-                for trace in fig.data:
+                for trace in fig_line.data:
                     if hasattr(trace, 'name') and trace.name == 'Goiás':
                         trace.line = dict(color='#229846', width=6)
                         trace.name = '<b>Goiás</b>'
+                for trace in fig_bar.data:
+                    if hasattr(trace, 'name') and trace.name == 'Goiás':
+                        trace.marker.color = '#229846'
+                        trace.name = '<b>Goiás</b>'
             
-            return dcc.Graph(figure=fig)
+            return html.Div([
+                dcc.Graph(figure=fig_line),
+                dcc.Graph(figure=fig_bar)
+            ])
     
     # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
     columnDefs = []
