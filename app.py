@@ -48,10 +48,37 @@ def load_dados_indicador_cache(indicador_id):
         if indicador_id in indicadores_cache:
             return indicadores_cache[indicador_id]
             
-        # Se não estiver no cache, carrega do arquivo
-        df_dados = pd.read_parquet(
-            f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
-        )
+        # Define os caminhos dos arquivos
+        arquivo_parquet = f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
+        arquivo_metadados = f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}_metadata.json'
+        
+        # Carrega os metadados primeiro
+        try:
+            with open(arquivo_metadados, 'r', encoding='utf-8') as f:
+                metadados = json.load(f)
+        except Exception as e:
+            print(f"Erro ao carregar metadados do indicador {indicador_id}: {e}")
+            metadados = None
+        
+        # Carrega o arquivo parquet
+        df_dados = pd.read_parquet(arquivo_parquet)
+        
+        # Se tiver metadados, aplica as configurações
+        if metadados:
+            # Configura os tipos das colunas conforme os metadados
+            for coluna, tipo in metadados['colunas'].items():
+                if coluna in df_dados.columns:
+                    try:
+                        if coluna == 'CODG_ANO':
+                            df_dados[coluna] = df_dados[coluna].astype(str)
+                        elif 'Int64' in tipo:
+                            df_dados[coluna] = pd.to_numeric(df_dados[coluna], errors='coerce').astype('Int64')
+                        elif 'float' in tipo:
+                            df_dados[coluna] = pd.to_numeric(df_dados[coluna], errors='coerce')
+                        elif 'category' in tipo:
+                            df_dados[coluna] = df_dados[coluna].astype('category')
+                    except Exception as e:
+                        print(f"Erro ao converter coluna {coluna} para tipo {tipo}: {e}")
         
         # Armazena no cache
         indicadores_cache[indicador_id] = df_dados
@@ -269,6 +296,28 @@ if meta_inicial:
             )
         ]
 
+# Layout padrão para todos os gráficos
+DEFAULT_LAYOUT = {
+    'showlegend': True,
+    'legend': dict(
+        title="Unidade Federativa",
+        yanchor="top",
+        y=0.99,
+        xanchor="left",
+        x=1.05,
+        orientation="v"
+    ),
+    'margin': dict(r=150),  # Margem à direita para acomodar a legenda
+    'xaxis': dict(
+        showgrid=False,  # Remove as linhas de grade do eixo X
+        zeroline=False   # Remove a linha do zero do eixo X
+    ),
+    'yaxis': dict(
+        showgrid=False,  # Remove as linhas de grade do eixo Y
+        zeroline=False   # Remove a linha do zero do eixo Y
+    )
+}
+
 # Define o layout do aplicativo
 app.layout = dbc.Container([
     # Header com imagens e título
@@ -390,6 +439,15 @@ def create_visualization(df, indicador_id=None):
     if df is None or df.empty:
         return html.Div("Nenhum dado disponível")
     
+    # Força a conversão de todos os campos ID e CODG para inteiro
+    for col in df.columns:
+        if col.startswith(('ID', 'CODG')):
+            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    
+    # Garante que os dados estão ordenados por ano se existir
+    if 'CODG_ANO' in df.columns:
+        df = df.sort_values('CODG_ANO')
+    
     # Carrega as sugestões de visualização
     df_sugestoes = load_sugestoes_visualizacao()
     
@@ -403,16 +461,12 @@ def create_visualization(df, indicador_id=None):
             # Cria o gráfico baseado na sugestão
             config = json.loads(sugestao['config'].replace("'", '"'))
             
-            # Converte todas as colunas numéricas
-            for col in df.columns:
-                if col.startswith(('ID', 'CODG')) or col == 'VLR_VAR':
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+            # Converte apenas o campo VLR_VAR para numérico (os outros já foram convertidos)
+            if 'VLR_VAR' in df.columns:
+                df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
             
             # Tratamento genérico para dados anuais
             if 'CODG_ANO' in df.columns and 'VLR_VAR' in df.columns:
-                # Garante que o DataFrame está ordenado por ano
-                df = df.sort_values('CODG_ANO')
-                
                 # Se tiver dados por unidade federativa, mantém essa informação
                 if 'CODG_UND_FED' in df.columns:
                     # Mantém todas as colunas numéricas durante o agrupamento
@@ -443,12 +497,19 @@ def create_visualization(df, indicador_id=None):
             else:
                 fig = px.bar(df, **config)  # Fallback para gráfico de barras
             
-            fig.update_layout(
-                title=sugestao['titulo'],
-                xaxis_title=config.get('x', ''),
-                yaxis_title=config.get('y', ''),
-                showlegend=True
-            )
+            # Aplica o layout padrão e adiciona títulos específicos
+            layout = DEFAULT_LAYOUT.copy()
+            layout.update({
+                'title': sugestao['titulo'],
+                'xaxis_title': config.get('x', ''),
+                'yaxis_title': config.get('y', '')
+            })
+            
+            fig.update_layout(layout)
+            
+            # Remove linhas de grade e linhas do zero para todos os tipos de gráficos
+            fig.update_xaxes(showgrid=False, zeroline=False)
+            fig.update_yaxes(showgrid=False, zeroline=False)
             
             return html.Div([
                 html.H5(sugestao['descricao'], className="mb-3"),
