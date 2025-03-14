@@ -37,7 +37,7 @@ RUN pip install --upgrade pip \
 COPY --chown=${USER_UID}:0 . .
 
 # Define usuário não-root
-USER ${USER_UID}
+# USER ${USER_UID}
 
 # Comando para iniciar a aplicação
 CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "4", "--log-level", "debug", "app:server"]
