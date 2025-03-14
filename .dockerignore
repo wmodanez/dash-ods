@@ -94,6 +94,5 @@ tox.ini
 !db/*.csv
 !db/resultados/*.parquet
 !requirements.txt
-!uwsgi.ini
 !nginx.conf
 !supervisord.conf
