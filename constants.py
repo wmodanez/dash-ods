@@ -359,4 +359,50 @@ LIST_COLUNAS = {
     'Tipo de dinâmica do ecossistema relacionada à agua': 'DESC_TIP_DIN_ECO_REL_AGUA',
     'Tipo de desembolso bruto de ajuda oficial (Código)': 'CODG_TIP_DESB_BRUTO_AJUDA_OFICIAL',
     'Tipo de desembolso bruto de ajuda oficial': 'DESC_TIP_DESB_BRUTO_AJUDA_OFICIAL'
+}
+
+# Mapeamento entre nomes de colunas e seus significados
+COLUMN_NAMES = {
+    'CODG_ANO': 'Ano',
+    'CODG_UND_FED': 'Unidade Federativa',
+    'CODG_UND_MED': 'Unidade de Medida',
+    'VLR_VAR': 'Valor',
+    'ID_INDICADOR': 'Indicador',
+    'ID_META': 'Meta',
+    'ID_OBJETIVO': 'Objetivo',
+    'DESC_INDICADOR': 'Descrição do Indicador',
+    'DESC_META': 'Descrição da Meta',
+    'DESC_OBJETIVO': 'Descrição do Objetivo',
+    'RES_OBJETIVO': 'Resumo do Objetivo'
+}
+
+# Mapeamento de códigos de unidades federativas para seus nomes
+UF_NAMES = {
+    '11': 'Rondônia',
+    '12': 'Acre',
+    '13': 'Amazonas',
+    '14': 'Roraima',
+    '15': 'Pará',
+    '16': 'Amapá',
+    '17': 'Tocantins',
+    '21': 'Maranhão',
+    '22': 'Piauí',
+    '23': 'Ceará',
+    '24': 'Rio Grande do Norte',
+    '25': 'Paraíba',
+    '26': 'Pernambuco',
+    '27': 'Alagoas',
+    '28': 'Sergipe',
+    '29': 'Bahia',
+    '31': 'Minas Gerais',
+    '32': 'Espírito Santo',
+    '33': 'Rio de Janeiro',
+    '35': 'São Paulo',
+    '41': 'Paraná',
+    '42': 'Santa Catarina',
+    '43': 'Rio Grande do Sul',
+    '50': 'Mato Grosso do Sul',
+    '51': 'Mato Grosso',
+    '52': 'Goiás',
+    '53': 'Distrito Federal'
 } 
