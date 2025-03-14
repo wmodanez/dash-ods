@@ -279,6 +279,28 @@ oc start-build painel-ods --follow
 oc apply -f k8s/deployment.yaml
 ```
 
+### Limpeza de Recursos
+
+#### Removendo Pods Não Utilizados
+
+Para manter o cluster limpo e otimizado, você pode remover pods que não estão mais em uso. Siga os passos:
+
+1. Visualizar pods que serão removidos:
+```bash
+oc get pods -n colocation-imb | grep -E 'Completed|Failed|Error|CrashLoopBackOff'
+```
+
+2. Remover todos os pods não utilizados:
+```bash
+oc get pods -n colocation-imb | grep -E 'Completed|Failed|Error|CrashLoopBackOff' | awk '{print $1}' | xargs oc delete pod -n colocation-imb
+```
+
+Este comando remove automaticamente pods nos seguintes estados:
+- Completed (Concluídos)
+- Failed (Falhos)
+- Error (Erro)
+- CrashLoopBackOff (Reiniciando repetidamente)
+
 ### Backup
 
 Os dados importantes estão em:
@@ -291,14 +313,15 @@ Para problemas ou sugestões, abra uma issue no repositório.
 
 ## Gerenciamento dos Dados (ConfigMaps)
 
-Os arquivos de dados da aplicação (CSVs e parquets) são gerenciados através de ConfigMaps no OpenShift. Existem dois ConfigMaps principais:
+Os arquivos de dados da aplicação (CSVs, parquets e JSON) são gerenciados através de ConfigMaps no OpenShift. Existem dois ConfigMaps principais:
 
-1. `painel-ods-db`: Contém os arquivos CSV principais
+1. `painel-ods-db`: Contém os arquivos CSV principais e JSON
    - objetivos.csv
    - metas.csv
    - indicadores.csv
    - filtro.csv
    - unidade_medida.csv
+   - sugestoes_visualizacao.json
 
 2. `painel-ods-resultados`: Contém os arquivos parquet da pasta resultados
 
@@ -307,19 +330,27 @@ Os arquivos de dados da aplicação (CSVs e parquets) são gerenciados através 
 Para atualizar os arquivos de dados, siga os passos:
 
 1. Primeiro, remova os ConfigMaps existentes:
+#### Deletando Múltiplos ConfigMaps do projeto
+Para deletar vários ConfigMaps de uma vez, você pode usar um dos seguintes comandos:
+
 ```bash
-oc delete configmap painel-ods-db painel-ods-resultados
+# Para visualizar primeiro quais serão deletados
+oc get configmap | grep ^painel
+
+# Deletar todos os ConfigMaps que começam com "painel"
+oc delete configmap $(oc get configmap | grep ^painel | awk '{print $1}')
 ```
 
 2. Crie novamente os ConfigMaps com os novos arquivos:
 ```bash
-# Para os arquivos CSV
+# Para os arquivos CSV e JSON
 oc create configmap painel-ods-db \
   --from-file=objetivos.csv=db/objetivos.csv \
   --from-file=metas.csv=db/metas.csv \
   --from-file=indicadores.csv=db/indicadores.csv \
   --from-file=filtro.csv=db/filtro.csv \
-  --from-file=unidade_medida.csv=db/unidade_medida.csv
+  --from-file=unidade_medida.csv=db/unidade_medida.csv \
+  --from-file=sugestoes_visualizacao.json=db/sugestoes_visualizacao.json
 
 # Para os arquivos parquet
 oc create configmap painel-ods-resultados --from-file=db/resultados/
