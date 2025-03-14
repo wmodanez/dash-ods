@@ -526,3 +526,41 @@ Além da estrutura básica, os indicadores podem conter campos adicionais para d
 3. As colunas adicionais variam de acordo com a especificidade de cada indicador
 4. O número de registros varia significativamente entre os indicadores
 5. A desagregação dos dados permite análises mais detalhadas por diferentes dimensões
+
+## Visualizações Implementadas
+
+O painel oferece três tipos diferentes de visualizações para cada indicador:
+
+### 1. Gráfico de Linhas
+- Exibe a evolução temporal dos valores do indicador
+- Linhas suavizadas para melhor visualização das tendências
+- Destaque especial para Goiás (linha verde mais grossa)
+- Hover com informações detalhadas incluindo unidade de medida
+- Legenda interativa para filtrar estados específicos
+
+### 2. Gráfico de Barras
+- Permite comparação direta entre os estados
+- Destaque para Goiás (barras em verde)
+- Mesmas informações no hover que o gráfico de linhas
+- Facilita a visualização de valores absolutos
+
+### 3. Mapa Coroplético
+- Visualização geográfica dos dados por estado
+- Seletor de ano para visualizar diferentes períodos
+- Escala de cores Viridis para representar os valores
+- Hover mostrando nome do estado e valor com unidade de medida
+- Ajuste automático para mostrar todo o território brasileiro
+
+### Características Comuns
+- Todas as visualizações compartilham:
+  - Mesmo esquema de cores
+  - Mesmo formato de apresentação dos dados
+  - Unidades de medida consistentes
+  - Destaque especial para Goiás
+  - Interatividade ao passar o mouse
+
+### Layout
+- Gráficos de linha e barra ocupam 60% da largura à esquerda
+- Mapa coroplético ocupa 40% da largura à direita
+- Dropdown para seleção do ano acima do mapa
+- Altura do mapa ajustada para 600px para melhor visualização
