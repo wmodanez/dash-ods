@@ -14,10 +14,10 @@ ENV USER_UID=1001 \
 
 # Instala as dependências do sistema
 RUN apt-get update && apt-get install -y \
-    build-essential \
+    build-essential nano \
     python3-dev \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app \
+    && mkdir -p /app/db \
     && chown -R ${USER_UID}:0 /app \
     && chmod -R g+w /app \
     && chmod g+w /etc/passwd
@@ -36,8 +36,13 @@ RUN pip install --upgrade pip \
 # Copia o resto dos arquivos da aplicação
 COPY --chown=${USER_UID}:0 . .
 
+# Garante que a pasta db existe e tem as permissões corretas
+RUN mkdir -p /app/db && \
+    chown -R ${USER_UID}:0 /app/db && \
+    chmod -R g+w /app/db
+
 # Define usuário não-root
-# USER ${USER_UID}
+USER ${USER_UID}
 
 # Comando para iniciar a aplicação
 CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "4", "--log-level", "debug", "app:server"]
