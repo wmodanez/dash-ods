@@ -76,9 +76,6 @@ def converter_tipos_dados(df):
     # Colunas que devem ser numéricas
     colunas_numericas = ['VLR_VAR']
     
-    # Colunas que devem ser inteiras
-    colunas_inteiras = ['CODG_ANO']
-    
     # Colunas que devem ser categóricas
     colunas_categoricas = [
         'ID_INDICADOR', 'CODG_UND_MED', 'CODG_UND_FED', 'CODG_VAR',
@@ -94,10 +91,9 @@ def converter_tipos_dados(df):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce')
     
-    # Converter colunas inteiras
-    for col in colunas_inteiras:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+    # Converter CODG_ANO para string
+    if 'CODG_ANO' in df.columns:
+        df['CODG_ANO'] = df['CODG_ANO'].astype(str)
     
     # Converter colunas categóricas
     for col in colunas_categoricas:
@@ -172,10 +168,28 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                             df_temp_var = converter_tipos_dados(df_temp_var)
                             df_combined = pd.concat([df_combined, df_temp_var],
                                                   ignore_index=True)
-                        df_combined.to_parquet(
-                            str(Path(__file__).parent) +
-                            f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
-                        )
+                        
+                        # Salva o arquivo parquet
+                        arquivo_parquet = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
+                        df_combined.to_parquet(arquivo_parquet)
+                        
+                        # Salva os metadados
+                        metadados = {
+                            'colunas': {
+                                col: str(df_combined[col].dtype) for col in df_combined.columns
+                            },
+                            'total_linhas': len(df_combined),
+                            'total_colunas': len(df_combined.columns),
+                            'colunas_numericas': [col for col in df_combined.columns if pd.api.types.is_numeric_dtype(df_combined[col])],
+                            'colunas_categoricas': [col for col in df_combined.columns if isinstance(df_combined[col].dtype, pd.CategoricalDtype)],
+                            'data_criacao': time.strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        
+                        # Salva os metadados em um arquivo JSON
+                        arquivo_metadados = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}_metadata.json'
+                        with open(arquivo_metadados, 'w', encoding='utf-8') as f:
+                            json.dump(metadados, f, ensure_ascii=False, indent=4)
+                        
                         # Atualiza a coluna VARIAVEIS baseado na presença de variáveis
                         df_indicadores.loc[df_indicadores['ID_INDICADOR'] == indicador,
                                          'VARIAVEIS'] = 1
@@ -186,10 +200,27 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                     else:
                         # Converte os tipos de dados antes de salvar
                         df_temp = converter_tipos_dados(df_temp)
-                        df_temp.to_parquet(
-                            str(Path(__file__).parent) +
-                            f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
-                        )
+                        
+                        # Salva o arquivo parquet
+                        arquivo_parquet = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
+                        df_temp.to_parquet(arquivo_parquet)
+                        
+                        # Salva os metadados
+                        metadados = {
+                            'colunas': {
+                                col: str(df_temp[col].dtype) for col in df_temp.columns
+                            },
+                            'total_linhas': len(df_temp),
+                            'total_colunas': len(df_temp.columns),
+                            'colunas_numericas': [col for col in df_temp.columns if pd.api.types.is_numeric_dtype(df_temp[col])],
+                            'colunas_categoricas': [col for col in df_temp.columns if isinstance(df_temp[col].dtype, pd.CategoricalDtype)],
+                            'data_criacao': time.strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                        
+                        # Salva os metadados em um arquivo JSON
+                        arquivo_metadados = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}_metadata.json'
+                        with open(arquivo_metadados, 'w', encoding='utf-8') as f:
+                            json.dump(metadados, f, ensure_ascii=False, indent=4)
 
                 except json.decoder.JSONDecodeError as e:
                     print(f'Erro ao processar o arquivo {indicador}.csv: {e}')

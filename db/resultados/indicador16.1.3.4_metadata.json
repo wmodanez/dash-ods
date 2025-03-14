@@ -1,0 +1,24 @@
+{
+    "colunas": {
+        "ID_INDICADOR": "category",
+        "CODG_UND_MED": "object",
+        "VLR_VAR": "float64",
+        "CODG_UND_FED": "category",
+        "CODG_VAR": "object",
+        "CODG_ANO": "object",
+        "CODG_REND_MENSAL_DOM_PER_CAP": "category",
+        "CODG_SIT_DOM": "category"
+    },
+    "total_linhas": 1008,
+    "total_colunas": 8,
+    "colunas_numericas": [
+        "VLR_VAR"
+    ],
+    "colunas_categoricas": [
+        "ID_INDICADOR",
+        "CODG_UND_FED",
+        "CODG_REND_MENSAL_DOM_PER_CAP",
+        "CODG_SIT_DOM"
+    ],
+    "data_criacao": "2025-03-13 16:32:56"
+}

@@ -1,0 +1,20 @@
+{
+    "colunas": {
+        "ID_INDICADOR": "category",
+        "CODG_UND_MED": "object",
+        "VLR_VAR": "float64",
+        "CODG_UND_FED": "category",
+        "CODG_VAR": "object",
+        "CODG_ANO": "object"
+    },
+    "total_linhas": 304,
+    "total_colunas": 6,
+    "colunas_numericas": [
+        "VLR_VAR"
+    ],
+    "colunas_categoricas": [
+        "ID_INDICADOR",
+        "CODG_UND_FED"
+    ],
+    "data_criacao": "2025-03-13 16:31:54"
+}
