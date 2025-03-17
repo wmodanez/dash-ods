@@ -11,6 +11,8 @@ import os
 import plotly.express as px
 import json
 from constants import COLUMN_NAMES, UF_NAMES
+import numpy as np
+from shapely.geometry import shape, MultiPolygon
 
 
 def capitalize_words(text):
@@ -48,45 +50,55 @@ def load_dados_indicador_cache(indicador_id):
         # Verifica se os dados já estão no cache
         if indicador_id in indicadores_cache:
             return indicadores_cache[indicador_id]
-            
+        
+        # Remove apenas "Indicador " do início e mantém os pontos
+        nome_arquivo = indicador_id.lower().replace("indicador ", "")
+        
         # Define os caminhos dos arquivos
-        arquivo_parquet = f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}.parquet'
-        arquivo_metadados = f'db/resultados/indicador{indicador_id.replace("Indicador ", "")}_metadata.json'
+        arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
+        arquivo_metadados = f'db/resultados/indicador{nome_arquivo}_metadata.json'
+        
+        # Verifica se o arquivo existe
+        if not os.path.exists(arquivo_parquet):
+            return pd.DataFrame()  # Retorna um DataFrame vazio em vez de None
         
         # Carrega os metadados primeiro
         try:
             with open(arquivo_metadados, 'r', encoding='utf-8') as f:
                 metadados = json.load(f)
         except Exception as e:
-            print(f"Erro ao carregar metadados do indicador {indicador_id}: {e}")
             metadados = None
         
         # Carrega o arquivo parquet
-        df_dados = pd.read_parquet(arquivo_parquet)
+        try:
+            df = pd.read_parquet(arquivo_parquet)
+            if df.empty:
+                return pd.DataFrame()
+        except Exception as e:
+            return pd.DataFrame()
         
         # Se tiver metadados, aplica as configurações
         if metadados:
             # Configura os tipos das colunas conforme os metadados
             for coluna, tipo in metadados['colunas'].items():
-                if coluna in df_dados.columns:
+                if coluna in df.columns:
                     try:
                         if coluna == 'CODG_ANO':
-                            df_dados[coluna] = df_dados[coluna].astype(str)
+                            df[coluna] = df[coluna].astype(str)
                         elif 'Int64' in tipo:
-                            df_dados[coluna] = pd.to_numeric(df_dados[coluna], errors='coerce').astype('Int64')
+                            df[coluna] = pd.to_numeric(df[coluna], errors='coerce').astype('Int64')
                         elif 'float' in tipo:
-                            df_dados[coluna] = pd.to_numeric(df_dados[coluna], errors='coerce')
+                            df[coluna] = pd.to_numeric(df[coluna], errors='coerce')
                         elif 'category' in tipo:
-                            df_dados[coluna] = df_dados[coluna].astype('category')
+                            df[coluna] = df[coluna].astype('category')
                     except Exception as e:
-                        print(f"Erro ao converter coluna {coluna} para tipo {tipo}: {e}")
+                        pass
         
         # Armazena no cache
-        indicadores_cache[indicador_id] = df_dados
-        return df_dados
+        indicadores_cache[indicador_id] = df
+        return df
     except Exception as e:
-        print(f"Erro ao carregar dados do indicador: {e}")
-        return None
+        return pd.DataFrame()  # Retorna um DataFrame vazio em vez de None
 
 # Função para limpar o cache dos indicadores
 def limpar_cache_indicadores():
@@ -102,7 +114,6 @@ def limpar_cache():
         limpar_cache_indicadores()
         return redirect('/')  # Redireciona para a página inicial
     except Exception as e:
-        print(f"Erro ao limpar cache: {e}")
         return redirect('/')  # Redireciona para a página inicial mesmo em caso de erro
 
 
@@ -150,13 +161,9 @@ def load_objetivos():
         required_columns = ['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64']
         for col in required_columns:
             if col not in df.columns:
-                print(f"Coluna {col} não encontrada no arquivo objetivos.csv")
                 return pd.DataFrame(columns=required_columns)
         return df
     except Exception as e:
-        import traceback
-        print(f"Erro ao ler o arquivo de objetivos: {e}")
-        print(f"Traceback completo: {traceback.format_exc()}")
         return pd.DataFrame(columns=['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64'])
 
 
@@ -172,7 +179,6 @@ def load_metas():
             on_bad_lines='skip'
         )
     except Exception as e:
-        print(f"Erro ao ler o arquivo de metas: {e}")
         df_metas = pd.DataFrame()
     return df_metas
 
@@ -192,7 +198,6 @@ def load_indicadores():
         df_indicadores = df_indicadores.loc[df_indicadores['RBC'] == 1]
         return df_indicadores
     except Exception as e:
-        print(f"Erro ao ler o arquivo de indicadores: {e}")
         return pd.DataFrame()
 
 
@@ -209,14 +214,103 @@ def load_sugestoes_visualizacao():
         )
         return df_sugestoes
     except Exception as e:
-        print(f"Erro ao ler o arquivo de sugestões: {e}")
         return pd.DataFrame()
+
+
+@lru_cache(maxsize=1)
+def load_unidade_medida():
+    try:
+        # Tenta ler o arquivo com diferentes configurações
+        try:
+            df_unidade_medida = pd.read_csv(
+                'db/unidade_medida.csv',
+                low_memory=False,
+                encoding='utf-8',
+                dtype=str,
+                sep=';'
+            )
+        except:
+            # Se falhar, tenta ler com vírgula como separador
+            df_unidade_medida = pd.read_csv(
+                'db/unidade_medida.csv',
+                low_memory=False,
+                encoding='utf-8',
+                dtype=str,
+                sep=','
+            )
+        
+        # Verifica se as colunas necessárias existem
+        if len(df_unidade_medida.columns) == 1 and ',' in df_unidade_medida.columns[0]:
+            # Se as colunas estiverem juntas, separa-as
+            df_unidade_medida = pd.DataFrame([x.split(',') for x in df_unidade_medida[df_unidade_medida.columns[0]]])
+            # Pega apenas as colunas necessárias (CODG_UND_MED e DESC_UND_MED)
+            if len(df_unidade_medida.columns) >= 2:
+                df_unidade_medida = df_unidade_medida.iloc[:, [0, 1]]
+                df_unidade_medida.columns = ['CODG_UND_MED', 'DESC_UND_MED']
+        
+        # Garante que as colunas estejam presentes e com os nomes corretos
+        if 'CODG_UND_MED' not in df_unidade_medida.columns or 'DESC_UND_MED' not in df_unidade_medida.columns:
+            return pd.DataFrame(columns=['CODG_UND_MED', 'DESC_UND_MED'])
+        
+        # Remove espaços extras e aspas das colunas
+        df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].str.strip().str.strip('"')
+        df_unidade_medida['DESC_UND_MED'] = df_unidade_medida['DESC_UND_MED'].str.strip().str.strip('"')
+        
+        return df_unidade_medida
+    except Exception as e:
+        return pd.DataFrame(columns=['CODG_UND_MED', 'DESC_UND_MED'])
+
+
+@lru_cache(maxsize=1)
+def load_filtro():
+    try:
+        # Tenta ler o arquivo com diferentes configurações
+        try:
+            df_filtro = pd.read_csv(
+                'db/filtro.csv',
+                low_memory=False,
+                encoding='utf-8',
+                dtype=str,
+                sep=';'
+            )
+        except:
+            # Se falhar, tenta ler com vírgula como separador
+            df_filtro = pd.read_csv(
+                'db/filtro.csv',
+                low_memory=False,
+                encoding='utf-8',
+                dtype=str,
+                sep=','
+            )
+        
+        # Verifica se as colunas necessárias existem
+        if len(df_filtro.columns) == 1 and ',' in df_filtro.columns[0]:
+            # Se as colunas estiverem juntas, separa-as
+            df_filtro = pd.DataFrame([x.split(',') for x in df_filtro[df_filtro.columns[0]]])
+            # Pega apenas as colunas necessárias (CODG_VAR e DESC_VAR)
+            if len(df_filtro.columns) >= 2:
+                df_filtro = df_filtro.iloc[:, [0, 1]]
+                df_filtro.columns = ['CODG_VAR', 'DESC_VAR']
+        
+        # Garante que as colunas estejam presentes e com os nomes corretos
+        if 'CODG_VAR' not in df_filtro.columns or 'DESC_VAR' not in df_filtro.columns:
+            return pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
+        
+        # Remove espaços extras e aspas das colunas
+        df_filtro['CODG_VAR'] = df_filtro['CODG_VAR'].str.strip().str.strip('"')
+        df_filtro['DESC_VAR'] = df_filtro['DESC_VAR'].str.strip().str.strip('"')
+        
+        return df_filtro
+    except Exception as e:
+        return pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
 
 
 # Carrega os dados
 df = load_objetivos()
 df_metas = load_metas()
 df_indicadores = load_indicadores()
+df_unidade_medida = load_unidade_medida()
+df_filtro = load_filtro()
 
 # Define o conteúdo inicial do card
 if not df.empty:
@@ -224,7 +318,6 @@ if not df.empty:
     initial_header = row_objetivo_0['RES_OBJETIVO']
     initial_content = row_objetivo_0['DESC_OBJETIVO']
 else:
-    print("DataFrame de objetivos está vazio, usando mensagem de erro...")
     initial_header = "Erro ao carregar dados"
     initial_content = "Não foi possível carregar os dados dos objetivos. Por favor, verifique se os arquivos CSV estão presentes na pasta db."
 
@@ -243,11 +336,9 @@ if not df.empty and not df_metas.empty:
         meta_inicial = metas_com_indicadores_inicial[0] if metas_com_indicadores_inicial else None
         initial_meta_description = meta_inicial['DESC_META'] if meta_inicial else ""
     except Exception as e:
-        print(f"Erro ao preparar metas iniciais: {e}")
         meta_inicial = None
         initial_meta_description = ""
 else:
-    print("DataFrames vazios, não é possível preparar metas iniciais")
     meta_inicial = None
     initial_meta_description = ""
 
@@ -437,276 +528,317 @@ app.layout = dbc.Container([
 def create_visualization(df, indicador_id=None):
     """Cria uma visualização (gráfico ou tabela) com os dados do DataFrame"""
     if df is None or df.empty:
-        return html.Div("Nenhum dado disponível")
+        return html.Div([
+            dbc.Alert(
+                "Nenhum dado disponível para este indicador.",
+                color="warning",
+                className="text-center p-3"
+            )
+        ])
  
-    # Garante que os dados estão ordenados por ano se existir
-    if 'CODG_ANO' in df.columns:
-        df = df.sort_values('CODG_ANO')
-    
-    # Substitui os códigos das UFs pelos nomes completos
-    if 'CODG_UND_FED' in df.columns:
-        df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
-        # Remove a coluna CODG_UND_FED para evitar confusão
-        if 'DESC_UND_FED' in df.columns:
-            df = df.drop('CODG_UND_FED', axis=1)
-    
-    # Carrega as sugestões de visualização
-    df_sugestoes = load_sugestoes_visualizacao()
-    
-    # Se tiver um indicador específico, tenta encontrar suas sugestões
-    if indicador_id and not df_sugestoes.empty:
-        sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
-        if not sugestoes_indicador.empty:
-            # Usa a primeira sugestão disponível
-            sugestao = sugestoes_indicador.iloc[0]
-            
-            # Configura o gráfico de linha
-            config = {
-                'x': 'CODG_ANO',
-                'y': 'VLR_VAR',
-                'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
-            }
-            
-            # Converte apenas o campo VLR_VAR para numérico (os outros já foram convertidos)
-            if 'VLR_VAR' in df.columns:
-                df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
-            
-            # Tratamento genérico para dados anuais
-            if 'CODG_ANO' in df.columns and 'VLR_VAR' in df.columns:
-                # Se tiver dados por unidade federativa, mantém essa informação
-                if 'DESC_UND_FED' in df.columns:
-                    # Usa DESC_UND_FED para o agrupamento sem agregação
-                    df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).first()
-                else:
-                    # Mantém todas as colunas durante o agrupamento sem agregação
-                    df = df.groupby('CODG_ANO', as_index=False).first()
-            
-            # Atualiza os labels dos eixos com as descrições do COLUMN_NAMES
-            config['labels'] = {
-                'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
-                'y': "",
-                'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
-            }
-            
-            # Sempre usa gráfico de linha primeiro
-            fig_line = px.line(df, **config)
-            
-            # Aplica suavização nas linhas
-            fig_line.update_traces(line_shape='spline')
-            
-            # Cria o gráfico de barras com a mesma configuração
-            fig_bar = px.bar(df, **config)
-            
-            # Carrega o GeoJSON do Brasil
-            with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-                geojson = json.load(f)
-            
-            # Cria o dropdown de anos
-            anos = sorted(df['CODG_ANO'].unique())
-            dropdown = dcc.Dropdown(
-                id={'type': 'year-dropdown', 'index': indicador_id},
-                options=[{'label': ano, 'value': ano} for ano in anos],
-                value=anos[-1],  # Seleciona o último ano por padrão
-                style={'width': '200px', 'margin': '10px'}
-            )
-            
-            # Cria o mapa coroplético inicial com o último ano
-            df_ultimo_ano = df[df['CODG_ANO'] == anos[-1]]
-            # Renomeia a coluna VLR_VAR para Valor
-            df_ultimo_ano = df_ultimo_ano.rename(columns={'VLR_VAR': 'Valor'})
-            fig_map = px.choropleth(
-                df_ultimo_ano,
-                geojson=geojson,
-                locations='DESC_UND_FED',
-                featureidkey='properties.name',
-                color='Valor',
-                color_continuous_scale='Greens_r',
-                scope="south america"
-            )
-            
-            # Adiciona a unidade de medida ao hover do mapa
-            if 'DESC_UND_MED' in df_ultimo_ano.columns:
-                unidade_medida = df_ultimo_ano['DESC_UND_MED'].dropna().iloc[0] if not df_ultimo_ano['DESC_UND_MED'].dropna().empty else ''
-                if unidade_medida:
-                    fig_map.update_traces(
-                        hovertemplate="<b>%{location}</b><br>" +
-                        f"Valor: %{{z}} {unidade_medida}<extra></extra>"
-                    )
-                else:
-                    fig_map.update_traces(
-                        hovertemplate="<b>%{location}</b><br>" +
-                        "Valor: %{z}<extra></extra>"
-                    )
-            else:
-                fig_map.update_traces(
-                    hovertemplate="<b>%{location}</b><br>" +
-                    "Valor: %{z}<extra></extra>"
-                )
-            
-            # Ajusta o layout do mapa
-            fig_map.update_geos(
-                fitbounds="locations",
-                visible=False,
-                showcoastlines=True,
-                coastlinecolor="Black",
-                showland=True,
-                landcolor="white",
-                showframe=False
-            )
-            
-            # Aplica o layout padrão e adiciona títulos específicos
-            layout = DEFAULT_LAYOUT.copy()
-            layout.update({
-                'xaxis_title': config['labels']['x'],
-                'yaxis_title': config['labels']['y'],
-                'xaxis': dict(
-                    showgrid=False,
-                    zeroline=False,
-                    tickfont=dict(size=12, color='black'),
-                    ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
-                    tickvals=sorted(df['CODG_ANO'].unique())
-                ),
-                'yaxis': dict(
-                    showgrid=False,
-                    zeroline=False,
-                    tickfont=dict(size=12, color='black')
-                ),
-                'legend': dict(
-                    title="<b>Unidade Federativa</b>",
-                    yanchor="top",
-                    y=0.99,
-                    xanchor="left",
-                    x=1.05,
-                    orientation="v"
-                )
-            })
-            
-            # Aplica o layout aos gráficos
-            fig_line.update_layout(layout)
-            fig_bar.update_layout(layout)
-            
-            # Atualiza o layout do mapa
-            fig_map.update_layout(
-                xaxis=dict(
-                    tickfont=dict(size=12, color='black'),
-                    ticktext=[f"<b>{x}</b>" for x in sorted(df_ultimo_ano['DESC_UND_FED'].unique())],
-                    tickvals=sorted(df_ultimo_ano['DESC_UND_FED'].unique())
-                ),
-                yaxis=dict(
-                    tickfont=dict(size=12, color='black'),
-                    ticktext=[f"<b>{x}</b>" for x in sorted(df_ultimo_ano['DESC_UND_FED'].unique())],
-                    tickvals=sorted(df_ultimo_ano['DESC_UND_FED'].unique())
-                ),
-                coloraxis_colorbar=dict(
-                    title="",
-                    tickfont=dict(size=12, color='black')
-                )
-            )
-            
-            # Atualiza os nomes das colunas no hover template
-            hovertemplate = []
-            x_label = config['labels']['x']
-            hovertemplate.append(f"{x_label}: %{{x}}")
-            y_label = config['labels']['y']
-            
-            # Verifica se as colunas de unidade de medida existem
-            if 'DESC_UND_MED' in df.columns:
-                # Pega o primeiro valor não nulo da coluna DESC_UND_MED
-                unidade_medida = df['DESC_UND_MED'].dropna().iloc[0] if not df['DESC_UND_MED'].dropna().empty else ''
-                if unidade_medida:
-                    hovertemplate.append(f"{y_label}: %{{y}} {unidade_medida}")
-                else:
-                    hovertemplate.append(f"{y_label}: %{{y}}")
-            else:
-                hovertemplate.append(f"{y_label}: %{{y}}")
-            
-            if hovertemplate:
-                fig_line.update_traces(
-                    hovertemplate="<br>".join(hovertemplate) + "<extra></extra>"
-                )
-                fig_bar.update_traces(
-                    hovertemplate="<br>".join(hovertemplate) + "<extra></extra>"
-                )
-            
-            fig_line.update_layout(layout)
-            fig_bar.update_layout(layout)
-            
-            # Remove linhas de grade e linhas do zero para todos os tipos de gráficos
-            fig_line.update_xaxes(showgrid=False, zeroline=False)
-            fig_line.update_yaxes(showgrid=False, zeroline=False)
-            fig_bar.update_xaxes(showgrid=False, zeroline=False)
-            fig_bar.update_yaxes(showgrid=False, zeroline=False)
-            
-            # Destaca Goiás com cor específica
-            if 'DESC_UND_FED' in df.columns:
-                for trace in fig_line.data:
-                    if hasattr(trace, 'name') and trace.name == 'Goiás':
-                        trace.line = dict(color='#229846', width=6)
-                        trace.name = '<b>Goiás</b>'
-                for trace in fig_bar.data:
-                    if hasattr(trace, 'name') and trace.name == 'Goiás':
-                        trace.marker.color = '#229846'
-                        trace.name = '<b>Goiás</b>'
-            
+    try:
+        # Verifica se as colunas necessárias existem
+        colunas_necessarias = ['CODG_ANO', 'VLR_VAR']
+        if not all(col in df.columns for col in colunas_necessarias):
             return html.Div([
-                html.Div([
-                    html.Div([
-                        dcc.Graph(figure=fig_line),
-                        dcc.Graph(figure=fig_bar)
-                    ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
-                    html.Div([
-                        html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                        dropdown,
-                        dcc.Graph(
-                            id={'type': 'choropleth-map', 'index': indicador_id},
-                            figure=fig_map,
-                            style={'height': '600px'}  # Ajusta a altura do mapa
-                        )
-                    ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
-                ])
+                dbc.Alert(
+                    f"Dados incompletos para criar a visualização. Colunas necessárias: {', '.join(colunas_necessarias)}",
+                    color="warning",
+                    className="text-center p-3"
+                )
+            ])
+
+        # Garante que os dados estão ordenados por ano
+        df = df.sort_values('CODG_ANO')
+        
+        # Converte o campo VLR_VAR para numérico e remove valores inválidos
+        df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
+        df = df.dropna(subset=['VLR_VAR'])
+        
+        if df.empty:
+            return html.Div([
+                dbc.Alert(
+                    "Não há dados numéricos válidos para criar a visualização.",
+                    color="warning",
+                    className="text-center p-3"
+                )
             ])
         
-    # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
-    columnDefs = []
-    for col in df.columns:
-        if col == 'CODG_UND_FED':
-            # Adiciona a coluna DESC_UND_FED em vez de CODG_UND_FED
-            columnDefs.append({
-                "field": "DESC_UND_FED",
-                "headerName": "Unidade Federativa",
-                "sortable": True,
-                "filter": True
-            })
-        else:
-            columnDefs.append({
-                "field": col,
-                "headerName": COLUMN_NAMES.get(col, capitalize_words(col)),
-                "sortable": True,
-                "filter": True
-            })
-    
-    defaultColDef = {
-        "flex": 1,
-        "minWidth": 100,
-        "resizable": True,
-    }
-    
-    grid = dag.AgGrid(
-        rowData=df.to_dict('records'),
-        columnDefs=columnDefs,
-        defaultColDef=defaultColDef,
-        dashGridOptions={
-            "pagination": True,
-            "paginationPageSize": 10,
-            "rowHeight": 48,
-            "domLayout": "autoHeight",
-            "suppressMovableColumns": True,
-            "animateRows": True,
-        },
-        style={"height": "100%", "width": "100%"},
-    )
-    
-    return grid
+        # Substitui os códigos das UFs pelos nomes completos
+        if 'CODG_UND_FED' in df.columns:
+            df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
+            df = df.dropna(subset=['DESC_UND_FED'])
+        
+        # Adiciona as descrições da variável e unidade de medida
+        if 'CODG_VAR' in df.columns and not df_filtro.empty:
+            df['CODG_VAR'] = df['CODG_VAR'].astype(str)
+            df_filtro['CODG_VAR'] = df_filtro['CODG_VAR'].astype(str)
+            df = df.merge(df_filtro[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
+            df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
+        
+        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
+            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
+            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
+            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
+        
+        # Carrega as sugestões de visualização
+        df_sugestoes = load_sugestoes_visualizacao()
+        
+        # Define as configurações da tabela
+        columnDefs = []
+        
+        # Define a ordem das colunas
+        column_order = [
+            ('DESC_UND_FED', 'Unidade Federativa'),
+            ('CODG_ANO', 'Ano'),
+            ('DESC_VAR', 'Descrição da Variável'),
+            ('VLR_VAR', 'Valor'),
+            ('DESC_UND_MED', 'Unidade de Medida')
+        ]
+        
+        # Adiciona as colunas na ordem especificada
+        for col, header in column_order:
+            if col in df.columns:
+                columnDefs.append({
+                    "field": col,
+                    "headerName": header,
+                    "sortable": True,
+                    "filter": True,
+                    "flex": 1,
+                    "minWidth": 100,
+                    "resizable": True,
+                    "wrapText": True,
+                    "autoHeight": True
+                })
+        
+        defaultColDef = {
+            "flex": 1,
+            "minWidth": 100,
+            "resizable": True,
+            "wrapText": True,
+            "autoHeight": True
+        }
+        
+        # Se tiver um indicador específico e sugestões disponíveis
+        if indicador_id and not df_sugestoes.empty:
+            sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
+            if not sugestoes_indicador.empty:
+                try:
+                    # Verifica se há dados suficientes para criar os gráficos
+                    if len(df) < 2:
+                        return html.Div([
+                            dbc.Alert(
+                                "Não há dados suficientes para criar os gráficos. Mostrando apenas a tabela de dados.",
+                                color="warning",
+                                className="text-center p-3"
+                            ),
+                            dag.AgGrid(
+                                rowData=df.to_dict('records'),
+                                columnDefs=columnDefs,
+                                defaultColDef=defaultColDef,
+                                dashGridOptions={
+                                    "pagination": True,
+                                    "paginationPageSize": 10,
+                                    "rowHeight": 48,
+                                    "domLayout": "autoHeight",
+                                    "suppressMovableColumns": True,
+                                    "animateRows": True,
+                                },
+                                style={"height": "100%", "width": "100%"},
+                            )
+                        ])
+                    
+                    # Configura o gráfico de linha
+                    config = {
+                        'x': 'CODG_ANO',
+                        'y': 'VLR_VAR',
+                        'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
+                    }
+                    
+                    # Tratamento para dados anuais
+                    if 'DESC_UND_FED' in df.columns:
+                        df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).first()
+                    else:
+                        df = df.groupby('CODG_ANO', as_index=False).first()
+                    
+                    # Atualiza os labels dos eixos
+                    config['labels'] = {
+                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
+                        'y': "",
+                        'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
+                    }
+                    
+                    # Cria os gráficos
+                    fig_line = px.line(df, **config)
+                    fig_line.update_traces(line_shape='spline')
+                    fig_bar = px.bar(df, **config)
+                    
+                    # Carrega o GeoJSON do Brasil
+                    with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+                        geojson = json.load(f)
+                    
+                    # Cria o mapa coroplético
+                    fig_map = px.choropleth(
+                        df,
+                        geojson=geojson,
+                        locations='DESC_UND_FED',
+                        featureidkey='properties.name',
+                        color='VLR_VAR',
+                        color_continuous_scale='Greens_r',
+                        scope="south america"
+                    )
+                    
+                    # Ajusta o layout do mapa
+                    fig_map.update_geos(
+                        visible=False,
+                        showcoastlines=True,
+                        coastlinecolor="Black",
+                        showland=True,
+                        landcolor="white",
+                        showframe=False,
+                        center=dict(lat=-12.9598, lon=-53.2729),
+                        projection=dict(
+                            type='mercator',
+                            scale=2.6
+                        )
+                    )
+                    
+                    # Aplica o layout padrão
+                    layout = DEFAULT_LAYOUT.copy()
+                    layout.update({
+                        'xaxis_title': config['labels']['x'],
+                        'yaxis_title': config['labels']['y'],
+                        'xaxis': dict(
+                            showgrid=False,
+                            zeroline=False,
+                            tickfont=dict(size=12, color='black'),
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
+                            tickvals=sorted(df['CODG_ANO'].unique())
+                        ),
+                        'yaxis': dict(
+                            showgrid=False,
+                            zeroline=False,
+                            tickfont=dict(size=12, color='black')
+                        )
+                    })
+                    
+                    # Aplica os layouts
+                    fig_line.update_layout(layout)
+                    fig_bar.update_layout(layout)
+                    
+                    # Remove linhas de grade
+                    fig_line.update_xaxes(showgrid=False, zeroline=False)
+                    fig_line.update_yaxes(showgrid=False, zeroline=False)
+                    fig_bar.update_xaxes(showgrid=False, zeroline=False)
+                    fig_bar.update_yaxes(showgrid=False, zeroline=False)
+                    
+                    # Destaca Goiás
+                    if 'DESC_UND_FED' in df.columns:
+                        for trace in fig_line.data:
+                            if hasattr(trace, 'name') and trace.name == 'Goiás':
+                                trace.line = dict(color='#229846', width=6)
+                                trace.name = '<b>Goiás</b>'
+                        for trace in fig_bar.data:
+                            if hasattr(trace, 'name') and trace.name == 'Goiás':
+                                trace.marker.color = '#229846'
+                                trace.name = '<b>Goiás</b>'
+                    
+                    return html.Div([
+                        html.Div([
+                            html.Div([
+                                dcc.Graph(figure=fig_line),
+                                dcc.Graph(figure=fig_bar)
+                            ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
+                            html.Div([
+                                html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                dcc.Dropdown(
+                                    id={'type': 'year-dropdown', 'index': indicador_id},
+                                    options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                                    value=sorted(df['CODG_ANO'].unique())[-1],
+                                    style={'width': '200px', 'margin': '10px'}
+                                ),
+                                dcc.Graph(
+                                    id={'type': 'choropleth-map', 'index': indicador_id},
+                                    figure=fig_map,
+                                    style={'height': '600px'}
+                                )
+                            ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
+                        ]),
+                        html.Div([
+                            html.H5("Dados Detalhados", className="mt-4 mb-3"),
+                            dag.AgGrid(
+                                rowData=df.to_dict('records'),
+                                columnDefs=columnDefs,
+                                defaultColDef=defaultColDef,
+                                dashGridOptions={
+                                    "pagination": True,
+                                    "paginationPageSize": 10,
+                                    "rowHeight": 48,
+                                    "domLayout": "autoHeight",
+                                    "suppressMovableColumns": True,
+                                    "animateRows": True,
+                                },
+                                style={"height": "100%", "width": "100%"},
+                            )
+                        ], style={'width': '100%', 'marginTop': '20px'})
+                    ])
+                except Exception as e:
+                    return html.Div([
+                        dbc.Alert(
+                            [
+                                html.H4("Erro ao criar os gráficos", className="alert-heading"),
+                                html.P("Ocorreu um erro ao tentar criar as visualizações. Mostrando apenas a tabela de dados."),
+                                html.Hr(),
+                                html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
+                            ],
+                            color="warning",
+                            className="text-center p-3"
+                        ),
+                        dag.AgGrid(
+                            rowData=df.to_dict('records'),
+                            columnDefs=columnDefs,
+                            defaultColDef=defaultColDef,
+                            dashGridOptions={
+                                "pagination": True,
+                                "paginationPageSize": 10,
+                                "rowHeight": 48,
+                                "domLayout": "autoHeight",
+                                "suppressMovableColumns": True,
+                                "animateRows": True,
+                            },
+                            style={"height": "100%", "width": "100%"},
+                        )
+                    ])
+        
+        # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
+        return dag.AgGrid(
+            rowData=df.to_dict('records'),
+            columnDefs=columnDefs,
+            defaultColDef=defaultColDef,
+            dashGridOptions={
+                "pagination": True,
+                "paginationPageSize": 10,
+                "rowHeight": 48,
+                "domLayout": "autoHeight",
+                "suppressMovableColumns": True,
+                "animateRows": True,
+            },
+            style={"height": "100%", "width": "100%"},
+        )
+    except Exception as e:
+        return html.Div([
+            dbc.Alert(
+                [
+                    html.H4("Erro ao criar a visualização", className="alert-heading"),
+                    html.P("Ocorreu um erro ao tentar processar os dados."),
+                    html.Hr(),
+                    html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
+                ],
+                color="danger",
+                className="text-center p-3"
+            )
+        ])
 
 
 # Modifica o callback de atualização do card para usar AG Grid
@@ -738,13 +870,20 @@ def update_card_content(*args):
                 meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
 
                 if not meta_filtrada.empty:
-                    meta_desc = meta_filtrada['DESC_META'].iloc[(0,)]
-                    objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[(0,)]
+                    meta_desc = meta_filtrada['DESC_META'].iloc[0]
+                    objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[0]
                     metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == objetivo_id]
                     metas_com_indicadores = [
                         meta for _, meta in metas_filtradas.iterrows()
                         if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
                     ]
+
+                    if not metas_com_indicadores:
+                        return no_update, no_update, [], dbc.Alert(
+                            "Não existem indicadores disponíveis para esta meta.",
+                            color="warning",
+                            className="text-center p-3"
+                        ), []
 
                     metas_atualizadas = [
                         dbc.NavLink(
@@ -762,20 +901,18 @@ def update_card_content(*args):
                         for _, row in indicadores_meta.iterrows():
                             df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
                             tab_content = [
-                                html.P(
-                                    row['DESC_INDICADOR'],
-                                    className="text-justify p-3"
-                                )
+                                html.P(row['DESC_INDICADOR'], className="text-justify p-3")
                             ]
 
-                            if df_dados is not None:
+                            if df_dados is not None and not df_dados.empty:
                                 grid = create_visualization(df_dados, row['ID_INDICADOR'])
                                 tab_content.append(grid)
                             else:
                                 tab_content.append(
-                                    html.P(
+                                    dbc.Alert(
                                         "Erro ao carregar os dados do indicador.",
-                                        className="text-danger"
+                                        color="danger",
+                                        className="text-center p-3"
                                     )
                                 )
 
@@ -805,10 +942,22 @@ def update_card_content(*args):
 
                     return no_update, no_update, metas_atualizadas, meta_desc, indicadores_section
                 else:
-                    return no_update, no_update, no_update, "Não foi possível encontrar a descrição desta meta.", []
+                    return no_update, no_update, [], dbc.Alert(
+                        "Meta não encontrada.",
+                        color="warning",
+                        className="text-center p-3"
+                    ), []
             except Exception as e:
-                print(f"Erro ao processar meta: {e}")
-                return no_update, no_update, no_update, "Ocorreu um erro ao carregar a descrição da meta.", []
+                return no_update, no_update, [], dbc.Alert(
+                    [
+                        html.H4("Erro ao carregar os dados da meta", className="alert-heading"),
+                        html.P("Ocorreu um erro ao tentar carregar os dados da meta selecionada."),
+                        html.Hr(),
+                        html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
+                    ],
+                    color="danger",
+                    className="text-center p-3"
+                ), []
 
         # Se for um clique em um objetivo
         button_id = triggered_id.split('.')[0]
@@ -818,11 +967,19 @@ def update_card_content(*args):
         try:
             index = int(button_id.replace('objetivo', ''))
             if index >= len(df):
-                return initial_header, "Objetivo não encontrado.", [], "", []
+                return initial_header, dbc.Alert(
+                    "Objetivo não encontrado.",
+                    color="warning",
+                    className="text-center p-3"
+                ), [], "", []
             
             row = df.iloc[index]
-            if 'DESC_OBJETIVO' not in row or 'RES_OBJETIVO' not in row or 'ID_OBJETIVO' not in row:
-                return initial_header, "Dados do objetivo estão incompletos.", [], "", []
+            if not all(key in row for key in ['DESC_OBJETIVO', 'RES_OBJETIVO', 'ID_OBJETIVO']):
+                return initial_header, dbc.Alert(
+                    "Dados do objetivo estão incompletos.",
+                    color="warning",
+                    className="text-center p-3"
+                ), [], "", []
 
             header = f"{row['ID_OBJETIVO']} - {row['RES_OBJETIVO']}" if index > 0 else row['RES_OBJETIVO']
             content = row['DESC_OBJETIVO']
@@ -837,20 +994,12 @@ def update_card_content(*args):
                 if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
             ]
 
-            if not metas_com_indicadores and index != 0:
-                metas = [
-                    dbc.Card(
-                        dbc.CardBody(
-                            html.P(
-                                "Não existem indicadores que atendam os requisitos deste estudo.",
-                                className="text-center fw-bold"
-                            )
-                        ),
-                        className="m-2",
-                        style={'width': '100%'}
-                    )
-                ]
-                return header, content, metas, "", []
+            if not metas_com_indicadores:
+                return header, content, [], dbc.Alert(
+                    "Não existem indicadores disponíveis para este objetivo.",
+                    color="warning",
+                    className="text-center p-3"
+                ), []
 
             meta_selecionada = metas_com_indicadores[0]
             metas = [
@@ -874,14 +1023,15 @@ def update_card_content(*args):
                         html.P(row['DESC_INDICADOR'], className="text-justify p-3")
                     ]
 
-                    if df_dados is not None:
+                    if df_dados is not None and not df_dados.empty:
                         grid = create_visualization(df_dados, row['ID_INDICADOR'])
                         tab_content.append(grid)
                     else:
                         tab_content.append(
-                            html.P(
+                            dbc.Alert(
                                 "Erro ao carregar os dados do indicador.",
-                                className="text-danger"
+                                color="danger",
+                                className="text-center p-3"
                             )
                         )
 
@@ -912,12 +1062,28 @@ def update_card_content(*args):
             return header, content, metas, meta_description, indicadores_section
 
         except Exception as e:
-            print(f"Erro ao processar objetivo: {e}")
-            return initial_header, "Erro ao processar o objetivo selecionado.", [], "", []
+            return initial_header, dbc.Alert(
+                [
+                    html.H4("Erro ao processar o objetivo selecionado", className="alert-heading"),
+                    html.P("Ocorreu um erro ao tentar processar o objetivo selecionado."),
+                    html.Hr(),
+                    html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
+                ],
+                color="danger",
+                className="text-center p-3"
+            ), [], "", []
 
     except Exception as e:
-        print(f"Erro geral no callback: {e}")
-        return initial_header, "Ocorreu um erro ao processar a solicitação.", [], "", []
+        return initial_header, dbc.Alert(
+            [
+                html.H4("Erro ao processar a solicitação", className="alert-heading"),
+                html.P("Ocorreu um erro ao tentar processar sua solicitação."),
+                html.Hr(),
+                html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
+            ],
+            color="danger",
+            className="text-center p-3"
+        ), [], "", []
 
 
 # Callback para carregar os dados de cada indicador
@@ -953,6 +1119,7 @@ def load_dados_indicador(*args):
                 ]]
         else:
             return [[]]
+
     except Exception as e:
         print(f"Erro ao carregar dados do indicador: {e}")
         return [[]]
@@ -1029,13 +1196,17 @@ def update_map(selected_years, current_figures):
         
         # Ajusta o layout do mapa
         fig_map.update_geos(
-            fitbounds="locations",
             visible=False,
             showcoastlines=True,
             coastlinecolor="Black",
             showland=True,
             landcolor="white",
-            showframe=False
+            showframe=False,
+            center=dict(lat=-12.9598, lon=-53.2729),
+            projection=dict(
+                type='mercator',
+                scale=2.6
+            )
         )
         
         # Atualiza o layout do mapa
@@ -1058,7 +1229,6 @@ def update_map(selected_years, current_figures):
         
         return [fig_map]
     except Exception as e:
-        print(f"Erro ao atualizar o mapa: {e}")
         raise PreventUpdate
 
 

@@ -1,6 +1,6 @@
 # Configurações do servidor
-DEBUG = False
-USE_RELOADER = False
+DEBUG = True
+USE_RELOADER = True
 PORT = 8050
 HOST = '0.0.0.0'
 
