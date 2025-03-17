@@ -483,9 +483,9 @@ def create_visualization(df, indicador_id=None):
             
             # Atualiza os labels dos eixos com as descrições do COLUMN_NAMES
             config['labels'] = {
-                'x': COLUMN_NAMES.get('CODG_ANO', 'Ano'),
-                'y': COLUMN_NAMES.get('VLR_VAR', 'Valor'),
-                'color': COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa') if 'DESC_UND_FED' in df.columns else None
+                'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
+                'y': "",
+                'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
             }
             
             # Sempre usa gráfico de linha primeiro
@@ -559,6 +559,18 @@ def create_visualization(df, indicador_id=None):
             layout.update({
                 'xaxis_title': config['labels']['x'],
                 'yaxis_title': config['labels']['y'],
+                'xaxis': dict(
+                    showgrid=False,
+                    zeroline=False,
+                    tickfont=dict(size=12, color='black'),
+                    ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
+                    tickvals=sorted(df['CODG_ANO'].unique())
+                ),
+                'yaxis': dict(
+                    showgrid=False,
+                    zeroline=False,
+                    tickfont=dict(size=12, color='black')
+                ),
                 'legend': dict(
                     title="<b>Unidade Federativa</b>",
                     yanchor="top",
@@ -568,6 +580,28 @@ def create_visualization(df, indicador_id=None):
                     orientation="v"
                 )
             })
+            
+            # Aplica o layout aos gráficos
+            fig_line.update_layout(layout)
+            fig_bar.update_layout(layout)
+            
+            # Atualiza o layout do mapa
+            fig_map.update_layout(
+                xaxis=dict(
+                    tickfont=dict(size=12, color='black'),
+                    ticktext=[f"<b>{x}</b>" for x in sorted(df_ultimo_ano['DESC_UND_FED'].unique())],
+                    tickvals=sorted(df_ultimo_ano['DESC_UND_FED'].unique())
+                ),
+                yaxis=dict(
+                    tickfont=dict(size=12, color='black'),
+                    ticktext=[f"<b>{x}</b>" for x in sorted(df_ultimo_ano['DESC_UND_FED'].unique())],
+                    tickvals=sorted(df_ultimo_ano['DESC_UND_FED'].unique())
+                ),
+                coloraxis_colorbar=dict(
+                    title="",
+                    tickfont=dict(size=12, color='black')
+                )
+            )
             
             # Atualiza os nomes das colunas no hover template
             hovertemplate = []
@@ -631,7 +665,7 @@ def create_visualization(df, indicador_id=None):
                     ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
                 ])
             ])
-    
+        
     # Se não encontrar sugestão ou não tiver indicador, mostra a tabela
     columnDefs = []
     for col in df.columns:
@@ -1002,6 +1036,24 @@ def update_map(selected_years, current_figures):
             showland=True,
             landcolor="white",
             showframe=False
+        )
+        
+        # Atualiza o layout do mapa
+        fig_map.update_layout(
+            xaxis=dict(
+                tickfont=dict(size=12, color='black'),
+                ticktext=[f"<b>{x}</b>" for x in sorted(df_ano['DESC_UND_FED'].unique())],
+                tickvals=sorted(df_ano['DESC_UND_FED'].unique())
+            ),
+            yaxis=dict(
+                tickfont=dict(size=12, color='black'),
+                ticktext=[f"<b>{x}</b>" for x in sorted(df_ano['DESC_UND_FED'].unique())],
+                tickvals=sorted(df_ano['DESC_UND_FED'].unique())
+            ),
+            coloraxis_colorbar=dict(
+                title="",
+                tickfont=dict(size=12, color='black')
+            )
         )
         
         return [fig_map]
