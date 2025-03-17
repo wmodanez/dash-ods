@@ -1,5 +1,5 @@
 CODG_UND_MED,DESC_UND_MED
-1726,Proporção (%)
+1726,%
 45,Pessoas
 2,%
 1738,Óbitos por 100 mil nascidos vivos
@@ -13,7 +13,6 @@ CODG_UND_MED,DESC_UND_MED
 1756,Nascidos vivos por 1.000 mulheres
 1572,Mil pessoas
 50,Índice
-,
 1618,Reais por metro cúbico
 1767,Dólares por metro cúbico
 26,Quilômetros quadrados
