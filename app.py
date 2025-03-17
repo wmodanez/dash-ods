@@ -512,13 +512,15 @@ def create_visualization(df, indicador_id=None):
             
             # Cria o mapa coroplético inicial com o último ano
             df_ultimo_ano = df[df['CODG_ANO'] == anos[-1]]
+            # Renomeia a coluna VLR_VAR para Valor
+            df_ultimo_ano = df_ultimo_ano.rename(columns={'VLR_VAR': 'Valor'})
             fig_map = px.choropleth(
                 df_ultimo_ano,
                 geojson=geojson,
                 locations='DESC_UND_FED',
                 featureidkey='properties.name',
-                color='VLR_VAR',
-                color_continuous_scale='Viridis',
+                color='Valor',
+                color_continuous_scale='Greens_r',
                 scope="south america"
             )
             
@@ -954,6 +956,9 @@ def update_map(selected_years, current_figures):
         if 'CODG_UND_FED' in df_ano.columns:
             df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(UF_NAMES)
         
+        # Renomeia a coluna VLR_VAR para Valor
+        df_ano = df_ano.rename(columns={'VLR_VAR': 'Valor'})
+        
         # Carrega o GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
             geojson = json.load(f)
@@ -964,7 +969,7 @@ def update_map(selected_years, current_figures):
             geojson=geojson,
             locations='DESC_UND_FED',
             featureidkey='properties.name',
-            color='VLR_VAR',
+            color='Valor',
             color_continuous_scale='Viridis',
             scope="south america"
         )
