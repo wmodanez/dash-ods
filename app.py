@@ -380,7 +380,9 @@ if meta_inicial:
                                             'fontWeight': 'bold',
                                             'display': 'block',
                                             'marginBottom': '5px'
-                                        }),
+                                        },
+                                        id={'type': 'var-label', 'index': row['ID_INDICADOR']}
+                                    ),
                                     dcc.Dropdown(
                                         id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
                                         options=[
@@ -672,17 +674,25 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     "filter": True,
                     "flex": 1,
                     "minWidth": 100,
+                    "maxWidth": None,
                     "resizable": True,
                     "wrapText": True,
-                    "autoHeight": True
+                    "autoHeight": True,
+                    "suppressSizeToFit": False,
+                    "cellStyle": {"whiteSpace": "normal"},
+                    "autoSizeColumn": True
                 })
         
         defaultColDef = {
             "flex": 1,
             "minWidth": 100,
+            "maxWidth": None,
             "resizable": True,
             "wrapText": True,
-            "autoHeight": True
+            "autoHeight": True,
+            "suppressSizeToFit": False,
+            "cellStyle": {"whiteSpace": "normal"},
+            "autoSizeColumn": True
         }
         
         # Se tiver um indicador específico e sugestões disponíveis
@@ -705,10 +715,18 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                 dashGridOptions={
                                     "pagination": True,
                                     "paginationPageSize": 10,
-                                    "rowHeight": 48,
+                                    "rowHeight": "auto",
                                     "domLayout": "autoHeight",
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
+                                    "suppressColumnVirtualisation": True,
+                                    "autoSizeAllColumns": True,
+                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
                                 },
                                 style={"height": "100%", "width": "100%"},
                             )
@@ -844,10 +862,18 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                 dashGridOptions={
                                     "pagination": True,
                                     "paginationPageSize": 10,
-                                    "rowHeight": 48,
+                                    "rowHeight": "auto",
                                     "domLayout": "autoHeight",
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
+                                    "suppressColumnVirtualisation": True,
+                                    "autoSizeAllColumns": True,
+                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
                                 },
                                 style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
                             )
@@ -872,10 +898,18 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                             dashGridOptions={
                                 "pagination": True,
                                 "paginationPageSize": 10,
-                                "rowHeight": 48,
+                                "rowHeight": "auto",
                                 "domLayout": "autoHeight",
                                 "suppressMovableColumns": True,
                                 "animateRows": True,
+                                "suppressColumnVirtualisation": True,
+                                "autoSizeAllColumns": True,
+                                "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
                             },
                             style={"height": "100%", "width": "100%"},
                         )
@@ -889,10 +923,18 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             dashGridOptions={
                 "pagination": True,
                 "paginationPageSize": 10,
-                "rowHeight": 48,
+                "rowHeight": "auto",
                 "domLayout": "autoHeight",
                 "suppressMovableColumns": True,
                 "animateRows": True,
+                "suppressColumnVirtualisation": True,
+                "autoSizeAllColumns": True,
+                "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
             },
             style={"height": "100%", "width": "100%"},
         )
@@ -1000,7 +1042,9 @@ def update_card_content(*args):
                                                             'fontWeight': 'bold',
                                                             'display': 'block',
                                                             'marginBottom': '5px'
-                                                        }),
+                                                        },
+                                                        id={'type': 'var-label', 'index': row['ID_INDICADOR']}
+                                                    ),
                                                     dcc.Dropdown(
                                                         id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
                                                         options=[
@@ -1164,7 +1208,9 @@ def update_card_content(*args):
                                                     'fontWeight': 'bold',
                                                     'display': 'block',
                                                     'marginBottom': '5px'
-                                                }),
+                                                },
+                                                id={'type': 'var-label', 'index': row['ID_INDICADOR']}
+                                            ),
                                             dcc.Dropdown(
                                                 id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
                                                 options=[
@@ -1556,6 +1602,22 @@ def update_graphs(selected_var, dropdown_id):
     except Exception as e:
         print(f"Erro ao atualizar gráficos: {e}")
         raise PreventUpdate
+
+
+# Callback para controlar a visibilidade do label baseado na existência de variáveis
+@app.callback(
+    Output({'type': 'var-label', 'index': MATCH}, 'style'),
+    Input({'type': 'var-dropdown', 'index': MATCH}, 'options'),
+    prevent_initial_call=True
+)
+def update_label_visibility(options):
+    if not options:
+        return {'display': 'none'}
+    return {
+        'fontWeight': 'bold',
+        'display': 'block',
+        'marginBottom': '5px'
+    }
 
 
 # Obtém a instância do servidor Flask
