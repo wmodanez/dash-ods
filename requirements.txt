@@ -10,3 +10,4 @@ pandas==2.2.1
 numpy==1.26.3
 dash-ag-grid==31.0.1
 pyarrow==14.0.2
+shapely==2.0.2
