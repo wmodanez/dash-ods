@@ -835,7 +835,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     fig_map.update_geos(
                         visible=False,
                         showcoastlines=True,
-                        coastlinecolor="Black",
+                        coastlinecolor="White",
                         showland=True,
                         landcolor="white",
                         showframe=False,
@@ -846,22 +846,10 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         )
                     )
                     
-                    # Atualiza o layout do mapa
-                    fig_map.update_layout(
-                        xaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
-                            tickvals=sorted(df['DESC_UND_FED'].unique())
-                        ),
-                        yaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
-                            tickvals=sorted(df['DESC_UND_FED'].unique())
-                        ),
-                        coloraxis_colorbar=dict(
-                            title="",
-                            tickfont=dict(size=12, color='black')
-                        )
+                    # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
+                    fig_map.update_traces(
+                        marker_line_color='white',
+                        marker_line_width=1
                     )
                     
                     # Aplica o layout padrão
@@ -1734,7 +1722,7 @@ def update_graphs(selected_var, dropdown_id):
                     fig_map.update_geos(
                         visible=False,
                         showcoastlines=True,
-                        coastlinecolor="Black",
+                        coastlinecolor="White",
                         showland=True,
                         landcolor="white",
                         showframe=False,
@@ -1745,22 +1733,10 @@ def update_graphs(selected_var, dropdown_id):
                         )
                     )
                     
-                    # Atualiza o layout do mapa
-                    fig_map.update_layout(
-                        xaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
-                            tickvals=sorted(df['DESC_UND_FED'].unique())
-                        ),
-                        yaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
-                            tickvals=sorted(df['DESC_UND_FED'].unique())
-                        ),
-                        coloraxis_colorbar=dict(
-                            title="",
-                            tickfont=dict(size=12, color='black')
-                        )
+                    # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
+                    fig_map.update_traces(
+                        marker_line_color='white',
+                        marker_line_width=1
                     )
                     
                     # Aplica o layout padrão
