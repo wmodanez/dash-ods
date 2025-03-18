@@ -761,7 +761,12 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                             size=14,
                             symbol='circle',
                             line=dict(width=2, color='white')
-                        )
+                        ),
+                        hovertemplate="<b>%{customdata[0]}</b><br>" +
+                                    "Ano: %{customdata[2]}<br>" +
+                                    "Valor: %{customdata[3]}<br>" +
+                                    "Unidade de Medida: %{customdata[4]}<extra></extra>",
+                        customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
                     )
                     fig_bar = px.bar(df, **config)
                     
@@ -1134,12 +1139,7 @@ def update_card_content(*args):
                     ), []
             except Exception as e:
                 return no_update, no_update, [], dbc.Alert(
-                    [
-                        html.H4("Erro ao carregar os dados da meta", className="alert-heading"),
-                        html.P("Ocorreu um erro ao tentar carregar os dados da meta selecionada."),
-                        html.Hr(),
-                        html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
-                    ],
+                    f"Erro ao processar meta: {str(e)}",
                     color="danger",
                     className="text-center p-3"
                 ), []
@@ -1295,24 +1295,14 @@ def update_card_content(*args):
 
         except Exception as e:
             return initial_header, dbc.Alert(
-                [
-                    html.H4("Erro ao processar o objetivo selecionado", className="alert-heading"),
-                    html.P("Ocorreu um erro ao tentar processar o objetivo selecionado."),
-                    html.Hr(),
-                    html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
-                ],
+                f"Erro ao processar objetivo: {str(e)}",
                 color="danger",
                 className="text-center p-3"
             ), [], "", []
 
     except Exception as e:
         return initial_header, dbc.Alert(
-            [
-                html.H4("Erro ao processar a solicitação", className="alert-heading"),
-                html.P("Ocorreu um erro ao tentar processar sua solicitação."),
-                html.Hr(),
-                html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
-            ],
+            f"Erro ao processar solicitação: {str(e)}",
             color="danger",
             className="text-center p-3"
         ), [], "", []
@@ -1522,7 +1512,12 @@ def update_graphs(selected_var, dropdown_id):
                 size=14,
                 symbol='circle',
                 line=dict(width=2, color='white')
-            )
+            ),
+            hovertemplate="<b>%{customdata[0]}</b><br>" +
+                        "Ano: %{customdata[2]}<br>" +
+                        "Valor: %{customdata[3]}<br>" +
+                        "Unidade de Medida: %{customdata[4]}<extra></extra>",
+            customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
         )
         fig_bar = px.bar(df, **config)
         
