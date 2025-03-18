@@ -104,7 +104,7 @@ def converter_tipos_dados(df):
 
 
 def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
-                       df_und_med, df_filtro, df_indicadores):
+                       df_und_med, df_variavel, df_indicadores):
     for objetivo in filtered_list_indicadores.keys():
         for meta in filtered_list_indicadores[objetivo].keys():
             for indicador in filtered_list_indicadores[objetivo][meta].keys():
@@ -118,7 +118,7 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                                  f'Indicador {indicador.split("Indicador")[1]}')
                     df_und_med = pd.concat([df_und_med, df_temp[['CODG_UND_MED',
                                                                 'DESC_UND_MED']]])
-                    df_filtro = pd.concat([df_filtro, df_temp[['CODG_VAR',
+                    df_variavel = pd.concat([df_variavel, df_temp[['CODG_VAR',
                                                               'DESC_VAR']]])
                     try:
                         # Lista de todas as colunas que queremos remover
@@ -229,9 +229,9 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                       f'foi criado.')
 
                 df_und_med.to_csv(str(Path(__file__).parent) +
-                                f'/db/unidade_medida.csv', index=False)
-                df_filtro.to_csv(str(Path(__file__).parent) +
-                               f'/db/filtro.csv', index=False)
+                                f'/db/unidade_medida.csv', sep=';', index=False)
+                df_variavel.to_csv(str(Path(__file__).parent) +
+                               f'/db/variavel.csv', sep=';', index=False)
         print(f'{objetivo} finalizado!')
 
 
@@ -243,7 +243,6 @@ def main():
 
     df_und_med = pd.DataFrame(columns=['CODG_UND_MED', 'DESC_UND_MED'])
     df_variavel = pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
-    df_filtro = pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
 
     # Carregar os indicadores
     df_indicadores = load_indicadores()
@@ -254,15 +253,15 @@ def main():
                                                  indicadores_ids)
 
     process_indicadores(filtered_list_indicadores, url_base, LIST_COLUNAS,
-                       df_und_med, df_filtro, df_indicadores)
+                       df_und_med, df_variavel, df_indicadores)
 
     remove_duplicates_from_csv(str(Path(__file__).parent) +
-                             f'/db/unidade_medida.csv').to_csv(
+                             f'/db/unidade_medida.csv').sort_values(by='CODG_UND_MED').to_csv(
         str(Path(__file__).parent) + f'/db/unidade_medida.csv',
         header=True, index=False, sep=';')
     remove_duplicates_from_csv(str(Path(__file__).parent) +
-                             f'/db/filtro.csv').to_csv(
-        str(Path(__file__).parent) + f'/db/filtro.csv',
+                             f'/db/variavel.csv').sort_values(by='CODG_VAR').to_csv(
+        str(Path(__file__).parent) + f'/db/variavel.csv',
         header=True, index=False, sep=';')
 
 
