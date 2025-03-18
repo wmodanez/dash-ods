@@ -679,7 +679,9 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     "autoHeight": True,
                     "suppressSizeToFit": False,
                     "cellStyle": {"whiteSpace": "normal"},
-                    "autoSizeColumn": True
+                    "autoSizeAllColumns": True,
+                    "suppressAutoSize": False,
+                    "cellClass": "wrap-text"
                 })
         
         defaultColDef = {
@@ -691,7 +693,9 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             "autoHeight": True,
             "suppressSizeToFit": False,
             "cellStyle": {"whiteSpace": "normal"},
-            "autoSizeColumn": True
+            "autoSizeAllColumns": True,
+            "suppressAutoSize": False,
+            "cellClass": "wrap-text"
         }
         
         # Se tiver um indicador específico e sugestões disponíveis
@@ -1568,7 +1572,9 @@ def update_graphs(selected_var, dropdown_id):
                     "autoHeight": True,
                     "suppressSizeToFit": False,
                     "cellStyle": {"whiteSpace": "normal"},
-                    "autoSizeColumn": True
+                    "autoSizeColumn": True,
+                    "suppressAutoSize": False,
+                    "cellClass": "wrap-text"
                 })
         
         defaultColDef = {
@@ -1580,7 +1586,9 @@ def update_graphs(selected_var, dropdown_id):
             "autoHeight": True,
             "suppressSizeToFit": False,
             "cellStyle": {"whiteSpace": "normal"},
-            "autoSizeColumn": True
+            "autoSizeColumn": True,
+            "suppressAutoSize": False,
+            "cellClass": "wrap-text"
         }
         
         # Se tiver um indicador específico e sugestões disponíveis
