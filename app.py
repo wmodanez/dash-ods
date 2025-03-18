@@ -354,16 +354,51 @@ if meta_inicial:
                 html.P(row['DESC_INDICADOR'], className="text-justify p-3")
             ]
 
-            if df_dados is not None:
-                grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                tab_content.append(grid)
-            else:
-                tab_content.append(
-                    html.P(
-                        "Erro ao carregar os dados do indicador.",
-                        className="text-danger"
-                    )
-                )
+            if df_dados is not None and not df_dados.empty:
+                try:
+                    # Adiciona o dropdown de variáveis se o indicador tiver VARIAVEIS = 1
+                    tab_content = [
+                        html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                    ]
+                    
+                    # Verifica se o indicador tem VARIAVEIS = 1
+                    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
+                    if not indicador_info.empty and indicador_info['VARIAVEIS'].iloc[0] == '1':
+                        # Carrega as variáveis do arquivo filtro.csv
+                        df_filtro_loaded = load_filtro()
+                        
+                        # Obtém as variáveis únicas do indicador
+                        variaveis_indicador = df_dados['CODG_VAR'].unique() if 'CODG_VAR' in df_dados.columns else []
+                        
+                        # Filtra apenas as variáveis que existem no indicador
+                        df_filtro_loaded = df_filtro_loaded[df_filtro_loaded['CODG_VAR'].isin(variaveis_indicador)]
+                        
+                        if not df_filtro_loaded.empty:
+                            tab_content.append(
+                                dbc.Row([
+                                    dbc.Col([
+                                        html.Label("Selecione a Variável:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                        dcc.Dropdown(
+                                            id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
+                                            options=[
+                                                {'label': desc, 'value': cod} 
+                                                for cod, desc in zip(df_filtro_loaded['CODG_VAR'], df_filtro_loaded['DESC_VAR'])
+                                            ],
+                                            value=df_filtro_loaded['CODG_VAR'].iloc[0] if not df_filtro_loaded.empty else None,
+                                            style={'width': '70%', 'marginBottom': '20px'}
+                                        )
+                                    ], width=12)
+                                ])
+                            )
+                        
+                        grid = create_visualization(df_dados, row['ID_INDICADOR'])
+                        tab_content.append(grid)
+                except Exception as e:
+                    print(f"Erro ao processar dropdown de variáveis: {e}")
+                    tab_content = [
+                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                        grid
+                    ]
 
             tabs_indicadores.append(
                 dbc.Tab(
@@ -905,16 +940,50 @@ def update_card_content(*args):
                             ]
 
                             if df_dados is not None and not df_dados.empty:
-                                grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                                tab_content.append(grid)
-                            else:
-                                tab_content.append(
-                                    dbc.Alert(
-                                        "Erro ao carregar os dados do indicador.",
-                                        color="danger",
-                                        className="text-center p-3"
-                                    )
-                                )
+                                try:
+                                    # Adiciona o dropdown de variáveis se o indicador tiver VARIAVEIS = 1
+                                    tab_content = [
+                                        html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                                    ]
+                                    
+                                    # Verifica se o indicador tem VARIAVEIS = 1
+                                    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
+                                    if not indicador_info.empty and indicador_info['VARIAVEIS'].iloc[0] == '1':
+                                        # Carrega as variáveis do arquivo filtro.csv
+                                        df_filtro_loaded = load_filtro()
+                                        
+                                        # Obtém as variáveis únicas do indicador
+                                        variaveis_indicador = df_dados['CODG_VAR'].unique() if 'CODG_VAR' in df_dados.columns else []
+                                        
+                                        # Filtra apenas as variáveis que existem no indicador
+                                        df_filtro_loaded = df_filtro_loaded[df_filtro_loaded['CODG_VAR'].isin(variaveis_indicador)]
+                                        
+                                        if not df_filtro_loaded.empty:
+                                            tab_content.append(
+                                                dbc.Row([
+                                                    dbc.Col([
+                                                        html.Label("Selecione a Variável:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                                        dcc.Dropdown(
+                                                            id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
+                                                            options=[
+                                                                {'label': desc, 'value': cod} 
+                                                                for cod, desc in zip(df_filtro_loaded['CODG_VAR'], df_filtro_loaded['DESC_VAR'])
+                                                            ],
+                                                            value=df_filtro_loaded['CODG_VAR'].iloc[0] if not df_filtro_loaded.empty else None,
+                                                            style={'width': '70%', 'marginBottom': '20px'}
+                                                        )
+                                                    ], width=12)
+                                                ])
+                                            )
+                                    
+                                    grid = create_visualization(df_dados, row['ID_INDICADOR'])
+                                    tab_content.append(grid)
+                                except Exception as e:
+                                    print(f"Erro ao processar dropdown de variáveis: {e}")
+                                    tab_content = [
+                                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                                        grid
+                                    ]
 
                             tabs_indicadores.append(
                                 dbc.Tab(
@@ -1024,16 +1093,50 @@ def update_card_content(*args):
                     ]
 
                     if df_dados is not None and not df_dados.empty:
-                        grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                        tab_content.append(grid)
-                    else:
-                        tab_content.append(
-                            dbc.Alert(
-                                "Erro ao carregar os dados do indicador.",
-                                color="danger",
-                                className="text-center p-3"
-                            )
-                        )
+                        try:
+                            # Adiciona o dropdown de variáveis se o indicador tiver VARIAVEIS = 1
+                            tab_content = [
+                                html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                            ]
+                            
+                            # Verifica se o indicador tem VARIAVEIS = 1
+                            indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
+                            if not indicador_info.empty and indicador_info['VARIAVEIS'].iloc[0] == '1':
+                                # Carrega as variáveis do arquivo filtro.csv
+                                df_filtro_loaded = load_filtro()
+                                
+                                # Obtém as variáveis únicas do indicador
+                                variaveis_indicador = df_dados['CODG_VAR'].unique() if 'CODG_VAR' in df_dados.columns else []
+                                
+                                # Filtra apenas as variáveis que existem no indicador
+                                df_filtro_loaded = df_filtro_loaded[df_filtro_loaded['CODG_VAR'].isin(variaveis_indicador)]
+                                
+                                if not df_filtro_loaded.empty:
+                                    tab_content.append(
+                                        dbc.Row([
+                                            dbc.Col([
+                                                html.Label("Selecione a Variável:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                                dcc.Dropdown(
+                                                    id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
+                                                    options=[
+                                                        {'label': desc, 'value': cod} 
+                                                        for cod, desc in zip(df_filtro_loaded['CODG_VAR'], df_filtro_loaded['DESC_VAR'])
+                                                    ],
+                                                    value=df_filtro_loaded['CODG_VAR'].iloc[0] if not df_filtro_loaded.empty else None,
+                                                    style={'width': '70%', 'marginBottom': '20px'}
+                                                )
+                                            ], width=12)
+                                        ])
+                                    )
+                            
+                            grid = create_visualization(df_dados, row['ID_INDICADOR'])
+                            tab_content.append(grid)
+                        except Exception as e:
+                            print(f"Erro ao processar dropdown de variáveis: {e}")
+                            tab_content = [
+                                html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                                grid
+                            ]
 
                     tabs_indicadores.append(
                         dbc.Tab(
