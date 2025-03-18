@@ -392,7 +392,7 @@ if meta_inicial:
                                         value=valor_inicial,
                                         style={'width': '70%'}
                                     )
-                                ], style={'padding': '20px'})
+                                ], style={'padding': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                             )
 
                         # Cria a visualização com o valor inicial do dropdown
@@ -1085,7 +1085,7 @@ def update_card_content(*args):
                                                         value=valor_inicial,
                                                         style={'width': '70%'}
                                                     )
-                                                ], style={'padding': '20px'})
+                                                ], style={'padding': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                             )
 
                                         # Cria a visualização com o valor inicial do dropdown
@@ -1246,7 +1246,7 @@ def update_card_content(*args):
                                                 value=valor_inicial,
                                                 style={'width': '70%'}
                                             )
-                                        ], style={'padding': '20px'})
+                                        ], style={'padding': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                     )
 
                                 # Cria a visualização com o valor inicial do dropdown
@@ -1442,8 +1442,8 @@ def update_map(selected_years, current_figures):
 # Callback para atualizar os gráficos quando a variável é alterada
 @app.callback(
     Output({'type': 'graph-container', 'index': MATCH}, 'children'),
-    Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
-    State({'type': 'var-dropdown', 'index': MATCH}, 'id'),
+    [Input({'type': 'var-dropdown', 'index': MATCH}, 'value')],
+    [State({'type': 'var-dropdown', 'index': MATCH}, 'id')],
     prevent_initial_call=True
 )
 def update_graphs(selected_var, dropdown_id):
