@@ -615,6 +615,23 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
             df = df.dropna(subset=['DESC_UND_FED'])
         
+        # Adiciona as descrições da variável e unidade de medida antes do agrupamento
+        if 'CODG_VAR' in df.columns and not df_variavel.empty:
+            df['CODG_VAR'] = df['CODG_VAR'].astype(str)
+            df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].astype(str)
+            df = df.merge(df_variavel[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
+            df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
+        else:
+            df['DESC_VAR'] = 'Descrição não disponível'
+        
+        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
+            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
+            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
+            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
+        else:
+            df['DESC_UND_MED'] = 'Unidade não disponível'
+        
         # Garante que os dados estão ordenados por ano
         df = df.sort_values('CODG_ANO')
         
@@ -630,24 +647,6 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     className="text-center p-3"
                 )
             ])
-        
-        # Substitui os códigos das UFs pelos nomes completos
-        if 'CODG_UND_FED' in df.columns:
-            df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
-            df = df.dropna(subset=['DESC_UND_FED'])
-        
-        # Adiciona as descrições da variável e unidade de medida
-        if 'CODG_VAR' in df.columns and not df_variavel.empty:
-            df['CODG_VAR'] = df['CODG_VAR'].astype(str)
-            df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].astype(str)
-            df = df.merge(df_variavel[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
-            df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
-        
-        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
-            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
-            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
-            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
         
         # Carrega as sugestões de visualização
         df_sugestoes = load_sugestoes_visualizacao()
@@ -741,9 +740,17 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     
                     # Tratamento para dados anuais
                     if 'DESC_UND_FED' in df.columns:
-                        df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).first()
+                        df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).agg({
+                            'VLR_VAR': 'first',
+                            'DESC_UND_MED': 'first',
+                            'DESC_VAR': 'first'
+                        })
                     else:
-                        df = df.groupby('CODG_ANO', as_index=False).first()
+                        df = df.groupby('CODG_ANO', as_index=False).agg({
+                            'VLR_VAR': 'first',
+                            'DESC_UND_MED': 'first',
+                            'DESC_VAR': 'first'
+                        })
                     
                     # Atualiza os labels dos eixos
                     config['labels'] = {
@@ -768,7 +775,42 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                     "Unidade de Medida: %{customdata[4]}<extra></extra>",
                         customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
                     )
-                    fig_bar = px.bar(df, **config)
+                    
+                    # Cria o gráfico de barras
+                    fig_bar = px.bar(
+                        df,
+                        x='CODG_ANO',
+                        y='VLR_VAR',
+                        color='DESC_UND_FED',
+                        labels={
+                            'DESC_UND_FED': 'Unidade Federativa',
+                            'VLR_VAR': 'Valor',
+                            'CODG_ANO': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>"
+                        }
+                    )
+                    
+                    # Atualiza o layout do gráfico de barras
+                    fig_bar.update_layout(
+                        showlegend=True,
+                        xaxis=dict(
+                            tickfont=dict(size=12, color='black'),
+                            tickangle=45,
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
+                            tickvals=sorted(df['CODG_ANO'].unique())
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, color='black')
+                        ),
+                        margin=dict(b=100)  # Margem inferior para os rótulos rotacionados
+                    )
+                    
+                    # Atualiza o hover do gráfico de barras
+                    fig_bar.update_traces(
+                        hovertemplate="<b>%{x}</b><br>" +
+                                    "Valor: %{y}<br>" +
+                                    "Unidade de Medida: %{customdata}<extra></extra>",
+                        customdata=df['DESC_UND_MED']
+                    )
                     
                     # Carrega o GeoJSON do Brasil
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
@@ -843,9 +885,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     
                     # Remove linhas de grade
                     fig_line.update_xaxes(showgrid=False, zeroline=False)
-                    fig_line.update_yaxes(showgrid=False, zeroline=False)
                     fig_bar.update_xaxes(showgrid=False, zeroline=False)
-                    fig_bar.update_yaxes(showgrid=False, zeroline=False)
                     
                     # Destaca Goiás
                     if 'DESC_UND_FED' in df.columns:
@@ -856,31 +896,54 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         for trace in fig_bar.data:
                             if hasattr(trace, 'name') and trace.name == 'Goiás':
                                 trace.marker.color = '#229846'
+                                trace.marker.line.width = 6
                                 trace.name = '<b>Goiás</b>'
                     
                     return html.Div([
                         html.Div(
                             id={'type': 'graph-container', 'index': indicador_id},
                             children=[
-                                html.Div([
-                                    html.Div([
-                                        dcc.Graph(figure=fig_line),
-                                        dcc.Graph(figure=fig_bar)
-                                    ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
-                                    html.Div([
-                                        html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                                        dcc.Dropdown(
-                                            id={'type': 'year-dropdown', 'index': indicador_id},
-                                            options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                                            value=sorted(df['CODG_ANO'].unique())[-1],
-                                            style={'width': '200px', 'margin': '10px'}
-                                        ),
-                                        dcc.Graph(
-                                            id={'type': 'choropleth-map', 'index': indicador_id},
-                                            figure=fig_map,
-                                            style={'height': '600px'}
-                                        )
-                                    ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
+                                dbc.Row([
+                                    # Coluna da esquerda com os gráficos
+                                    dbc.Col([
+                                        # Primeira linha com o gráfico de linha
+                                        dbc.Row([
+                                            dbc.Col([
+                                                dcc.Graph(figure=fig_line)
+                                            ], width=12)
+                                        ], className="mb-4"),
+                                        # Segunda linha com o gráfico de barras
+                                        dbc.Row([
+                                            dbc.Col([
+                                                dcc.Graph(figure=fig_bar)
+                                            ], width=12)
+                                        ], className="mb-4")
+                                    ], width=7),
+                                    # Coluna da direita com o mapa e dropdown
+                                    dbc.Col([
+                                        # Primeira linha com o dropdown
+                                        dbc.Row([
+                                            dbc.Col([
+                                                html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                                dcc.Dropdown(
+                                                    id={'type': 'year-dropdown', 'index': indicador_id},
+                                                    options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                                                    value=sorted(df['CODG_ANO'].unique())[-1],
+                                                    style={'width': '200px', 'margin': '10px'}
+                                                )
+                                            ], width=12)
+                                        ], className="mb-4"),
+                                        # Segunda linha com o mapa
+                                        dbc.Row([
+                                            dbc.Col([
+                                                dcc.Graph(
+                                                    id={'type': 'choropleth-map', 'index': indicador_id},
+                                                    figure=fig_map,
+                                                    style={'height': '800px'}
+                                                )
+                                            ], width=12)
+                                        ])
+                                    ], width=5)
                                 ])
                             ]
                         ),
@@ -911,40 +974,8 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         ], style={'width': '100%', 'marginTop': '20px'})
                     ])
                 except Exception as e:
-                    return html.Div([
-                        dbc.Alert(
-                            [
-                                html.H4("Erro ao criar os gráficos", className="alert-heading"),
-                                html.P("Ocorreu um erro ao tentar criar as visualizações. Mostrando apenas a tabela de dados."),
-                                html.Hr(),
-                                html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
-                            ],
-                            color="warning",
-                            className="text-center p-3"
-                        ),
-                        dag.AgGrid(
-                            rowData=df.to_dict('records'),
-                            columnDefs=columnDefs,
-                            defaultColDef=defaultColDef,
-                            dashGridOptions={
-                                "pagination": True,
-                                "paginationPageSize": 10,
-                                "rowHeight": "auto",
-                                "domLayout": "autoHeight",
-                                "suppressMovableColumns": True,
-                                "animateRows": True,
-                                "suppressColumnVirtualisation": True,
-                                "autoSizeAllColumns": True,
-                                "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
-                            },
-                            style={"height": "100%", "width": "100%"},
-                        )
-                    ])
+                    print(f"Erro ao atualizar gráficos: {e}")
+                    raise PreventUpdate
         
         # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
         return dag.AgGrid(
@@ -970,18 +1001,8 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             style={"height": "100%", "width": "100%"},
         )
     except Exception as e:
-        return html.Div([
-            dbc.Alert(
-                [
-                    html.H4("Erro ao criar a visualização", className="alert-heading"),
-                    html.P("Ocorreu um erro ao tentar processar os dados."),
-                    html.Hr(),
-                    html.P(f"Detalhes do erro: {str(e)}", className="mb-0")
-                ],
-                color="danger",
-                className="text-center p-3"
-            )
-        ])
+        print(f"Erro ao atualizar gráficos: {e}")
+        raise PreventUpdate
 
 
 # Modifica o callback de atualização do card para usar AG Grid
@@ -1483,154 +1504,391 @@ def update_graphs(selected_var, dropdown_id):
             df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
             df = df.dropna(subset=['DESC_UND_FED'])
         
-        # Configura o gráfico de linha
-        config = {
-            'x': 'CODG_ANO',
-            'y': 'VLR_VAR',
-            'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
-        }
-        
-        # Tratamento para dados anuais
-        if 'DESC_UND_FED' in df.columns:
-            df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).first()
+        # Adiciona as descrições da variável e unidade de medida antes do agrupamento
+        if 'CODG_VAR' in df.columns and not df_variavel.empty:
+            df['CODG_VAR'] = df['CODG_VAR'].astype(str)
+            df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].astype(str)
+            df = df.merge(df_variavel[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
+            df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
         else:
-            df = df.groupby('CODG_ANO', as_index=False).first()
+            df['DESC_VAR'] = 'Descrição não disponível'
         
-        # Atualiza os labels dos eixos
-        config['labels'] = {
-            'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
-            'y': "",
-            'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
+        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
+            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
+            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
+            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
+        else:
+            df['DESC_UND_MED'] = 'Unidade não disponível'
+        
+        # Garante que os dados estão ordenados por ano
+        df = df.sort_values('CODG_ANO')
+        
+        # Converte o campo VLR_VAR para numérico e remove valores inválidos
+        df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
+        df = df.dropna(subset=['VLR_VAR'])
+        
+        if df.empty:
+            return html.Div([
+                dbc.Alert(
+                    "Não há dados numéricos válidos para criar a visualização.",
+                    color="warning",
+                    className="text-center p-3"
+                )
+            ])
+        
+        # Carrega as sugestões de visualização
+        df_sugestoes = load_sugestoes_visualizacao()
+        
+        # Define as configurações da tabela
+        columnDefs = []
+        
+        # Define a ordem das colunas
+        column_order = [
+            ('DESC_UND_FED', 'Unidade Federativa'),
+            ('CODG_ANO', 'Ano'),
+            ('DESC_VAR', 'Descrição da Variável'),
+            ('VLR_VAR', 'Valor'),
+            ('DESC_UND_MED', 'Unidade de Medida')
+        ]
+        
+        # Adiciona as colunas na ordem especificada
+        for col, header in column_order:
+            if col in df.columns:
+                columnDefs.append({
+                    "field": col,
+                    "headerName": header,
+                    "sortable": True,
+                    "filter": True,
+                    "flex": 1,
+                    "minWidth": 100,
+                    "maxWidth": None,
+                    "resizable": True,
+                    "wrapText": True,
+                    "autoHeight": True,
+                    "suppressSizeToFit": False,
+                    "cellStyle": {"whiteSpace": "normal"},
+                    "autoSizeColumn": True
+                })
+        
+        defaultColDef = {
+            "flex": 1,
+            "minWidth": 100,
+            "maxWidth": None,
+            "resizable": True,
+            "wrapText": True,
+            "autoHeight": True,
+            "suppressSizeToFit": False,
+            "cellStyle": {"whiteSpace": "normal"},
+            "autoSizeColumn": True
         }
         
-        # Cria os gráficos
-        fig_line = px.line(df, **config)
-        fig_line.update_traces(
-            line_shape='spline',
-            mode='lines+markers',
-            marker=dict(
-                size=14,
-                symbol='circle',
-                line=dict(width=2, color='white')
-            ),
-            hovertemplate="<b>%{customdata[0]}</b><br>" +
-                        "Ano: %{customdata[2]}<br>" +
-                        "Valor: %{customdata[3]}<br>" +
-                        "Unidade de Medida: %{customdata[4]}<extra></extra>",
-            customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
-        )
-        fig_bar = px.bar(df, **config)
-        
-        # Carrega o GeoJSON do Brasil
-        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-            geojson = json.load(f)
-        
-        # Cria o mapa coroplético
-        fig_map = px.choropleth(
-            df,
-            geojson=geojson,
-            locations='DESC_UND_FED',
-            featureidkey='properties.name',
-            color='VLR_VAR',
-            color_continuous_scale='Greens_r',
-            scope="south america"
-        )
-        
-        # Ajusta o layout do mapa
-        fig_map.update_geos(
-            visible=False,
-            showcoastlines=True,
-            coastlinecolor="Black",
-            showland=True,
-            landcolor="white",
-            showframe=False,
-            center=dict(lat=-12.9598, lon=-53.2729),
-            projection=dict(
-                type='mercator',
-                scale=2.6
-            )
-        )
-        
-        # Atualiza o layout do mapa
-        fig_map.update_layout(
-            xaxis=dict(
-                tickfont=dict(size=12, color='black'),
-                ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
-                tickvals=sorted(df['DESC_UND_FED'].unique())
-            ),
-            yaxis=dict(
-                tickfont=dict(size=12, color='black'),
-                ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
-                tickvals=sorted(df['DESC_UND_FED'].unique())
-            ),
-            coloraxis_colorbar=dict(
-                title="",
-                tickfont=dict(size=12, color='black')
-            )
-        )
-        
-        # Aplica o layout padrão
-        layout = DEFAULT_LAYOUT.copy()
-        layout.update({
-            'xaxis_title': config['labels']['x'],
-            'yaxis_title': config['labels']['y'],
-            'xaxis': dict(
-                showgrid=False,
-                zeroline=False,
-                tickfont=dict(size=12, color='black'),
-                ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
-                tickvals=sorted(df['CODG_ANO'].unique())
-            ),
-            'yaxis': dict(
-                showgrid=False,
-                zeroline=False,
-                tickfont=dict(size=12, color='black')
-            )
-        })
-        
-        # Aplica os layouts
-        fig_line.update_layout(layout)
-        fig_bar.update_layout(layout)
-        
-        # Remove linhas de grade
-        fig_line.update_xaxes(showgrid=False, zeroline=False)
-        fig_line.update_yaxes(showgrid=False, zeroline=False)
-        fig_bar.update_xaxes(showgrid=False, zeroline=False)
-        fig_bar.update_yaxes(showgrid=False, zeroline=False)
-        
-        # Destaca Goiás
-        if 'DESC_UND_FED' in df.columns:
-            for trace in fig_line.data:
-                if hasattr(trace, 'name') and trace.name == 'Goiás':
-                    trace.line = dict(color='#229846', width=6)
-                    trace.name = '<b>Goiás</b>'
-            for trace in fig_bar.data:
-                if hasattr(trace, 'name') and trace.name == 'Goiás':
-                    trace.marker.color = '#229846'
-                    trace.name = '<b>Goiás</b>'
-        
-        return html.Div([
-            html.Div([
-                html.Div([
-                    dcc.Graph(figure=fig_line),
-                    dcc.Graph(figure=fig_bar)
-                ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
-                html.Div([
-                    html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                    dcc.Dropdown(
-                        id={'type': 'year-dropdown', 'index': indicador_id},
-                        options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                        value=sorted(df['CODG_ANO'].unique())[-1],
-                        style={'width': '200px', 'margin': '10px'}
-                    ),
-                    dcc.Graph(
-                        id={'type': 'choropleth-map', 'index': indicador_id},
-                        figure=fig_map,
-                        style={'height': '600px'}
+        # Se tiver um indicador específico e sugestões disponíveis
+        if indicador_id and not df_sugestoes.empty:
+            sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
+            if not sugestoes_indicador.empty:
+                try:
+                    # Verifica se há dados suficientes para criar os gráficos
+                    if len(df) < 2:
+                        return html.Div([
+                            dbc.Alert(
+                                "Não há dados suficientes para criar os gráficos. Mostrando apenas a tabela de dados.",
+                                color="warning",
+                                className="text-center p-3"
+                            ),
+                            dag.AgGrid(
+                                rowData=df.to_dict('records'),
+                                columnDefs=columnDefs,
+                                defaultColDef=defaultColDef,
+                                dashGridOptions={
+                                    "pagination": True,
+                                    "paginationPageSize": 10,
+                                    "rowHeight": "auto",
+                                    "domLayout": "autoHeight",
+                                    "suppressMovableColumns": True,
+                                    "animateRows": True,
+                                    "suppressColumnVirtualisation": True,
+                                    "autoSizeAllColumns": True,
+                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                                },
+                                style={"height": "100%", "width": "100%"},
+                            )
+                        ])
+                    
+                    # Configura o gráfico de linha
+                    config = {
+                        'x': 'CODG_ANO',
+                        'y': 'VLR_VAR',
+                        'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
+                    }
+                    
+                    # Tratamento para dados anuais
+                    if 'DESC_UND_FED' in df.columns:
+                        df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).agg({
+                            'VLR_VAR': 'first',
+                            'DESC_UND_MED': 'first',
+                            'DESC_VAR': 'first'
+                        })
+                    else:
+                        df = df.groupby('CODG_ANO', as_index=False).agg({
+                            'VLR_VAR': 'first',
+                            'DESC_UND_MED': 'first',
+                            'DESC_VAR': 'first'
+                        })
+                    
+                    # Atualiza os labels dos eixos
+                    config['labels'] = {
+                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
+                        'y': "",
+                        'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
+                    }
+                    
+                    # Cria os gráficos
+                    fig_line = px.line(df, **config)
+                    fig_line.update_traces(
+                        line_shape='spline',
+                        mode='lines+markers',
+                        marker=dict(
+                            size=14,
+                            symbol='circle',
+                            line=dict(width=2, color='white')
+                        ),
+                        hovertemplate="<b>%{customdata[0]}</b><br>" +
+                                    "Ano: %{customdata[2]}<br>" +
+                                    "Valor: %{customdata[3]}<br>" +
+                                    "Unidade de Medida: %{customdata[4]}<extra></extra>",
+                        customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
                     )
-                ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
-            ])
-        ])
+                    
+                    # Cria o gráfico de barras
+                    fig_bar = px.bar(
+                        df,
+                        x='CODG_ANO',
+                        y='VLR_VAR',
+                        color='DESC_UND_FED',
+                        labels={
+                            'DESC_UND_FED': 'Unidade Federativa',
+                            'VLR_VAR': 'Valor',
+                            'CODG_ANO': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>"
+                        }
+                    )
+                    
+                    # Atualiza o layout do gráfico de barras
+                    fig_bar.update_layout(
+                        showlegend=True,
+                        xaxis=dict(
+                            tickfont=dict(size=12, color='black'),
+                            tickangle=45,
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
+                            tickvals=sorted(df['CODG_ANO'].unique())
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, color='black')
+                        ),
+                        margin=dict(b=100)  # Margem inferior para os rótulos rotacionados
+                    )
+                    
+                    # Atualiza o hover do gráfico de barras
+                    fig_bar.update_traces(
+                        hovertemplate="<b>%{x}</b><br>" +
+                                    "Valor: %{y}<br>" +
+                                    "Unidade de Medida: %{customdata}<extra></extra>",
+                        customdata=df['DESC_UND_MED']
+                    )
+                    
+                    # Carrega o GeoJSON do Brasil
+                    with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+                        geojson = json.load(f)
+                    
+                    # Cria o mapa coroplético
+                    fig_map = px.choropleth(
+                        df,
+                        geojson=geojson,
+                        locations='DESC_UND_FED',
+                        featureidkey='properties.name',
+                        color='VLR_VAR',
+                        color_continuous_scale='Greens_r',
+                        scope="south america"
+                    )
+                    
+                    # Ajusta o layout do mapa
+                    fig_map.update_geos(
+                        visible=False,
+                        showcoastlines=True,
+                        coastlinecolor="Black",
+                        showland=True,
+                        landcolor="white",
+                        showframe=False,
+                        center=dict(lat=-12.9598, lon=-53.2729),
+                        projection=dict(
+                            type='mercator',
+                            scale=2.6
+                        )
+                    )
+                    
+                    # Atualiza o layout do mapa
+                    fig_map.update_layout(
+                        xaxis=dict(
+                            tickfont=dict(size=12, color='black'),
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
+                            tickvals=sorted(df['DESC_UND_FED'].unique())
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, color='black'),
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
+                            tickvals=sorted(df['DESC_UND_FED'].unique())
+                        ),
+                        coloraxis_colorbar=dict(
+                            title="",
+                            tickfont=dict(size=12, color='black')
+                        )
+                    )
+                    
+                    # Aplica o layout padrão
+                    layout = DEFAULT_LAYOUT.copy()
+                    layout.update({
+                        'xaxis_title': config['labels']['x'],
+                        'yaxis_title': config['labels']['y'],
+                        'xaxis': dict(
+                            showgrid=False,
+                            zeroline=False,
+                            tickfont=dict(size=12, color='black'),
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
+                            tickvals=sorted(df['CODG_ANO'].unique())
+                        ),
+                        'yaxis': dict(
+                            showgrid=False,
+                            zeroline=False,
+                            tickfont=dict(size=12, color='black')
+                        )
+                    })
+                    
+                    # Aplica os layouts
+                    fig_line.update_layout(layout)
+                    fig_bar.update_layout(layout)
+                    
+                    # Remove linhas de grade
+                    fig_line.update_xaxes(showgrid=False, zeroline=False)
+                    fig_bar.update_xaxes(showgrid=False, zeroline=False)
+                    
+                    # Destaca Goiás
+                    if 'DESC_UND_FED' in df.columns:
+                        for trace in fig_line.data:
+                            if hasattr(trace, 'name') and trace.name == 'Goiás':
+                                trace.line = dict(color='#229846', width=6)
+                                trace.name = '<b>Goiás</b>'
+                        for trace in fig_bar.data:
+                            if hasattr(trace, 'name') and trace.name == 'Goiás':
+                                trace.marker.color = '#229846'
+                                trace.marker.line.width = 6
+                                trace.name = '<b>Goiás</b>'
+                    
+                    return html.Div([
+                        html.Div(
+                            id={'type': 'graph-container', 'index': indicador_id},
+                            children=[
+                                dbc.Row([
+                                    # Coluna da esquerda com os gráficos
+                                    dbc.Col([
+                                        # Primeira linha com o gráfico de linha
+                                        dbc.Row([
+                                            dbc.Col([
+                                                dcc.Graph(figure=fig_line)
+                                            ], width=12)
+                                        ], className="mb-4"),
+                                        # Segunda linha com o gráfico de barras
+                                        dbc.Row([
+                                            dbc.Col([
+                                                dcc.Graph(figure=fig_bar)
+                                            ], width=12)
+                                        ], className="mb-4")
+                                    ], width=7),
+                                    # Coluna da direita com o mapa e dropdown
+                                    dbc.Col([
+                                        # Primeira linha com o dropdown
+                                        dbc.Row([
+                                            dbc.Col([
+                                                html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                                dcc.Dropdown(
+                                                    id={'type': 'year-dropdown', 'index': indicador_id},
+                                                    options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                                                    value=sorted(df['CODG_ANO'].unique())[-1],
+                                                    style={'width': '200px', 'margin': '10px'}
+                                                )
+                                            ], width=12)
+                                        ], className="mb-4"),
+                                        # Segunda linha com o mapa
+                                        dbc.Row([
+                                            dbc.Col([
+                                                dcc.Graph(
+                                                    id={'type': 'choropleth-map', 'index': indicador_id},
+                                                    figure=fig_map,
+                                                    style={'height': '800px'}
+                                                )
+                                            ], width=12)
+                                        ])
+                                    ], width=5)
+                                ])
+                            ]
+                        ),
+                        html.Div([
+                            html.H5("Dados Detalhados", className="mt-4 mb-3", style={'marginLeft': '20px'}),
+                            dag.AgGrid(
+                                rowData=df.sort_values(['DESC_UND_FED', 'CODG_ANO', 'DESC_VAR']).to_dict('records'),
+                                columnDefs=columnDefs,
+                                defaultColDef=defaultColDef,
+                                dashGridOptions={
+                                    "pagination": True,
+                                    "paginationPageSize": 10,
+                                    "rowHeight": "auto",
+                                    "domLayout": "autoHeight",
+                                    "suppressMovableColumns": True,
+                                    "animateRows": True,
+                                    "suppressColumnVirtualisation": True,
+                                    "autoSizeAllColumns": True,
+                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                                },
+                                style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
+                            )
+                        ], style={'width': '100%', 'marginTop': '20px'})
+                    ])
+                except Exception as e:
+                    print(f"Erro ao atualizar gráficos: {e}")
+                    raise PreventUpdate
+        
+        # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
+        return dag.AgGrid(
+            rowData=df.to_dict('records'),
+            columnDefs=columnDefs,
+            defaultColDef=defaultColDef,
+            dashGridOptions={
+                "pagination": True,
+                "paginationPageSize": 10,
+                "rowHeight": "auto",
+                "domLayout": "autoHeight",
+                "suppressMovableColumns": True,
+                "animateRows": True,
+                "suppressColumnVirtualisation": True,
+                "autoSizeAllColumns": True,
+                "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
+                "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+            },
+            style={"height": "100%", "width": "100%"},
+        )
     except Exception as e:
         print(f"Erro ao atualizar gráficos: {e}")
         raise PreventUpdate
