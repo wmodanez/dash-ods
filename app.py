@@ -928,12 +928,18 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                         # Primeira linha com o dropdown
                                         dbc.Row([
                                             dbc.Col([
-                                                html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                                html.Label("Selecione o Ano:", 
+                                                    style={
+                                                        'fontWeight': 'bold',
+                                                        'marginBottom': '5px',
+                                                        'display': 'block'
+                                                    }
+                                                ),
                                                 dcc.Dropdown(
                                                     id={'type': 'year-dropdown', 'index': indicador_id},
                                                     options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
                                                     value=sorted(df['CODG_ANO'].unique())[-1],
-                                                    style={'width': '200px', 'margin': '10px'}
+                                                    style={'width': '200px'}
                                                 )
                                             ], width=12)
                                         ], className="mb-4"),
@@ -1821,12 +1827,18 @@ def update_graphs(selected_var, dropdown_id):
                                         # Primeira linha com o dropdown
                                         dbc.Row([
                                             dbc.Col([
-                                                html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                                html.Label("Selecione o Ano:", 
+                                                    style={
+                                                        'fontWeight': 'bold',
+                                                        'marginBottom': '5px',
+                                                        'display': 'block'
+                                                    }
+                                                ),
                                                 dcc.Dropdown(
                                                     id={'type': 'year-dropdown', 'index': indicador_id},
                                                     options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
                                                     value=sorted(df['CODG_ANO'].unique())[-1],
-                                                    style={'width': '200px', 'margin': '10px'}
+                                                    style={'width': '200px'}
                                                 )
                                             ], width=12)
                                         ], className="mb-4"),
