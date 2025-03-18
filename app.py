@@ -1,4 +1,4 @@
-from dash import html, Dash, callback_context, ALL, no_update, dcc
+from dash import html, Dash, callback_context, ALL, no_update, dcc, MATCH
 from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
@@ -369,6 +369,9 @@ if meta_inicial:
                         # Filtra apenas as variáveis que existem no indicador
                         df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].isin(variaveis_indicador)]
                         
+                        # Obtém o valor inicial do dropdown
+                        valor_inicial = df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None
+
                         if not df_variavel_loaded.empty:
                             tab_content.append(
                                 html.Div([
@@ -384,11 +387,15 @@ if meta_inicial:
                                             {'label': desc, 'value': cod} 
                                             for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
                                         ],
-                                        value=df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None,
+                                        value=valor_inicial,
                                         style={'width': '70%'}
                                     )
                                 ], style={'padding': '20px'})
                             )
+
+                        # Cria a visualização com o valor inicial do dropdown
+                        grid = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
+                        tab_content.append(grid)
                     else:
                         # Se não tiver variáveis, mostra a descrição do indicador
                         tab_content = [
@@ -564,7 +571,7 @@ app.layout = dbc.Container([
 ], fluid=True)
 
 
-def create_visualization(df, indicador_id=None):
+def create_visualization(df, indicador_id=None, selected_var=None):
     """Cria uma visualização (gráfico ou tabela) com os dados do DataFrame"""
     if df is None or df.empty:
         return html.Div([
@@ -587,6 +594,25 @@ def create_visualization(df, indicador_id=None):
                 )
             ])
 
+        # Cria uma cópia do DataFrame para evitar modificações no original
+        df = df.copy()
+        
+        # Se o indicador tem variáveis, filtra pelo valor selecionado ou primeiro valor disponível
+        if 'CODG_VAR' in df.columns:
+            if selected_var:
+                df['CODG_VAR'] = df['CODG_VAR'].astype(str).str.strip()
+                selected_var = str(selected_var).strip()
+                df = df[df['CODG_VAR'] == selected_var]
+            else:
+                # Pega o primeiro valor disponível
+                primeiro_valor = df['CODG_VAR'].iloc[0]
+                df = df[df['CODG_VAR'] == primeiro_valor]
+
+        # Substitui os códigos das UFs pelos nomes completos
+        if 'CODG_UND_FED' in df.columns:
+            df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
+            df = df.dropna(subset=['DESC_UND_FED'])
+        
         # Garante que os dados estão ordenados por ano
         df = df.sort_values('CODG_ANO')
         
@@ -784,30 +810,35 @@ def create_visualization(df, indicador_id=None):
                                 trace.name = '<b>Goiás</b>'
                     
                     return html.Div([
-                        html.Div([
-                            html.Div([
-                                dcc.Graph(figure=fig_line),
-                                dcc.Graph(figure=fig_bar)
-                            ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
-                            html.Div([
-                                html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                                dcc.Dropdown(
-                                    id={'type': 'year-dropdown', 'index': indicador_id},
-                                    options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                                    value=sorted(df['CODG_ANO'].unique())[-1],
-                                    style={'width': '200px', 'margin': '10px'}
-                                ),
-                                dcc.Graph(
-                                    id={'type': 'choropleth-map', 'index': indicador_id},
-                                    figure=fig_map,
-                                    style={'height': '600px'}
-                                )
-                            ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
-                        ]),
+                        html.Div(
+                            id={'type': 'graph-container', 'index': indicador_id},
+                            children=[
+                                html.Div([
+                                    html.Div([
+                                        dcc.Graph(figure=fig_line),
+                                        dcc.Graph(figure=fig_bar)
+                                    ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
+                                    html.Div([
+                                        html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                                        dcc.Dropdown(
+                                            id={'type': 'year-dropdown', 'index': indicador_id},
+                                            options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                                            value=sorted(df['CODG_ANO'].unique())[-1],
+                                            style={'width': '200px', 'margin': '10px'}
+                                        ),
+                                        dcc.Graph(
+                                            id={'type': 'choropleth-map', 'index': indicador_id},
+                                            figure=fig_map,
+                                            style={'height': '600px'}
+                                        )
+                                    ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
+                                ])
+                            ]
+                        ),
                         html.Div([
                             html.H5("Dados Detalhados", className="mt-4 mb-3", style={'marginLeft': '20px'}),
                             dag.AgGrid(
-                                rowData=df.to_dict('records'),
+                                rowData=df.sort_values(['DESC_UND_FED', 'CODG_ANO', 'DESC_VAR']).to_dict('records'),
                                 columnDefs=columnDefs,
                                 defaultColDef=defaultColDef,
                                 dashGridOptions={
@@ -958,6 +989,9 @@ def update_card_content(*args):
                                         # Filtra apenas as variáveis que existem no indicador
                                         df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].isin(variaveis_indicador)]
                                         
+                                        # Obtém o valor inicial do dropdown
+                                        valor_inicial = df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None
+
                                         if not df_variavel_loaded.empty:
                                             tab_content.append(
                                                 html.Div([
@@ -973,11 +1007,15 @@ def update_card_content(*args):
                                                             {'label': desc, 'value': cod} 
                                                             for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
                                                         ],
-                                                        value=df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None,
+                                                        value=valor_inicial,
                                                         style={'width': '70%'}
                                                     )
                                                 ], style={'padding': '20px'})
                                             )
+
+                                        # Cria a visualização com o valor inicial do dropdown
+                                        grid = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
+                                        tab_content.append(grid)
                                     else:
                                         # Se não tiver variáveis, mostra a descrição do indicador
                                         tab_content = [
@@ -1115,6 +1153,9 @@ def update_card_content(*args):
                                 # Filtra apenas as variáveis que existem no indicador
                                 df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].isin(variaveis_indicador)]
                                 
+                                # Obtém o valor inicial do dropdown
+                                valor_inicial = df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None
+
                                 if not df_variavel_loaded.empty:
                                     tab_content.append(
                                         html.Div([
@@ -1130,19 +1171,23 @@ def update_card_content(*args):
                                                     {'label': desc, 'value': cod} 
                                                     for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
                                                 ],
-                                                value=df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None,
+                                                value=valor_inicial,
                                                 style={'width': '70%'}
                                             )
                                         ], style={'padding': '20px'})
                                     )
+
+                                # Cria a visualização com o valor inicial do dropdown
+                                grid = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
+                                tab_content.append(grid)
                             else:
                                 # Se não tiver variáveis, mostra a descrição do indicador
                                 tab_content = [
                                     html.P(row['DESC_INDICADOR'], className="text-justify p-3")
                                 ]
-                            
-                            grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                            tab_content.append(grid)
+                                
+                                grid = create_visualization(df_dados, row['ID_INDICADOR'])
+                                tab_content.append(grid)
                         except Exception as e:
                             print(f"Erro ao processar dropdown de variáveis: {e}")
                             tab_content = [
@@ -1150,14 +1195,14 @@ def update_card_content(*args):
                                 grid
                             ]
 
-                    tabs_indicadores.append(
-                        dbc.Tab(
-                            tab_content,
-                            label=row['ID_INDICADOR'],
-                            tab_id=f"tab-{row['ID_INDICADOR']}",
-                            id={'type': 'tab-indicador', 'index': row['ID_INDICADOR']}
+                        tabs_indicadores.append(
+                            dbc.Tab(
+                                tab_content,
+                                label=row['ID_INDICADOR'],
+                                tab_id=f"tab-{row['ID_INDICADOR']}",
+                                id={'type': 'tab-indicador', 'index': row['ID_INDICADOR']}
+                            )
                         )
-                    )
 
                 indicadores_section = [
                     html.H5("Indicadores", className="mt-4 mb-3"),
@@ -1344,6 +1389,172 @@ def update_map(selected_years, current_figures):
         
         return [fig_map]
     except Exception as e:
+        raise PreventUpdate
+
+
+# Callback para atualizar os gráficos quando a variável é alterada
+@app.callback(
+    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
+    Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+    State({'type': 'var-dropdown', 'index': MATCH}, 'id'),
+    prevent_initial_call=True
+)
+def update_graphs(selected_var, dropdown_id):
+    if not selected_var:
+        raise PreventUpdate
+    
+    try:
+        # Extrai o ID do indicador
+        indicador_id = dropdown_id['index']
+        
+        # Carrega os dados do indicador
+        df = load_dados_indicador_cache(indicador_id)
+        if df is None or df.empty:
+            print("DataFrame vazio ou None após carregamento")
+            raise PreventUpdate
+        
+        # Cria uma cópia do DataFrame para evitar modificações no original
+        df = df.copy()
+        
+        # Filtra por variável
+        if 'CODG_VAR' in df.columns:
+            df['CODG_VAR'] = df['CODG_VAR'].astype(str).str.strip()
+            selected_var = str(selected_var).strip()
+            df = df[df['CODG_VAR'] == selected_var]
+            
+            if df.empty:
+                return html.Div([
+                    dbc.Alert(
+                        "Nenhum dado disponível para a variável selecionada.",
+                        color="warning",
+                        className="text-center p-3"
+                    )
+                ])
+        
+        # Substitui os códigos das UFs pelos nomes completos
+        if 'CODG_UND_FED' in df.columns:
+            df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(UF_NAMES)
+            df = df.dropna(subset=['DESC_UND_FED'])
+        
+        # Configura o gráfico de linha
+        config = {
+            'x': 'CODG_ANO',
+            'y': 'VLR_VAR',
+            'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
+        }
+        
+        # Tratamento para dados anuais
+        if 'DESC_UND_FED' in df.columns:
+            df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).first()
+        else:
+            df = df.groupby('CODG_ANO', as_index=False).first()
+        
+        # Atualiza os labels dos eixos
+        config['labels'] = {
+            'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
+            'y': "",
+            'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
+        }
+        
+        # Cria os gráficos
+        fig_line = px.line(df, **config)
+        fig_line.update_traces(line_shape='spline')
+        fig_bar = px.bar(df, **config)
+        
+        # Carrega o GeoJSON do Brasil
+        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+            geojson = json.load(f)
+        
+        # Cria o mapa coroplético
+        fig_map = px.choropleth(
+            df,
+            geojson=geojson,
+            locations='DESC_UND_FED',
+            featureidkey='properties.name',
+            color='VLR_VAR',
+            color_continuous_scale='Greens_r',
+            scope="south america"
+        )
+        
+        # Ajusta o layout do mapa
+        fig_map.update_geos(
+            visible=False,
+            showcoastlines=True,
+            coastlinecolor="Black",
+            showland=True,
+            landcolor="white",
+            showframe=False,
+            center=dict(lat=-12.9598, lon=-53.2729),
+            projection=dict(
+                type='mercator',
+                scale=2.6
+            )
+        )
+        
+        # Aplica o layout padrão
+        layout = DEFAULT_LAYOUT.copy()
+        layout.update({
+            'xaxis_title': config['labels']['x'],
+            'yaxis_title': config['labels']['y'],
+            'xaxis': dict(
+                showgrid=False,
+                zeroline=False,
+                tickfont=dict(size=12, color='black'),
+                ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
+                tickvals=sorted(df['CODG_ANO'].unique())
+            ),
+            'yaxis': dict(
+                showgrid=False,
+                zeroline=False,
+                tickfont=dict(size=12, color='black')
+            )
+        })
+        
+        # Aplica os layouts
+        fig_line.update_layout(layout)
+        fig_bar.update_layout(layout)
+        
+        # Remove linhas de grade
+        fig_line.update_xaxes(showgrid=False, zeroline=False)
+        fig_line.update_yaxes(showgrid=False, zeroline=False)
+        fig_bar.update_xaxes(showgrid=False, zeroline=False)
+        fig_bar.update_yaxes(showgrid=False, zeroline=False)
+        
+        # Destaca Goiás
+        if 'DESC_UND_FED' in df.columns:
+            for trace in fig_line.data:
+                if hasattr(trace, 'name') and trace.name == 'Goiás':
+                    trace.line = dict(color='#229846', width=6)
+                    trace.name = '<b>Goiás</b>'
+            for trace in fig_bar.data:
+                if hasattr(trace, 'name') and trace.name == 'Goiás':
+                    trace.marker.color = '#229846'
+                    trace.name = '<b>Goiás</b>'
+        
+        return html.Div([
+            html.Div([
+                html.Div([
+                    dcc.Graph(figure=fig_line),
+                    dcc.Graph(figure=fig_bar)
+                ], style={'width': '60%', 'display': 'inline-block', 'vertical-align': 'top'}),
+                html.Div([
+                    html.Label("Selecione o Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
+                    dcc.Dropdown(
+                        id={'type': 'year-dropdown', 'index': indicador_id},
+                        options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                        value=sorted(df['CODG_ANO'].unique())[-1],
+                        style={'width': '200px', 'margin': '10px'}
+                    ),
+                    dcc.Graph(
+                        id={'type': 'choropleth-map', 'index': indicador_id},
+                        figure=fig_map,
+                        style={'height': '600px'}
+                    )
+                ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
+            ])
+        ])
+    except Exception as e:
+        print(f"Erro ao atualizar gráficos: {e}")
         raise PreventUpdate
 
 
