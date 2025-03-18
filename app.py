@@ -787,6 +787,24 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         )
                     )
                     
+                    # Atualiza o layout do mapa
+                    fig_map.update_layout(
+                        xaxis=dict(
+                            tickfont=dict(size=12, color='black'),
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
+                            tickvals=sorted(df['DESC_UND_FED'].unique())
+                        ),
+                        yaxis=dict(
+                            tickfont=dict(size=12, color='black'),
+                            ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
+                            tickvals=sorted(df['DESC_UND_FED'].unique())
+                        ),
+                        coloraxis_colorbar=dict(
+                            title="",
+                            tickfont=dict(size=12, color='black')
+                        )
+                    )
+                    
                     # Aplica o layout padrão
                     layout = DEFAULT_LAYOUT.copy()
                     layout.update({
@@ -1400,21 +1418,6 @@ def update_map(selected_years, current_figures):
                 "Valor: %{z}<extra></extra>"
             )
         
-        # Ajusta o layout do mapa
-        fig_map.update_geos(
-            visible=False,
-            showcoastlines=True,
-            coastlinecolor="Black",
-            showland=True,
-            landcolor="white",
-            showframe=False,
-            center=dict(lat=-12.9598, lon=-53.2729),
-            projection=dict(
-                type='mercator',
-                scale=2.6
-            )
-        )
-        
         # Atualiza o layout do mapa
         fig_map.update_layout(
             xaxis=dict(
@@ -1534,6 +1537,24 @@ def update_graphs(selected_var, dropdown_id):
             projection=dict(
                 type='mercator',
                 scale=2.6
+            )
+        )
+        
+        # Atualiza o layout do mapa
+        fig_map.update_layout(
+            xaxis=dict(
+                tickfont=dict(size=12, color='black'),
+                ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
+                tickvals=sorted(df['DESC_UND_FED'].unique())
+            ),
+            yaxis=dict(
+                tickfont=dict(size=12, color='black'),
+                ticktext=[f"<b>{x}</b>" for x in sorted(df['DESC_UND_FED'].unique())],
+                tickvals=sorted(df['DESC_UND_FED'].unique())
+            ),
+            coloraxis_colorbar=dict(
+                title="",
+                tickfont=dict(size=12, color='black')
             )
         )
         
