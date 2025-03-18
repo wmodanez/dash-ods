@@ -1412,7 +1412,7 @@ def update_map(selected_years, current_figures):
             locations='DESC_UND_FED',
             featureidkey='properties.name',
             color='Valor',
-            color_continuous_scale='Viridis',
+            color_continuous_scale='greens_r',
             scope="south america"
         )
         
