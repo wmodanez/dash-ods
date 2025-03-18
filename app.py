@@ -262,12 +262,12 @@ def load_unidade_medida():
 
 
 @lru_cache(maxsize=1)
-def load_filtro():
+def load_variavel():
     try:
         # Tenta ler o arquivo com diferentes configurações
         try:
-            df_filtro = pd.read_csv(
-                'db/filtro.csv',
+            df_variavel = pd.read_csv(
+                'db/variavel.csv',
                 low_memory=False,
                 encoding='utf-8',
                 dtype=str,
@@ -275,8 +275,8 @@ def load_filtro():
             )
         except:
             # Se falhar, tenta ler com vírgula como separador
-            df_filtro = pd.read_csv(
-                'db/filtro.csv',
+            df_variavel = pd.read_csv(
+                'db/variavel.csv',
                 low_memory=False,
                 encoding='utf-8',
                 dtype=str,
@@ -284,23 +284,23 @@ def load_filtro():
             )
         
         # Verifica se as colunas necessárias existem
-        if len(df_filtro.columns) == 1 and ',' in df_filtro.columns[0]:
+        if len(df_variavel.columns) == 1 and ',' in df_variavel.columns[0]:
             # Se as colunas estiverem juntas, separa-as
-            df_filtro = pd.DataFrame([x.split(',') for x in df_filtro[df_filtro.columns[0]]])
+            df_variavel = pd.DataFrame([x.split(',') for x in df_variavel[df_variavel.columns[0]]])
             # Pega apenas as colunas necessárias (CODG_VAR e DESC_VAR)
-            if len(df_filtro.columns) >= 2:
-                df_filtro = df_filtro.iloc[:, [0, 1]]
-                df_filtro.columns = ['CODG_VAR', 'DESC_VAR']
+            if len(df_variavel.columns) >= 2:
+                df_variavel = df_variavel.iloc[:, [0, 1]]
+                df_variavel.columns = ['CODG_VAR', 'DESC_VAR']
         
         # Garante que as colunas estejam presentes e com os nomes corretos
-        if 'CODG_VAR' not in df_filtro.columns or 'DESC_VAR' not in df_filtro.columns:
+        if 'CODG_VAR' not in df_variavel.columns or 'DESC_VAR' not in df_variavel.columns:
             return pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
         
         # Remove espaços extras e aspas das colunas
-        df_filtro['CODG_VAR'] = df_filtro['CODG_VAR'].str.strip().str.strip('"')
-        df_filtro['DESC_VAR'] = df_filtro['DESC_VAR'].str.strip().str.strip('"')
+        df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].str.strip().str.strip('"')
+        df_variavel['DESC_VAR'] = df_variavel['DESC_VAR'].str.strip().str.strip('"')
         
-        return df_filtro
+        return df_variavel
     except Exception as e:
         return pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
 
@@ -310,7 +310,7 @@ df = load_objetivos()
 df_metas = load_metas()
 df_indicadores = load_indicadores()
 df_unidade_medida = load_unidade_medida()
-df_filtro = load_filtro()
+df_variavel = load_variavel()
 
 # Define o conteúdo inicial do card
 if not df.empty:
@@ -350,49 +350,53 @@ if meta_inicial:
         tabs_indicadores = []
         for _, row in indicadores_meta_inicial.iterrows():
             df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
-            tab_content = [
-                html.P(row['DESC_INDICADOR'], className="text-justify p-3")
-            ]
+            tab_content = []
 
             if df_dados is not None and not df_dados.empty:
                 try:
-                    # Adiciona o dropdown de variáveis se o indicador tiver VARIAVEIS = 1
-                    tab_content = [
-                        html.P(row['DESC_INDICADOR'], className="text-justify p-3")
-                    ]
-                    
                     # Verifica se o indicador tem VARIAVEIS = 1
                     indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
                     if not indicador_info.empty and indicador_info['VARIAVEIS'].iloc[0] == '1':
-                        # Carrega as variáveis do arquivo filtro.csv
-                        df_filtro_loaded = load_filtro()
+                        # Inicializa tab_content vazio para indicadores com variáveis
+                        tab_content = []
+                        
+                        # Carrega as variáveis do arquivo variavel.csv
+                        df_variavel_loaded = load_variavel()
                         
                         # Obtém as variáveis únicas do indicador
                         variaveis_indicador = df_dados['CODG_VAR'].unique() if 'CODG_VAR' in df_dados.columns else []
                         
                         # Filtra apenas as variáveis que existem no indicador
-                        df_filtro_loaded = df_filtro_loaded[df_filtro_loaded['CODG_VAR'].isin(variaveis_indicador)]
+                        df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].isin(variaveis_indicador)]
                         
-                        if not df_filtro_loaded.empty:
+                        if not df_variavel_loaded.empty:
                             tab_content.append(
-                                dbc.Row([
-                                    dbc.Col([
-                                        html.Label("Selecione a Variável:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                                        dcc.Dropdown(
-                                            id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
-                                            options=[
-                                                {'label': desc, 'value': cod} 
-                                                for cod, desc in zip(df_filtro_loaded['CODG_VAR'], df_filtro_loaded['DESC_VAR'])
-                                            ],
-                                            value=df_filtro_loaded['CODG_VAR'].iloc[0] if not df_filtro_loaded.empty else None,
-                                            style={'width': '70%', 'marginBottom': '20px'}
-                                        )
-                                    ], width=12)
-                                ])
+                                html.Div([
+                                    html.Label("Selecione uma Variável:", 
+                                        style={
+                                            'fontWeight': 'bold',
+                                            'display': 'block',
+                                            'marginBottom': '5px'
+                                        }),
+                                    dcc.Dropdown(
+                                        id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
+                                        options=[
+                                            {'label': desc, 'value': cod} 
+                                            for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
+                                        ],
+                                        value=df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None,
+                                        style={'width': '70%'}
+                                    )
+                                ], style={'padding': '20px'})
                             )
-                        
-                        grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                        tab_content.append(grid)
+                    else:
+                        # Se não tiver variáveis, mostra a descrição do indicador
+                        tab_content = [
+                            html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                        ]
+                    
+                    grid = create_visualization(df_dados, row['ID_INDICADOR'])
+                    tab_content.append(grid)
                 except Exception as e:
                     print(f"Erro ao processar dropdown de variáveis: {e}")
                     tab_content = [
@@ -605,10 +609,10 @@ def create_visualization(df, indicador_id=None):
             df = df.dropna(subset=['DESC_UND_FED'])
         
         # Adiciona as descrições da variável e unidade de medida
-        if 'CODG_VAR' in df.columns and not df_filtro.empty:
+        if 'CODG_VAR' in df.columns and not df_variavel.empty:
             df['CODG_VAR'] = df['CODG_VAR'].astype(str)
-            df_filtro['CODG_VAR'] = df_filtro['CODG_VAR'].astype(str)
-            df = df.merge(df_filtro[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
+            df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].astype(str)
+            df = df.merge(df_variavel[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
             df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
         
         if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
@@ -801,7 +805,7 @@ def create_visualization(df, indicador_id=None):
                             ], style={'width': '40%', 'display': 'inline-block', 'vertical-align': 'top', 'paddingLeft': '20px'})
                         ]),
                         html.Div([
-                            html.H5("Dados Detalhados", className="mt-4 mb-3"),
+                            html.H5("Dados Detalhados", className="mt-4 mb-3", style={'marginLeft': '20px'}),
                             dag.AgGrid(
                                 rowData=df.to_dict('records'),
                                 columnDefs=columnDefs,
@@ -814,7 +818,7 @@ def create_visualization(df, indicador_id=None):
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
                                 },
-                                style={"height": "100%", "width": "100%"},
+                                style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
                             )
                         ], style={'width': '100%', 'marginTop': '20px'})
                     ])
@@ -935,46 +939,50 @@ def update_card_content(*args):
                         tabs_indicadores = []
                         for _, row in indicadores_meta.iterrows():
                             df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
-                            tab_content = [
-                                html.P(row['DESC_INDICADOR'], className="text-justify p-3")
-                            ]
+                            tab_content = []
 
                             if df_dados is not None and not df_dados.empty:
                                 try:
-                                    # Adiciona o dropdown de variáveis se o indicador tiver VARIAVEIS = 1
-                                    tab_content = [
-                                        html.P(row['DESC_INDICADOR'], className="text-justify p-3")
-                                    ]
-                                    
                                     # Verifica se o indicador tem VARIAVEIS = 1
                                     indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
                                     if not indicador_info.empty and indicador_info['VARIAVEIS'].iloc[0] == '1':
-                                        # Carrega as variáveis do arquivo filtro.csv
-                                        df_filtro_loaded = load_filtro()
+                                        # Inicializa tab_content vazio para indicadores com variáveis
+                                        tab_content = []
+                                        
+                                        # Carrega as variáveis do arquivo variavel.csv
+                                        df_variavel_loaded = load_variavel()
                                         
                                         # Obtém as variáveis únicas do indicador
                                         variaveis_indicador = df_dados['CODG_VAR'].unique() if 'CODG_VAR' in df_dados.columns else []
                                         
                                         # Filtra apenas as variáveis que existem no indicador
-                                        df_filtro_loaded = df_filtro_loaded[df_filtro_loaded['CODG_VAR'].isin(variaveis_indicador)]
+                                        df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].isin(variaveis_indicador)]
                                         
-                                        if not df_filtro_loaded.empty:
+                                        if not df_variavel_loaded.empty:
                                             tab_content.append(
-                                                dbc.Row([
-                                                    dbc.Col([
-                                                        html.Label("Selecione a Variável:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                                                        dcc.Dropdown(
-                                                            id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
-                                                            options=[
-                                                                {'label': desc, 'value': cod} 
-                                                                for cod, desc in zip(df_filtro_loaded['CODG_VAR'], df_filtro_loaded['DESC_VAR'])
-                                                            ],
-                                                            value=df_filtro_loaded['CODG_VAR'].iloc[0] if not df_filtro_loaded.empty else None,
-                                                            style={'width': '70%', 'marginBottom': '20px'}
-                                                        )
-                                                    ], width=12)
-                                                ])
+                                                html.Div([
+                                                    html.Label("Selecione uma Variável:", 
+                                                        style={
+                                                            'fontWeight': 'bold',
+                                                            'display': 'block',
+                                                            'marginBottom': '5px'
+                                                        }),
+                                                    dcc.Dropdown(
+                                                        id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
+                                                        options=[
+                                                            {'label': desc, 'value': cod} 
+                                                            for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
+                                                        ],
+                                                        value=df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None,
+                                                        style={'width': '70%'}
+                                                    )
+                                                ], style={'padding': '20px'})
                                             )
+                                    else:
+                                        # Se não tiver variáveis, mostra a descrição do indicador
+                                        tab_content = [
+                                            html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                                        ]
                                     
                                     grid = create_visualization(df_dados, row['ID_INDICADOR'])
                                     tab_content.append(grid)
@@ -1088,46 +1096,50 @@ def update_card_content(*args):
                 tabs_indicadores = []
                 for _, row in indicadores_meta.iterrows():
                     df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
-                    tab_content = [
-                        html.P(row['DESC_INDICADOR'], className="text-justify p-3")
-                    ]
+                    tab_content = []
 
                     if df_dados is not None and not df_dados.empty:
                         try:
-                            # Adiciona o dropdown de variáveis se o indicador tiver VARIAVEIS = 1
-                            tab_content = [
-                                html.P(row['DESC_INDICADOR'], className="text-justify p-3")
-                            ]
-                            
                             # Verifica se o indicador tem VARIAVEIS = 1
                             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
                             if not indicador_info.empty and indicador_info['VARIAVEIS'].iloc[0] == '1':
-                                # Carrega as variáveis do arquivo filtro.csv
-                                df_filtro_loaded = load_filtro()
+                                # Inicializa tab_content vazio para indicadores com variáveis
+                                tab_content = []
+                                
+                                # Carrega as variáveis do arquivo variavel.csv
+                                df_variavel_loaded = load_variavel()
                                 
                                 # Obtém as variáveis únicas do indicador
                                 variaveis_indicador = df_dados['CODG_VAR'].unique() if 'CODG_VAR' in df_dados.columns else []
                                 
                                 # Filtra apenas as variáveis que existem no indicador
-                                df_filtro_loaded = df_filtro_loaded[df_filtro_loaded['CODG_VAR'].isin(variaveis_indicador)]
+                                df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].isin(variaveis_indicador)]
                                 
-                                if not df_filtro_loaded.empty:
+                                if not df_variavel_loaded.empty:
                                     tab_content.append(
-                                        dbc.Row([
-                                            dbc.Col([
-                                                html.Label("Selecione a Variável:", style={'fontWeight': 'bold', 'marginBottom': '5px'}),
-                                                dcc.Dropdown(
-                                                    id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
-                                                    options=[
-                                                        {'label': desc, 'value': cod} 
-                                                        for cod, desc in zip(df_filtro_loaded['CODG_VAR'], df_filtro_loaded['DESC_VAR'])
-                                                    ],
-                                                    value=df_filtro_loaded['CODG_VAR'].iloc[0] if not df_filtro_loaded.empty else None,
-                                                    style={'width': '70%', 'marginBottom': '20px'}
-                                                )
-                                            ], width=12)
-                                        ])
+                                        html.Div([
+                                            html.Label("Selecione uma Variável:", 
+                                                style={
+                                                    'fontWeight': 'bold',
+                                                    'display': 'block',
+                                                    'marginBottom': '5px'
+                                                }),
+                                            dcc.Dropdown(
+                                                id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
+                                                options=[
+                                                    {'label': desc, 'value': cod} 
+                                                    for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
+                                                ],
+                                                value=df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None,
+                                                style={'width': '70%'}
+                                            )
+                                        ], style={'padding': '20px'})
                                     )
+                            else:
+                                # Se não tiver variáveis, mostra a descrição do indicador
+                                tab_content = [
+                                    html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                                ]
                             
                             grid = create_visualization(df_dados, row['ID_INDICADOR'])
                             tab_content.append(grid)
