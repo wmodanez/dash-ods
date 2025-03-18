@@ -754,7 +754,15 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     
                     # Cria os gráficos
                     fig_line = px.line(df, **config)
-                    fig_line.update_traces(line_shape='spline')
+                    fig_line.update_traces(
+                        line_shape='spline',
+                        mode='lines+markers',
+                        marker=dict(
+                            size=14,
+                            symbol='circle',
+                            line=dict(width=2, color='white')
+                        )
+                    )
                     fig_bar = px.bar(df, **config)
                     
                     # Carrega o GeoJSON do Brasil
@@ -1507,7 +1515,15 @@ def update_graphs(selected_var, dropdown_id):
         
         # Cria os gráficos
         fig_line = px.line(df, **config)
-        fig_line.update_traces(line_shape='spline')
+        fig_line.update_traces(
+            line_shape='spline',
+            mode='lines+markers',
+            marker=dict(
+                size=14,
+                symbol='circle',
+                line=dict(width=2, color='white')
+            )
+        )
         fig_bar = px.bar(df, **config)
         
         # Carrega o GeoJSON do Brasil
