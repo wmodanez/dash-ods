@@ -1530,10 +1530,6 @@ def update_map(selected_years, current_figures):
         if 'CODG_UND_FED' in df_ano.columns:
             df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(UF_NAMES)
         
-        
-        # Renomeia a coluna VLR_VAR para Valor
-        df_ano = df_ano.rename(columns={'VLR_VAR': 'Valor'})
-        
         # Carrega o GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
             geojson = json.load(f)
@@ -1544,42 +1540,46 @@ def update_map(selected_years, current_figures):
             geojson=geojson,
             locations='DESC_UND_FED',
             featureidkey='properties.name',
-            color='Valor',
-            color_continuous_scale='greens_r',
+            color='VLR_VAR',
+            color_continuous_scale='Greens_r',
             scope="south america"
+        )
+        
+        # Ajusta o layout do mapa
+        fig_map.update_geos(
+            visible=False,
+            showcoastlines=True,
+            coastlinecolor="White",
+            showland=True,
+            landcolor="white",
+            showframe=False,
+            center=dict(lat=-12.9598, lon=-53.2729),
+            projection=dict(
+                type='mercator',
+                scale=2.6
+            )
         )
         
         # Adiciona a unidade de medida ao hover do mapa
         if 'DESC_UND_MED' in df_ano.columns:
             unidade_medida = df_ano['DESC_UND_MED'].dropna().iloc[0] if not df_ano['DESC_UND_MED'].dropna().empty else ''
-            if unidade_medida:
-                fig_map.update_traces(
-                    hovertemplate="<b>%{location}</b><br>" +
-                    f"Valor: %{{z}} {unidade_medida}<extra></extra>"
-                )
-            else:
-                fig_map.update_traces(
-                    hovertemplate="<b>%{location}</b><br>" +
-                    "Valor: %{z}<extra></extra>"
-                )
+            fig_map.update_traces(
+                marker_line_color='white',
+                marker_line_width=1,
+                hovertemplate="<b>%{location}</b><br>" +
+                            f"Valor: %{{z}}" + (f" {unidade_medida}" if unidade_medida else "") + "<extra></extra>"
+            )
         else:
             fig_map.update_traces(
+                marker_line_color='white',
+                marker_line_width=1,
                 hovertemplate="<b>%{location}</b><br>" +
-                "Valor: %{z}<extra></extra>"
+                            "Valor: %{z}<extra></extra>"
             )
         
         # Atualiza o layout do mapa
         fig_map.update_layout(
-            xaxis=dict(
-                tickfont=dict(size=12, color='black'),
-                ticktext=[f"<b>{x}</b>" for x in sorted(df_ano['DESC_UND_FED'].unique())],
-                tickvals=sorted(df_ano['DESC_UND_FED'].unique())
-            ),
-            yaxis=dict(
-                tickfont=dict(size=12, color='black'),
-                ticktext=[f"<b>{x}</b>" for x in sorted(df_ano['DESC_UND_FED'].unique())],
-                tickvals=sorted(df_ano['DESC_UND_FED'].unique())
-            ),
+            margin=dict(r=0, l=0, t=0, b=0),
             coloraxis_colorbar=dict(
                 title="",
                 tickfont=dict(size=12, color='black')
