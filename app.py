@@ -735,11 +735,14 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                             )
                         ])
                     
+                    # ==============================================
+                    # GRÁFICO DE LINHA - Evolução temporal dos valores
+                    # ==============================================
                     # Configura o gráfico de linha
                     config = {
-                        'x': 'CODG_ANO',
+                        'x': 'CODG_ANO',  # Voltando para CODG_ANO no eixo X
                         'y': 'VLR_VAR',
-                        'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
+                        'color': 'DESC_UND_FED'  # Voltando para DESC_UND_FED para colorir por estado
                     }
                     
                     # Tratamento para dados anuais
@@ -758,28 +761,48 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     
                     # Atualiza os labels dos eixos
                     config['labels'] = {
-                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
+                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",  # Voltando para Ano
                         'y': "",
-                        'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
+                        'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>"  # Voltando para UF
                     }
                     
                     # Cria os gráficos
                     fig_line = px.line(df, **config)
-                    fig_line.update_traces(
-                        line_shape='spline',
-                        mode='lines+markers',
-                        marker=dict(
-                            size=14,
-                            symbol='circle',
-                            line=dict(width=2, color='white')
-                        ),
-                        hovertemplate="<b>%{customdata[0]}</b><br>" +
-                                    "Ano: %{customdata[2]}<br>" +
-                                    "Valor: %{customdata[3]}<br>" +
-                                    "Unidade de Medida: %{customdata[4]}<extra></extra>",
-                        customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
+                    
+                    # Cria um dicionário para mapear cada estado com sua unidade de medida
+                    estado_unidade = df.groupby('DESC_UND_FED')['DESC_UND_MED'].first().to_dict()
+                    
+                    # Atualiza cada traço individualmente para garantir que o customdata corresponda ao estado correto
+                    for trace in fig_line.data:
+                        estado = trace.name
+                        trace.update(
+                            line_shape='spline',
+                            mode='lines+markers',
+                            marker=dict(
+                                size=14,
+                                symbol='circle',
+                                line=dict(width=2, color='white')
+                            ),
+                            hovertemplate="<b>" + estado + "</b><br>" +
+                                        "Ano: %{x}<br>" +
+                                        "Valor: %{y}<br>" +
+                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
+                        )
+                        if estado == 'Goiás':
+                            trace.line = dict(color='#229846', width=6)
+                            trace.name = '<b>Goiás</b>'
+                    
+                    # Atualiza o layout do gráfico de linha
+                    fig_line.update_layout(
+                        xaxis=dict(
+                            tickangle=45,  # Rotaciona os rótulos para melhor visualização
+                            tickfont=dict(size=12)
+                        )
                     )
                     
+                    # ==============================================
+                    # GRÁFICO DE BARRAS - Comparação entre UFs
+                    # ==============================================
                     # Cria o gráfico de barras
                     fig_bar = px.bar(
                         df,
@@ -816,6 +839,9 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         customdata=df['DESC_UND_MED']
                     )
                     
+                    # ==============================================
+                    # MAPA COROPLÉTICO - Visualização geográfica
+                    # ==============================================
                     # Carrega o GeoJSON do Brasil
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
                         geojson = json.load(f)
@@ -852,6 +878,9 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         marker_line_width=1
                     )
                     
+                    # ==============================================
+                    # TABELA DE DADOS - Visualização detalhada
+                    # ==============================================
                     # Aplica o layout padrão
                     layout = DEFAULT_LAYOUT.copy()
                     layout.update({
@@ -1622,11 +1651,14 @@ def update_graphs(selected_var, dropdown_id):
                             )
                         ])
                     
+                    # ==============================================
+                    # GRÁFICO DE LINHA - Evolução temporal dos valores
+                    # ==============================================
                     # Configura o gráfico de linha
                     config = {
-                        'x': 'CODG_ANO',
+                        'x': 'CODG_ANO',  # Voltando para CODG_ANO no eixo X
                         'y': 'VLR_VAR',
-                        'color': 'DESC_UND_FED' if 'DESC_UND_FED' in df.columns else None
+                        'color': 'DESC_UND_FED'  # Voltando para DESC_UND_FED para colorir por estado
                     }
                     
                     # Tratamento para dados anuais
@@ -1645,28 +1677,48 @@ def update_graphs(selected_var, dropdown_id):
                     
                     # Atualiza os labels dos eixos
                     config['labels'] = {
-                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",
+                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",  # Voltando para Ano
                         'y': "",
-                        'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>" if 'DESC_UND_FED' in df.columns else None
+                        'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>"  # Voltando para UF
                     }
                     
                     # Cria os gráficos
                     fig_line = px.line(df, **config)
-                    fig_line.update_traces(
-                        line_shape='spline',
-                        mode='lines+markers',
-                        marker=dict(
-                            size=14,
-                            symbol='circle',
-                            line=dict(width=2, color='white')
-                        ),
-                        hovertemplate="<b>%{customdata[0]}</b><br>" +
-                                    "Ano: %{customdata[2]}<br>" +
-                                    "Valor: %{customdata[3]}<br>" +
-                                    "Unidade de Medida: %{customdata[4]}<extra></extra>",
-                        customdata=df[['DESC_UND_FED', 'DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED']].values
+                    
+                    # Cria um dicionário para mapear cada estado com sua unidade de medida
+                    estado_unidade = df.groupby('DESC_UND_FED')['DESC_UND_MED'].first().to_dict()
+                    
+                    # Atualiza cada traço individualmente para garantir que o customdata corresponda ao estado correto
+                    for trace in fig_line.data:
+                        estado = trace.name
+                        trace.update(
+                            line_shape='spline',
+                            mode='lines+markers',
+                            marker=dict(
+                                size=14,
+                                symbol='circle',
+                                line=dict(width=2, color='white')
+                            ),
+                            hovertemplate="<b>" + estado + "</b><br>" +
+                                        "Ano: %{x}<br>" +
+                                        "Valor: %{y}<br>" +
+                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
+                        )
+                        if estado == 'Goiás':
+                            trace.line = dict(color='#229846', width=6)
+                            trace.name = '<b>Goiás</b>'
+                    
+                    # Atualiza o layout do gráfico de linha
+                    fig_line.update_layout(
+                        xaxis=dict(
+                            tickangle=45,  # Rotaciona os rótulos para melhor visualização
+                            tickfont=dict(size=12)
+                        )
                     )
                     
+                    # ==============================================
+                    # GRÁFICO DE BARRAS - Comparação entre UFs
+                    # ==============================================
                     # Cria o gráfico de barras
                     fig_bar = px.bar(
                         df,
@@ -1703,6 +1755,9 @@ def update_graphs(selected_var, dropdown_id):
                         customdata=df['DESC_UND_MED']
                     )
                     
+                    # ==============================================
+                    # MAPA COROPLÉTICO - Visualização geográfica
+                    # ==============================================
                     # Carrega o GeoJSON do Brasil
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
                         geojson = json.load(f)
@@ -1739,6 +1794,9 @@ def update_graphs(selected_var, dropdown_id):
                         marker_line_width=1
                     )
                     
+                    # ==============================================
+                    # TABELA DE DADOS - Visualização detalhada
+                    # ==============================================
                     # Aplica o layout padrão
                     layout = DEFAULT_LAYOUT.copy()
                     layout.update({
