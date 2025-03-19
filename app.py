@@ -761,7 +761,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     
                     # Atualiza os labels dos eixos
                     config['labels'] = {
-                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",  # Voltando para Ano
+                        'x': "",  # Removendo o label do eixo X
                         'y': "",
                         'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>"  # Voltando para UF
                     }
@@ -812,7 +812,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         labels={
                             'DESC_UND_FED': 'Unidade Federativa',
                             'VLR_VAR': 'Valor',
-                            'CODG_ANO': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>"
+                            'CODG_ANO': ""  # Removendo o label do eixo X
                         }
                     )
                     
@@ -886,6 +886,15 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         hovertemplate="<b>%{location}</b><br>" +
                                     "Valor: %{z}<br>" +
                                     "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>"
+                    )
+                    
+                    # Atualiza o layout do mapa
+                    fig_map.update_layout(
+                        margin=dict(r=0, l=0, t=0, b=0),
+                        coloraxis_colorbar=dict(
+                            title=None,
+                            tickfont=dict(size=12, color='black')
+                        )
                     )
                     
                     # ==============================================
@@ -1581,7 +1590,7 @@ def update_map(selected_years, current_figures):
         fig_map.update_layout(
             margin=dict(r=0, l=0, t=0, b=0),
             coloraxis_colorbar=dict(
-                title="",
+                title=None,
                 tickfont=dict(size=12, color='black')
             )
         )
@@ -1781,7 +1790,7 @@ def update_graphs(selected_var, dropdown_id):
                     
                     # Atualiza os labels dos eixos
                     config['labels'] = {
-                        'x': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>",  # Voltando para Ano
+                        'x': "",  # Removendo o label do eixo X
                         'y': "",
                         'color': f"<b>{COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>"  # Voltando para UF
                     }
@@ -1832,7 +1841,7 @@ def update_graphs(selected_var, dropdown_id):
                         labels={
                             'DESC_UND_FED': 'Unidade Federativa',
                             'VLR_VAR': 'Valor',
-                            'CODG_ANO': f"<b>{COLUMN_NAMES.get('CODG_ANO', 'Ano')}</b>"
+                            'CODG_ANO': ""  # Removendo o label do eixo X
                         }
                     )
                     
