@@ -882,7 +882,10 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
                     fig_map.update_traces(
                         marker_line_color='white',
-                        marker_line_width=1
+                        marker_line_width=1,
+                        hovertemplate="<b>%{location}</b><br>" +
+                                    "Valor: %{z}<br>" +
+                                    "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>"
                     )
                     
                     # ==============================================
@@ -1757,13 +1760,18 @@ def update_graphs(selected_var, dropdown_id):
                     )
                     
                     # Atualiza o hover do gráfico de barras
-                    fig_bar.update_traces(
-                        hovertemplate="<b>%{customdata[0]}</b><br>" +
-                                    "Ano: %{x}<br>" +
-                                    "Valor: %{y}<br>" +
-                                    "Unidade de Medida: %{customdata[1]}<extra></extra>",
-                        customdata=df[['DESC_UND_FED', 'DESC_UND_MED']].values
-                    )
+                    for trace in fig_bar.data:
+                        estado = trace.name
+                        trace.update(
+                            hovertemplate="<b>" + estado + "</b><br>" +
+                                        "Ano: %{x}<br>" +
+                                        "Valor: %{y}<br>" +
+                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
+                        )
+                        if estado == 'Goiás':
+                            trace.marker.color = '#229846'
+                            trace.marker.line.width = 6
+                            trace.name = '<b>Goiás</b>'
                     
                     # ==============================================
                     # MAPA COROPLÉTICO - Visualização geográfica
@@ -1801,7 +1809,10 @@ def update_graphs(selected_var, dropdown_id):
                     # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
                     fig_map.update_traces(
                         marker_line_color='white',
-                        marker_line_width=1
+                        marker_line_width=1,
+                        hovertemplate="<b>%{location}</b><br>" +
+                                    "Valor: %{z}<br>" +
+                                    "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>"
                     )
                     
                     # ==============================================
