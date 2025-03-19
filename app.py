@@ -826,18 +826,25 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                             tickvals=sorted(df['CODG_ANO'].unique())
                         ),
                         yaxis=dict(
-                            tickfont=dict(size=12, color='black')
+                            tickfont=dict(size=12, color='black'),
+                            showticklabels=False  # Remove os valores do eixo Y
                         ),
                         margin=dict(b=100)  # Margem inferior para os rótulos rotacionados
                     )
                     
                     # Atualiza o hover do gráfico de barras
-                    fig_bar.update_traces(
-                        hovertemplate="<b>%{x}</b><br>" +
-                                    "Valor: %{y}<br>" +
-                                    "Unidade de Medida: %{customdata}<extra></extra>",
-                        customdata=df['DESC_UND_MED']
-                    )
+                    for trace in fig_bar.data:
+                        estado = trace.name
+                        trace.update(
+                            hovertemplate="<b>" + estado + "</b><br>" +
+                                        "Ano: %{x}<br>" +
+                                        "Valor: %{y}<br>" +
+                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
+                        )
+                        if estado == 'Goiás':
+                            trace.marker.color = '#229846'
+                            trace.marker.line.width = 6
+                            trace.name = '<b>Goiás</b>'
                     
                     # ==============================================
                     # MAPA COROPLÉTICO - Visualização geográfica
@@ -1427,6 +1434,7 @@ def update_map(selected_years, current_figures):
         if 'CODG_UND_FED' in df_ano.columns:
             df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(UF_NAMES)
         
+        
         # Renomeia a coluna VLR_VAR para Valor
         df_ano = df_ano.rename(columns={'VLR_VAR': 'Valor'})
         
@@ -1742,17 +1750,19 @@ def update_graphs(selected_var, dropdown_id):
                             tickvals=sorted(df['CODG_ANO'].unique())
                         ),
                         yaxis=dict(
-                            tickfont=dict(size=12, color='black')
+                            tickfont=dict(size=12, color='black'),
+                            showticklabels=False  # Remove os valores do eixo Y
                         ),
                         margin=dict(b=100)  # Margem inferior para os rótulos rotacionados
                     )
                     
                     # Atualiza o hover do gráfico de barras
                     fig_bar.update_traces(
-                        hovertemplate="<b>%{x}</b><br>" +
+                        hovertemplate="<b>%{customdata[0]}</b><br>" +
+                                    "Ano: %{x}<br>" +
                                     "Valor: %{y}<br>" +
-                                    "Unidade de Medida: %{customdata}<extra></extra>",
-                        customdata=df['DESC_UND_MED']
+                                    "Unidade de Medida: %{customdata[1]}<extra></extra>",
+                        customdata=df[['DESC_UND_FED', 'DESC_UND_MED']].values
                     )
                     
                     # ==============================================
