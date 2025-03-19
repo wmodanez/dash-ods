@@ -392,7 +392,7 @@ if meta_inicial:
                                         value=valor_inicial,
                                         style={'width': '70%'}
                                     )
-                                ], style={'padding': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
+                                ], style={'padding-bottom': '20px', 'padding-top': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                             )
 
                         # Cria a visualização com o valor inicial do dropdown
@@ -1245,7 +1245,7 @@ def update_card_content(*args):
                                                         value=valor_inicial,
                                                         style={'width': '70%'}
                                                     )
-                                                ], style={'padding': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
+                                                ], style={'padding-bottom': '20px', 'padding-top': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                             )
 
                                         # Cria a visualização com o valor inicial do dropdown
@@ -1406,7 +1406,7 @@ def update_card_content(*args):
                                                 value=valor_inicial,
                                                 style={'width': '70%'}
                                             )
-                                        ], style={'padding': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
+                                        ], style={'padding-bottom': '20px', 'padding-top': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                     )
 
                                 # Cria a visualização com o valor inicial do dropdown
