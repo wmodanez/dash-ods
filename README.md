@@ -1,3 +1,119 @@
+# Painel ODS - Instituto Mauro Borges
+
+Este é um painel interativo desenvolvido com Dash para visualização dos Objetivos de Desenvolvimento Sustentável (ODS) do Instituto Mauro Borges.
+
+## 🚀 Funcionalidades
+
+- Visualização interativa dos ODS
+- Gráficos dinâmicos e interativos
+- Mapa coroplético do Brasil
+- Tabelas de dados detalhadas
+- Filtros por ano e variáveis
+- Interface responsiva e moderna
+
+## 🛠️ Tecnologias Utilizadas
+
+- Python 3.8+
+- Dash
+- Plotly
+- Pandas
+- Dash Bootstrap Components
+- Dash AG Grid
+- GeoJSON
+
+## 📦 Instalação
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/seu-usuario/painel-ods.git
+cd painel-ods
+```
+
+2. Crie um ambiente virtual:
+```bash
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+```
+
+3. Instale as dependências:
+```bash
+pip install -r requirements.txt
+```
+
+4. Execute o aplicativo:
+```bash
+python app.py
+```
+
+## 📁 Estrutura do Projeto
+
+```
+painel-ods/
+├── app.py              # Aplicativo principal
+├── config.py           # Configurações
+├── constants.py        # Constantes
+├── requirements.txt    # Dependências
+├── assets/            # Recursos estáticos
+│   ├── css/
+│   ├── js/
+│   └── img/
+└── db/                 # Banco de dados
+    ├── resultados/     # Dados dos indicadores
+    ├── br_geojson.json # Mapa do Brasil
+    └── *.csv          # Arquivos de dados
+```
+
+## 🔄 Releases
+
+### v1.0.0 (2024-03-21)
+- **Novo**: Implementação inicial do painel
+- **Novo**: Visualização dos ODS com gráficos e mapas
+- **Novo**: Sistema de navegação entre objetivos e metas
+- **Novo**: Tabelas de dados detalhadas
+
+### v1.1.0 (2024-03-22)
+- **Melhoria**: Adição de bordas nos containers dos gráficos
+- **Melhoria**: Ajuste na altura dos containers para melhor visualização
+- **Melhoria**: Reposicionamento do dropdown de ano dentro do container do mapa
+- **Correção**: Ajuste no layout dos gráficos para evitar sobreposição
+
+### v1.2.0 (2024-03-22)
+- **Melhoria**: Remoção do título da barra de cores do mapa
+- **Melhoria**: Ajuste no layout do mapa para melhor visualização
+- **Correção**: Correção do comportamento do mapa ao alterar o ano
+- **Correção**: Ajuste no hover do mapa para exibir a unidade de medida
+
+## 📝 Notas de Desenvolvimento
+
+- O aplicativo utiliza cache para melhorar a performance
+- Os dados são carregados de arquivos CSV e Parquet
+- O mapa utiliza GeoJSON para visualização dos estados
+- A interface é responsiva e se adapta a diferentes tamanhos de tela
+
+## 🤝 Contribuindo
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+## 👥 Autores
+
+- Instituto Mauro Borges
+- Desenvolvido pela equipe de TI do IMB
+
+## 🙏 Agradecimentos
+
+- Todos os colaboradores que contribuíram com o projeto
+- Equipe de dados do IMB
+- Comunidade Dash e Plotly
+
 # Painel ODS
 
 Painel de visualização de indicadores dos Objetivos de Desenvolvimento Sustentável (ODS).
@@ -560,7 +676,7 @@ Além da estrutura básica, os indicadores podem conter campos adicionais para d
 
 ## Visualizações Implementadas
 
-O painel oferece três tipos diferentes de visualizações para cada indicador:
+O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 
 ### 1. Gráfico de Linhas
 - Exibe a evolução temporal dos valores do indicador
@@ -575,7 +691,15 @@ O painel oferece três tipos diferentes de visualizações para cada indicador:
 - Mesmas informações no hover que o gráfico de linhas
 - Facilita a visualização de valores absolutos
 
-### 3. Mapa Coroplético
+### 3. Gráfico de Pizza
+- Visualização da distribuição percentual dos dados
+- Seletor de ano para visualizar diferentes períodos
+- Hover mostrando estado, valor e percentual
+- Unidade de medida exibida no título do gráfico
+- Cores consistentes com as outras visualizações
+- Legenda interativa para destacar estados específicos
+
+### 4. Mapa Coroplético
 - Visualização geográfica dos dados por estado
 - Seletor de ano para visualizar diferentes períodos
 - Escala de cores Viridis para representar os valores
@@ -592,6 +716,7 @@ O painel oferece três tipos diferentes de visualizações para cada indicador:
 
 ### Layout
 - Gráficos de linha e barra ocupam 60% da largura à esquerda
-- Mapa coroplético ocupa 40% da largura à direita
-- Dropdown para seleção do ano acima do mapa
-- Altura do mapa ajustada para 600px para melhor visualização
+- Gráfico de pizza e mapa coroplético ocupam 40% da largura à direita
+- Dropdown para seleção do ano acima do gráfico de pizza e do mapa
+- Altura dos containers ajustada para 800px para melhor visualização
+- Padding e bordas consistentes em todos os containers
