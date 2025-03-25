@@ -1,18 +1,18 @@
-from dash import html, Dash, callback_context, ALL, no_update, dcc, MATCH
-from dash.dependencies import Input, Output, State
-import dash_bootstrap_components as dbc
-import dash_ag_grid as dag
-from config import DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG
-import pandas as pd
-from functools import lru_cache
-from flask import session, redirect
-from dash.exceptions import PreventUpdate
-import os
-import plotly.express as px
 import json
+import os
+from functools import lru_cache
+
+import dash_ag_grid as dag
+import dash_bootstrap_components as dbc
+import pandas as pd
+import plotly.express as px
+from dash import ALL, MATCH, Dash, callback_context, dcc, html, no_update
+from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
+from flask import session, redirect
+
+from config import DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG
 from constants import COLUMN_NAMES, UF_NAMES
-import numpy as np
-from shapely.geometry import shape, MultiPolygon
 
 
 def capitalize_words(text):
