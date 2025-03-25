@@ -1,6 +1,7 @@
 import json
 import os
 from functools import lru_cache
+from flask import send_from_directory, request, jsonify
 
 import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
@@ -11,8 +12,25 @@ from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from flask import session, redirect
 
-from config import DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG
+from config import (
+    DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG,
+    MAINTENANCE_PASSWORD
+)
 from constants import COLUMN_NAMES, UF_NAMES
+
+# Variável global para controle do modo de manutenção
+MAINTENANCE_MODE = False
+
+def maintenance_middleware():
+    """Middleware para verificar se o sistema está em manutenção"""
+    global MAINTENANCE_MODE
+    if MAINTENANCE_MODE and request.remote_addr not in ['127.0.0.1']:
+        # Se a requisição for para um arquivo estático, serve normalmente
+        if request.path.startswith('/assets/'):
+            return None
+        # Se for a página principal, serve a página de manutenção
+        return send_from_directory('assets', 'maintenance.html')
+    return None
 
 
 def capitalize_words(text):
@@ -29,8 +47,12 @@ app = Dash(
     ],
     assets_folder='assets',
     assets_url_path='/assets/',
+    serve_locally=True,
     **DASH_CONFIG  # Aplica as configurações de performance
 )
+
+# Registra o middleware de manutenção
+app.server.before_request(maintenance_middleware)
 
 # Configurações de cache
 for key, value in SERVER_CONFIG.items():
@@ -38,6 +60,11 @@ for key, value in SERVER_CONFIG.items():
 
 # Configura a chave secreta do Flask
 app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
+
+# Configura o Flask para servir arquivos estáticos
+@app.server.route('/assets/<path:path>')
+def serve_static(path):
+    return send_from_directory('assets', path)
 
 
 # Cache em memória para os dados dos indicadores
@@ -2279,6 +2306,41 @@ def update_pie_chart(selected_year, dropdown_id):
 
 # Obtém a instância do servidor Flask
 server = app.server
+
+# Adiciona a rota para alternar o modo de manutenção
+@server.route('/toggle-maintenance', methods=['POST'])
+def toggle_maintenance():
+    """Alterna o modo de manutenção se a senha estiver correta"""
+    global MAINTENANCE_MODE
+    
+    # Verifica se a senha foi fornecida no corpo da requisição
+    data = request.get_json()
+    if not data or 'password' not in data:
+        return jsonify({
+            'status': 'error',
+            'message': 'Senha não fornecida'
+        }), 400
+    
+    # Verifica se a senha está correta
+    if data['password'] != MAINTENANCE_PASSWORD:
+        return jsonify({
+            'status': 'error',
+            'message': 'Senha incorreta'
+        }), 401
+    
+    try:
+        MAINTENANCE_MODE = not MAINTENANCE_MODE
+        status = 'ativado' if MAINTENANCE_MODE else 'desativado'
+        return jsonify({
+            'status': 'success',
+            'message': f'Modo de manutenção {status} com sucesso',
+            'maintenance_mode': MAINTENANCE_MODE
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'Erro ao alternar modo de manutenção: {str(e)}'
+        }), 500
 
 if __name__ == '__main__':
     if DEBUG:
