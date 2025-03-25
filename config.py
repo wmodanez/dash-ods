@@ -25,12 +25,13 @@ SERVER_CONFIG = {
     'STATIC_FOLDER_MIME_TYPES': {
         '.parquet': 'application/octet-stream'  # Define o tipo MIME para arquivos parquet
     },
-    'SECRET_KEY': 'imb_ods_painel_secret_key_2024'  # Chave secreta para sessões
+    'SECRET_KEY': os.getenv('SECRET_KEY', 'imb_ods_painel_secret_key_2024')  # Chave secreta para sessões
 }
 
 # Configuração do modo de manutenção
-MAINTENANCE_MODE = True
+MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
 MAINTENANCE_ALLOWED_IPS = [
-    # '127.0.0.1',  # localhost
+    '127.0.0.1',  # localhost
+    '10.209.59.96',  # IP do servidor
     # Adicione aqui os IPs que terão acesso durante a manutenção
 ]

@@ -170,3 +170,21 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 .vscode/settings.json
+
+# Ambiente virtual
+venv/
+env/
+.env
+
+# Logs
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db

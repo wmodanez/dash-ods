@@ -1,7 +1,30 @@
+import dash
+from dash import html, dcc, Input, Output, State, callback, dash_table
+import dash_bootstrap_components as dbc
+import dash_ag_grid as dag
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import json
 import os
+from datetime import datetime
+import numpy as np
+from dash.exceptions import PreventUpdate
+from dash import callback_context
+import plotly.io as pio
+from config import *
+import secrets
+from dotenv import load_dotenv
 from functools import lru_cache
-from flask import send_from_directory, request, jsonify
+from flask import session, redirect, send_from_directory, request, jsonify
+import bcrypt
+from generate_password import generate_password_hash, generate_secret_key, update_env_file, check_password
+
+# Carrega as variáveis de ambiente primeiro
+load_dotenv()
+
+# Configuração do tema do Plotly
+pio.templates.default = "plotly_white"
 
 import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
@@ -10,7 +33,6 @@ import plotly.express as px
 from dash import ALL, MATCH, Dash, callback_context, dcc, html, no_update
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from flask import session, redirect
 
 from config import (
     DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG,
@@ -19,7 +41,7 @@ from config import (
 from constants import COLUMN_NAMES, UF_NAMES
 
 # Variável global para controle do modo de manutenção
-MAINTENANCE_MODE = False
+MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
 
 def maintenance_middleware():
     """Middleware para verificar se o sistema está em manutenção"""
@@ -2307,42 +2329,100 @@ def update_pie_chart(selected_year, dropdown_id):
 # Obtém a instância do servidor Flask
 server = app.server
 
-# Adiciona a rota para alternar o modo de manutenção
+def update_maintenance_mode(new_state: bool):
+    """Atualiza o estado do modo de manutenção no arquivo .env"""
+    env_vars = {}
+    
+    # Se o arquivo .env existe, lê as variáveis existentes
+    if os.path.exists('.env'):
+        with open('.env', 'r', encoding='utf-8') as f:
+            for line in f:
+                if '=' in line:
+                    key, value = line.strip().split('=', 1)
+                    env_vars[key] = value
+    else:
+        # Se o arquivo não existe, define valores padrão
+        env_vars = {
+            'DEBUG': 'false',
+            'USE_RELOADER': 'false',
+            'PORT': '8050',
+            'HOST': '0.0.0.0',
+            'MAINTENANCE_MODE': 'false',
+            'SECRET_KEY': generate_secret_key(),
+            'MAINTENANCE_PASSWORD_HASH': generate_password_hash(MAINTENANCE_PASSWORD)
+        }
+
+    # Atualiza o estado do modo de manutenção
+    env_vars['MAINTENANCE_MODE'] = str(new_state).lower()
+
+    # Escreve o arquivo .env atualizado
+    with open('.env', 'w', encoding='utf-8') as f:
+        for key, value in env_vars.items():
+            f.write(f'{key}={value}\n')
+
 @server.route('/toggle-maintenance', methods=['POST'])
 def toggle_maintenance():
-    """Alterna o modo de manutenção se a senha estiver correta"""
+    """Alterna o modo de manutenção do sistema"""
     global MAINTENANCE_MODE
-    
-    # Verifica se a senha foi fornecida no corpo da requisição
-    data = request.get_json()
-    if not data or 'password' not in data:
-        return jsonify({
-            'status': 'error',
-            'message': 'Senha não fornecida'
-        }), 400
-    
-    # Verifica se a senha está correta
-    if data['password'] != MAINTENANCE_PASSWORD:
-        return jsonify({
-            'status': 'error',
-            'message': 'Senha incorreta'
-        }), 401
-    
     try:
+        data = request.get_json()
+        if not data or 'password' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Por favor, forneça a senha de manutenção para continuar.',
+                'maintenance_mode': MAINTENANCE_MODE
+            }), 400
+
+        stored_hash = get_maintenance_password_hash()
+        if not stored_hash:
+            return jsonify({
+                'success': False,
+                'message': 'Configuração de senha não encontrada. Por favor, entre em contato com o administrador do sistema.',
+                'maintenance_mode': MAINTENANCE_MODE
+            }), 500
+
+        if not check_password(data['password'], stored_hash):
+            return jsonify({
+                'success': False,
+                'message': 'A senha fornecida está incorreta. Por favor, verifique e tente novamente.',
+                'maintenance_mode': MAINTENANCE_MODE
+            }), 401
+
         MAINTENANCE_MODE = not MAINTENANCE_MODE
-        status = 'ativado' if MAINTENANCE_MODE else 'desativado'
+        # Persiste o novo estado no arquivo .env
+        update_maintenance_mode(MAINTENANCE_MODE)
+        
         return jsonify({
-            'status': 'success',
-            'message': f'Modo de manutenção {status} com sucesso',
+            'success': True,
+            'message': f'Modo de manutenção {"ativado" if MAINTENANCE_MODE else "desativado"} com sucesso!',
             'maintenance_mode': MAINTENANCE_MODE
-        }), 200
+        })
+
     except Exception as e:
         return jsonify({
-            'status': 'error',
-            'message': f'Erro ao alternar modo de manutenção: {str(e)}'
+            'success': False,
+            'message': 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.',
+            'maintenance_mode': MAINTENANCE_MODE,
+            'error': str(e)
         }), 500
 
+def get_maintenance_password_hash():
+    """Obtém o hash da senha de manutenção do arquivo .env"""
+    return os.getenv('MAINTENANCE_PASSWORD_HASH')
+
 if __name__ == '__main__':
+    # Verifica se o arquivo .env existe
+    if not os.path.exists('.env'):
+        print("Arquivo .env não encontrado. Criando com as configurações padrão...")
+        
+        # Gera uma nova SECRET_KEY e atualiza o arquivo .env
+        new_secret_key = generate_secret_key()
+        update_env_file(generate_password_hash(MAINTENANCE_PASSWORD))
+        
+        print("Arquivo .env criado com sucesso!")
+        # Recarrega as variáveis de ambiente
+        load_dotenv()
+
     if DEBUG:
         app.run_server(
             debug=DEBUG,
