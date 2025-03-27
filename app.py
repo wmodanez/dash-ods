@@ -67,8 +67,26 @@ app = Dash(
     assets_folder='assets',
     assets_url_path='/assets/',
     serve_locally=True,
-    **DASH_CONFIG  # Aplica as configurações de performance
+    compress=False,  # Desativa compressão que pode causar problemas
+    update_title=None,  # Previne atualizações do título
+    **DASH_CONFIG
 )
+
+# Configuração para servir arquivos estáticos
+app.server.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Desativa cache em desenvolvimento
+app.server.static_folder = 'assets'  # Define pasta de arquivos estáticos
+
+# Rota específica para componentes do Dash
+@app.server.route('/_dash-component-suites/<path:path>')
+def serve_dash_components(path):
+    from flask import send_from_directory
+    import os
+    
+    # Determina o diretório base do Dash
+    dash_path = os.path.dirname(dash.__file__)
+    component_path = os.path.join(dash_path, 'component-suites')
+    
+    return send_from_directory(component_path, path)
 
 # Registra o middleware de manutenção
 app.server.before_request(maintenance_middleware)

@@ -11,7 +11,12 @@ MAINTENANCE_PASSWORD = os.environ.get('MAINTENANCE_PASSWORD')
 MAINTENANCE_PASSWORD_HASH = os.environ.get('MAINTENANCE_PASSWORD_HASH')
 
 # Configurações de performance do Dash
-DASH_CONFIG = {}
+DASH_CONFIG = {
+    'routes_pathname_prefix': '/',
+    'requests_pathname_prefix': '/',
+    'serve_locally': True,
+    'compress': False
+}
 
 # Configurações de cache do servidor
 SERVER_CONFIG = {
