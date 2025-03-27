@@ -14,7 +14,6 @@ MAINTENANCE_PASSWORD_HASH = os.environ.get('MAINTENANCE_PASSWORD_HASH')
 DASH_CONFIG = {
     'routes_pathname_prefix': '/',
     'requests_pathname_prefix': '/',
-    'serve_locally': True,
     'compress': False
 }
 
