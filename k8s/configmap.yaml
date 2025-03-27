@@ -1,9 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: openshift-entrypoint
-  namespace: colocation-imb
+  name: ods-config
+  labels:
+    app: ods-painel
 data:
+  DEBUG: "false"
+  USE_RELOADER: "false"
+  PORT: "8050"
+  HOST: "0.0.0.0"
   openshift-entrypoint.sh: |
     #!/bin/bash
     set -e

@@ -20,9 +20,6 @@ from flask import session, redirect, send_from_directory, request, jsonify
 import bcrypt
 from generate_password import generate_password_hash, generate_secret_key, update_env_file, check_password
 
-# Carrega as variáveis de ambiente primeiro
-load_dotenv()
-
 # Configuração do tema do Plotly
 pio.templates.default = "plotly_white"
 
@@ -41,7 +38,7 @@ from config import (
 from constants import COLUMN_NAMES, UF_NAMES
 
 # Variável global para controle do modo de manutenção
-MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
+MAINTENANCE_MODE = os.environ.get('MAINTENANCE_MODE', 'false').lower() == 'true'
 
 def maintenance_middleware():
     """Middleware para verificar se o sistema está em manutenção"""
@@ -2335,35 +2332,10 @@ def update_pie_chart(selected_year, dropdown_id):
 server = app.server
 
 def update_maintenance_mode(new_state: bool):
-    """Atualiza o estado do modo de manutenção no arquivo .env"""
-    env_vars = {}
-    
-    # Se o arquivo .env existe, lê as variáveis existentes
-    if os.path.exists('.env'):
-        with open('.env', 'r', encoding='utf-8') as f:
-            for line in f:
-                if '=' in line:
-                    key, value = line.strip().split('=', 1)
-                    env_vars[key] = value
-    else:
-        # Se o arquivo não existe, define valores padrão
-        env_vars = {
-            'DEBUG': 'false',
-            'USE_RELOADER': 'false',
-            'PORT': '8050',
-            'HOST': '0.0.0.0',
-            'MAINTENANCE_MODE': 'false',
-            'SECRET_KEY': generate_secret_key(),
-            'MAINTENANCE_PASSWORD_HASH': generate_password_hash(MAINTENANCE_PASSWORD)
-        }
-
-    # Atualiza o estado do modo de manutenção
-    env_vars['MAINTENANCE_MODE'] = str(new_state).lower()
-
-    # Escreve o arquivo .env atualizado
-    with open('.env', 'w', encoding='utf-8') as f:
-        for key, value in env_vars.items():
-            f.write(f'{key}={value}\n')
+    """Atualiza o estado do modo de manutenção"""
+    global MAINTENANCE_MODE
+    MAINTENANCE_MODE = new_state
+    # O estado será mantido apenas em memória durante a execução
 
 @server.route('/toggle-maintenance', methods=['POST'])
 def toggle_maintenance():
@@ -2412,22 +2384,10 @@ def toggle_maintenance():
         }), 500
 
 def get_maintenance_password_hash():
-    """Obtém o hash da senha de manutenção do arquivo .env"""
-    return os.getenv('MAINTENANCE_PASSWORD_HASH')
+    """Obtém o hash da senha de manutenção"""
+    return os.environ.get('MAINTENANCE_PASSWORD_HASH')
 
 if __name__ == '__main__':
-    # Verifica se o arquivo .env existe
-    if not os.path.exists('.env'):
-        print("Arquivo .env não encontrado. Criando com as configurações padrão...")
-        
-        # Gera uma nova SECRET_KEY e atualiza o arquivo .env
-        new_secret_key = generate_secret_key()
-        update_env_file(generate_password_hash(MAINTENANCE_PASSWORD))
-        
-        print("Arquivo .env criado com sucesso!")
-        # Recarrega as variáveis de ambiente
-        load_dotenv()
-
     if DEBUG:
         app.run_server(
             debug=DEBUG,

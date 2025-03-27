@@ -1,17 +1,14 @@
 import os
-from dotenv import load_dotenv
 
-# Carrega as variáveis de ambiente do arquivo .env
-load_dotenv()
+# Configurações do servidor com valores padrão seguros para produção
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+USE_RELOADER = os.environ.get('USE_RELOADER', 'False').lower() == 'true'
+PORT = int(os.environ.get('PORT', 8050))
+HOST = os.environ.get('HOST', '0.0.0.0')
 
-# Configurações do servidor
-DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
-USE_RELOADER = os.getenv('USE_RELOADER', 'True').lower() == 'true'
-PORT = int(os.getenv('PORT', 8050))
-HOST = os.getenv('HOST', '0.0.0.0')
-
-# Senha para alternar o modo de manutenção
-MAINTENANCE_PASSWORD = os.getenv('MAINTENANCE_PASSWORD', 'default_password')
+# Senha para alternar o modo de manutenção (vem do secret)
+MAINTENANCE_PASSWORD = os.environ.get('MAINTENANCE_PASSWORD')
+MAINTENANCE_PASSWORD_HASH = os.environ.get('MAINTENANCE_PASSWORD_HASH')
 
 # Configurações de performance do Dash
 DASH_CONFIG = {}
@@ -25,11 +22,11 @@ SERVER_CONFIG = {
     'STATIC_FOLDER_MIME_TYPES': {
         '.parquet': 'application/octet-stream'  # Define o tipo MIME para arquivos parquet
     },
-    'SECRET_KEY': os.getenv('SECRET_KEY', 'imb_ods_painel_secret_key_2024')  # Chave secreta para sessões
+    'SECRET_KEY': os.environ.get('SECRET_KEY')  # Vem do secret
 }
 
-# Configuração do modo de manutenção
-MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
+# Configuração do modo de manutenção (vem do secret)
+MAINTENANCE_MODE = os.environ.get('MAINTENANCE_MODE', 'false').lower() == 'true'
 MAINTENANCE_ALLOWED_IPS = [
     '127.0.0.1',  # localhost
     # '10.209.59.96',  # IP do servidor
