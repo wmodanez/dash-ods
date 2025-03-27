@@ -543,7 +543,7 @@ app.layout = dbc.Container([
                         # Coluna do título
                         dbc.Col([
                             html.H1(
-                                'Instituto Mauro Borges - ODS - Agenda 2030',
+                                'Instituto Mauro Borges - ODS - Agenda ',
                                 className="text-center align-middle",
                                 style={'margin': '0', 'padding': '0'}
                             )

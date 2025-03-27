@@ -32,6 +32,6 @@ SERVER_CONFIG = {
 MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
 MAINTENANCE_ALLOWED_IPS = [
     '127.0.0.1',  # localhost
-    '10.209.59.96',  # IP do servidor
+    # '10.209.59.96',  # IP do servidor
     # Adicione aqui os IPs que terão acesso durante a manutenção
 ]
