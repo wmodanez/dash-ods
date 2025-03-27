@@ -47,8 +47,8 @@ def maintenance_middleware():
     """Middleware para verificar se o sistema está em manutenção"""
     global MAINTENANCE_MODE
     if MAINTENANCE_MODE and request.remote_addr not in ['127.0.0.1']:
-        # Se a requisição for para um arquivo estático, serve normalmente
-        if request.path.startswith('/assets/'):
+        # Se a requisição for para um arquivo estático ou arquivos do dash, serve normalmente
+        if request.path.startswith('/assets/') or '_dash-component-suites' in request.path:
             return None
         # Se for a página principal, serve a página de manutenção
         return send_from_directory('assets', 'maintenance.html')
@@ -87,6 +87,11 @@ app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 @app.server.route('/assets/<path:path>')
 def serve_static(path):
     return send_from_directory('assets', path)
+
+# Rota para servir arquivos do dash
+@app.server.route('/_dash-component-suites/<path:path>')
+def serve_dash_files(path):
+    return send_from_directory('_dash-component-suites', path)
 
 
 # Cache em memória para os dados dos indicadores
