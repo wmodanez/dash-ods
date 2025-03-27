@@ -20,5 +20,22 @@ data:
       fi
     fi
     
-    # Inicia o Gunicorn
-    exec gunicorn -w 4 -b 0.0.0.0:8050 app:server --timeout 120 
+    # Calcula o número de workers baseado nas CPUs disponíveis
+    CORES=$(nproc)
+    WORKERS=$((CORES * 2 + 1))  # Fórmula recomendada: (2 x num_cores) + 1
+    THREADS=$((CORES * 2))      # 2 threads por core
+    
+    # Inicia o Gunicorn com configurações otimizadas
+    exec gunicorn \
+      -w $WORKERS \
+      --threads $THREADS \
+      -b 0.0.0.0:8050 \
+      --timeout 120 \
+      --worker-class gthread \
+      --max-requests 1000 \
+      --max-requests-jitter 50 \
+      --forwarded-allow-ips="*" \
+      --access-logfile - \
+      --error-logfile - \
+      --log-level debug \
+      app:server 
