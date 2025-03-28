@@ -23,22 +23,18 @@ from generate_password import generate_password_hash, generate_secret_key, updat
 # Configuração do tema do Plotly
 pio.templates.default = "plotly_white"
 
-import dash_ag_grid as dag
-import dash_bootstrap_components as dbc
-import pandas as pd
-import plotly.express as px
-from dash import ALL, MATCH, Dash, callback_context, dcc, html, no_update
+from dash import ALL, MATCH, Dash, no_update
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 
 from config import (
     DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG,
-    MAINTENANCE_PASSWORD
+    MAINTENANCE_PASSWORD, MAINTENANCE_MODE
 )
 from constants import COLUMN_NAMES, UF_NAMES
 
 # Variável global para controle do modo de manutenção
-MAINTENANCE_MODE = os.environ.get('MAINTENANCE_MODE', 'false').lower() == 'true'
+# MAINTENANCE_MODE já está sendo importado do config.py
 
 def maintenance_middleware():
     """Middleware para verificar se o sistema está em manutenção"""
@@ -67,7 +63,6 @@ app = Dash(
     assets_folder='assets',
     assets_url_path='/assets/',
     serve_locally=True,
-    compress=False,  # Desativa compressão que pode causar problemas
     update_title=None,  # Previne atualizações do título
     **DASH_CONFIG
 )
