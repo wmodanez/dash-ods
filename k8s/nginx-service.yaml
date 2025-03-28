@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: painel-ods
+  name: nginx-proxy
   namespace: colocation-imb
 spec:
   selector:
-    app: painel-ods
+    app: nginx-proxy
   ports:
-    - name: http-8050
+    - name: http-80
       protocol: TCP
-      port: 8050
-      targetPort: 8050 
+      port: 80
+      targetPort: 80 
