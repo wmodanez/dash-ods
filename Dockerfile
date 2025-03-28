@@ -44,10 +44,17 @@ RUN cp -r db/* db-init/ || true
 RUN chown -R ${USER_UID}:0 /app/db /app/db-init && \
     chmod -R g+w /app/db /app/db-init
 
-# Cria diretório para logs do Nginx
-RUN mkdir -p /var/log/nginx && \
-    chown -R ${USER_UID}:0 /var/log/nginx && \
-    chmod -R g+w /var/log/nginx
+# Cria e configura diretórios do Nginx
+RUN mkdir -p /var/lib/nginx/body \
+    /var/lib/nginx/proxy \
+    /var/lib/nginx/fastcgi \
+    /var/lib/nginx/uwsgi \
+    /var/lib/nginx/scgi \
+    /var/log/nginx \
+    && chown -R ${USER_UID}:0 /var/lib/nginx \
+    && chown -R ${USER_UID}:0 /var/log/nginx \
+    && chmod -R g+w /var/lib/nginx \
+    && chmod -R g+w /var/log/nginx
 
 # Define usuário não-root
 USER ${USER_UID}
