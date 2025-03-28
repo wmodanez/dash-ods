@@ -10,5 +10,5 @@ spec:
     name: painel-ods
     weight: 100
   port:
-    targetPort: http-80
+    targetPort: http-8050
   wildcardPolicy: None

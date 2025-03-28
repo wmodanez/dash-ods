@@ -29,7 +29,9 @@ app = Dash(
     ],
     assets_folder='assets',
     assets_url_path='/assets/',
-    **DASH_CONFIG  # Aplica as configurações de performance
+    **DASH_CONFIG,  # Aplica as configurações de performance
+    update_mode='websocket',  # Força o uso de WebSocket
+    interval=5000  # Aumenta o intervalo de polling para 5 segundos
 )
 
 # Configurações de cache
@@ -38,6 +40,10 @@ for key, value in SERVER_CONFIG.items():
 
 # Configura a chave secreta do Flask
 app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
+
+# Configura o WebSocket
+app.server.config['WEBSOCKET_PING_INTERVAL'] = 20
+app.server.config['WEBSOCKET_PING_TIMEOUT'] = 20
 
 
 # Cache em memória para os dados dos indicadores

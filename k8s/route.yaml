@@ -6,6 +6,6 @@ metadata:
 spec:
   to:
     kind: Service
-    name: nginx-proxy
+    name: painel-ods
   port:
-    targetPort: http-80 
+    targetPort: http-8050 
