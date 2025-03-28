@@ -16,6 +16,7 @@ ENV USER_UID=1001 \
 RUN apt-get update && apt-get install -y \
     build-essential nano \
     python3-dev \
+    nginx \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/db /app/db-init \
     && chown -R ${USER_UID}:0 /app \
@@ -43,11 +44,20 @@ RUN cp -r db/* db-init/ || true
 RUN chown -R ${USER_UID}:0 /app/db /app/db-init && \
     chmod -R g+w /app/db /app/db-init
 
+# Cria diretório para logs do Nginx
+RUN mkdir -p /var/log/nginx && \
+    chown -R ${USER_UID}:0 /var/log/nginx && \
+    chmod -R g+w /var/log/nginx
+
 # Define usuário não-root
 USER ${USER_UID}
 
-# Comando para iniciar a aplicação
-CMD ["gunicorn", "--bind", "0.0.0.0:8050", "--workers", "4", "--log-level", "debug", "app:server"]
+# Script de inicialização
+COPY --chown=${USER_UID}:0 openshift-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/openshift-entrypoint.sh
 
-# Expõe a porta da aplicação
-EXPOSE 8050
+# Comando para iniciar a aplicação
+ENTRYPOINT ["/usr/local/bin/openshift-entrypoint.sh"]
+
+# Expõe as portas da aplicação
+EXPOSE 80 8050

@@ -35,6 +35,7 @@ spec:
       - name: painel-ods
         image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshifthom_colocation-imb/painel-ods:latest
         ports:
+        - containerPort: 80
         - containerPort: 8050
         resources:
           limits:
@@ -46,19 +47,28 @@ spec:
         volumeMounts:
         - name: app-data
           mountPath: /app/db
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: nginx-logs
+          mountPath: /var/log/nginx
         livenessProbe:
           httpGet:
             path: /
-            port: 8050
+            port: 80
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /
-            port: 8050
+            port: 80
           initialDelaySeconds: 10
           periodSeconds: 10
       volumes:
       - name: app-data
         persistentVolumeClaim:
-          claimName: painel-ods-data 
+          claimName: painel-ods-data
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: nginx-logs
+        emptyDir: {} 
