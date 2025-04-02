@@ -524,7 +524,7 @@ if meta_inicial:
                                             for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
                                         ],
                                         value=valor_inicial,
-                                        style={'width': '70%'}
+                                        style={'width': '100%'}
                                     )
                                 ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                             )
@@ -1353,6 +1353,7 @@ def update_card_content(*args):
                                                         },
                                                         id={'type': 'var-label', 'index': row['ID_INDICADOR']}
                                                     ),
+                                                    # Dropdown das variáveis
                                                     dcc.Dropdown(
                                                         id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
                                                         options=[
@@ -1360,7 +1361,7 @@ def update_card_content(*args):
                                                             for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
                                                         ],
                                                         value=valor_inicial,
-                                                        style={'width': '70%'}
+                                                        style={'width': '100%'}
                                                     )
                                                 ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                             )
@@ -1522,7 +1523,7 @@ def update_card_content(*args):
                                                     for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
                                                 ],
                                                 value=valor_inicial,
-                                                style={'width': '70%'}
+                                                style={'width': '100%'}
                                             )
                                         ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                     )
