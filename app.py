@@ -1629,30 +1629,51 @@ def load_dados_indicador(*args):
 )
 def update_map(selected_years, current_figures):
     ctx = callback_context
-    if not ctx.triggered:
+    if not ctx.triggered or not ctx.outputs_list:
         raise PreventUpdate
     
-    triggered_id = ctx.triggered[0]['prop_id']
-    if not triggered_id:
+    triggered_id_str = ctx.triggered[0]['prop_id']
+    if not triggered_id_str:
         raise PreventUpdate
     
+    indicador_id = "Desconhecido" # Inicializa com valor padrão
     try:
-        # Extrai o ID do indicador do triggered_id
-        indicador_id = triggered_id.split('"index":"')[1].split('"')[0]
+        # Parse o ID do dropdown que acionou o callback
+        # Usar rsplit para remover apenas o sufixo .value
+        triggered_prop_id = json.loads(triggered_id_str.rsplit('.', 1)[0])
+        indicador_id = triggered_prop_id['index']
         selected_year = ctx.triggered[0]['value']
         
         # Carrega os dados do indicador
         df = load_dados_indicador_cache(indicador_id)
-        if df is None:
+        if df is None or df.empty:
             raise PreventUpdate
         
-        # Filtra os dados para o ano selecionado
-        df_ano = df[df['CODG_ANO'] == selected_year]
+        # Filtra os dados para o ano selecionado e cria uma cópia explícita
+        df_ano = df[df['CODG_ANO'] == selected_year].copy()
         
         # Substitui os códigos das UFs pelos nomes completos
         if 'CODG_UND_FED' in df_ano.columns:
             df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(UF_NAMES)
+            df_ano = df_ano.dropna(subset=['DESC_UND_FED'])
         
+        if df_ano.empty:
+             # Se não houver dados para o ano/UF, retorna um mapa vazio ou uma mensagem
+             # (Opcional: criar uma figura vazia ou com aviso)
+             # Por agora, vamos prevenir a atualização para este mapa específico
+             # Encontra o índice do mapa correspondente
+             target_output_index = -1
+             for i, output_spec in enumerate(ctx.outputs_list):
+                 if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
+                     target_output_index = i
+                     break
+             
+             output_list = [no_update] * len(ctx.outputs_list)
+             if target_output_index != -1:
+                 # Poderia retornar um go.Figure() vazio aqui se quisesse limpar o mapa
+                 output_list[target_output_index] = no_update 
+             return output_list
+
         # Carrega o GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
             geojson = json.load(f)
@@ -1709,9 +1730,27 @@ def update_map(selected_years, current_figures):
             )
         )
         
-        return [fig_map]
+        # Prepara a lista de saída
+        output_list = [no_update] * len(ctx.outputs_list)
+        
+        # Encontra o índice do output correspondente ao dropdown acionado
+        target_output_index = -1
+        for i, output_spec in enumerate(ctx.outputs_list):
+            # Verifica se 'id' é um dict e contém 'index'
+            if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
+                target_output_index = i
+                break
+                
+        # Se encontrou o índice correspondente, atualiza a figura
+        if target_output_index != -1:
+            output_list[target_output_index] = fig_map
+            
+        return output_list
+        
     except Exception as e:
-        raise PreventUpdate
+        print(f"Erro ao atualizar mapa para indicador {indicador_id}: {e}") # Mensagem mais específica
+        # Retorna no_update para todas as saídas em caso de erro
+        return [no_update] * len(ctx.outputs_list)
 
 
 # Callback para atualizar os gráficos quando a variável é alterada
