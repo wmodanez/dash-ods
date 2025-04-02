@@ -530,16 +530,17 @@ if meta_inicial:
                             )
 
                         # Cria a visualização com o valor inicial do dropdown
-                        grid = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
-                        tab_content.append(grid)
+                        vis_content = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
+                        # Cria o container AQUI e adiciona o conteúdo da visualização
+                        tab_content.append(html.Div(vis_content, id={'type': 'graph-container', 'index': row['ID_INDICADOR']}))
                     else:
-                        # Se não tiver variáveis, mostra a descrição do indicador
+                        # Define o tab_content para o caso sem variáveis
+                        vis_content = create_visualization(df_dados, row['ID_INDICADOR'])
                         tab_content = [
-                            html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                            html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                            # Cria o container AQUI e adiciona o conteúdo da visualização
+                            html.Div(vis_content, id={'type': 'graph-container', 'index': row['ID_INDICADOR']}) 
                         ]
-                    
-                    grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                    tab_content.append(grid)
                 except Exception as e:
                     print(f"Erro ao processar dropdown de variáveis: {e}")
                     tab_content = [
@@ -697,7 +698,7 @@ app.layout = dbc.Container([
                                         className="text-justify mt-4"
                                     ),
                                     html.Div(id='loading-indicator', children=[]),
-                                    html.Div(id='indicadores-section', children=[])
+                                    html.Div(id='indicadores-section', children=initial_indicadores_section)
                                 ])
                             ])
                         ], lg=10)
@@ -1119,63 +1120,29 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                 trace.name = '<b>Goiás</b>'
                     
                     # Adiciona o gráfico de pizza à estrutura, mas mantém oculto se não houver menos de 5 anos
-                    return html.Div([
-                        html.Div(
-                            id={'type': 'graph-container', 'index': indicador_id},
-                            children=[
+                    # MODIFICADO: Retorna lista de componentes internos, não Div externo
+                    return [
+                        dbc.Row([
+                            # Coluna da esquerda com os gráficos
+                            dbc.Col([
+                                # Primeira linha com os gráficos (linha/barra ou pizza)
                                 dbc.Row([
-                                    # Coluna da esquerda com os gráficos
                                     dbc.Col([
-                                        # Primeira linha com os gráficos (linha/barra ou pizza)
-                                        dbc.Row([
-                                            dbc.Col([
-                                                # Container para gráficos de linha e barra
-                                                html.Div([
-                                                    dcc.Graph(figure=fig_line, style={'height': '370px'}),
-                                                    dcc.Graph(figure=fig_bar, style={'height': '370px'})
-                                                ], style={
-                                                    'display': 'none' if mostrar_pizza else 'block',
-                                                    'border': '1px solid #dee2e6',
-                                                    'borderRadius': '4px',
-                                                    'padding': '15px',
-                                                    'height': '800px',
-                                                    'marginBottom': '0px'
-                                                }),
-                                                # Container para gráfico de pizza
-                                                html.Div([
-                                                    html.Label("Ano", 
-                                                        style={
-                                                            'fontWeight': 'bold',
-                                                            'marginBottom': '5px',
-                                                            'display': 'block'
-                                                        }
-                                                    ),
-                                                    dcc.Dropdown(
-                                                        id={'type': 'pie-year-dropdown', 'index': indicador_id},
-                                                        options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                                                        value=anos_unicos[-1] if anos_unicos else None,
-                                                        style={'width': '200px', 'marginBottom': '10px'}
-                                                    ),
-                                                    dcc.Graph(
-                                                        figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
-                                                        id={'type': 'pie-chart', 'index': indicador_id},
-                                                        style={'height': '700px'}
-                                                    )
-                                                ], style={
-                                                    'display': 'block' if mostrar_pizza else 'none',
-                                                    'border': '1px solid #dee2e6',
-                                                    'borderRadius': '4px',
-                                                    'padding': '15px',
-                                                    'height': '800px'
-                                                })
-                                            ], width=12)
-                                        ], className="mb-4")
-                                    ], width=7),
-                                    # Coluna da direita com o mapa e dropdown
-                                    dbc.Col([
-                                        # Container do mapa com dropdown
+                                        # Container para gráficos de linha e barra
                                         html.Div([
-                                            html.Label("Ano:", 
+                                            dcc.Graph(figure=fig_line, style={'height': '370px'}),
+                                            dcc.Graph(figure=fig_bar, style={'height': '370px'})
+                                        ], style={
+                                            'display': 'none' if mostrar_pizza else 'block',
+                                            'border': '1px solid #dee2e6',
+                                            'borderRadius': '4px',
+                                            'padding': '15px',
+                                            'height': '800px',
+                                            'marginBottom': '0px'
+                                        }),
+                                        # Container para gráfico de pizza
+                                        html.Div([
+                                            html.Label("Ano", 
                                                 style={
                                                     'fontWeight': 'bold',
                                                     'marginBottom': '5px',
@@ -1183,55 +1150,60 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                                 }
                                             ),
                                             dcc.Dropdown(
-                                                id={'type': 'year-dropdown', 'index': indicador_id},
-                                                options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                                                value=sorted(df['CODG_ANO'].unique())[-1],
+                                                id={'type': 'pie-year-dropdown', 'index': indicador_id},
+                                                options=[{'label': ano, 'value': ano} for ano in anos_unicos],
+                                                value=anos_unicos[-1] if anos_unicos else None,
                                                 style={'width': '200px', 'marginBottom': '10px'}
                                             ),
                                             dcc.Graph(
-                                                id={'type': 'choropleth-map', 'index': indicador_id},
-                                                figure=fig_map,
-                                                style={
-                                                    'height': '700px'
-                                                }
+                                                figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
+                                                id={'type': 'pie-chart', 'index': indicador_id},
+                                                style={'height': '700px'}
                                             )
                                         ], style={
+                                            'display': 'block' if mostrar_pizza else 'none',
                                             'border': '1px solid #dee2e6',
                                             'borderRadius': '4px',
                                             'padding': '15px',
-                                            'height': '800px',
-                                            'marginBottom': '0px'
+                                            'height': '800px'
                                         })
-                                    ], width=5)
-                                ])
-                            ]
-                        ),
-                        html.Div([
-                            html.H5("Dados Detalhados", className="mt-4 mb-3", style={'marginLeft': '20px'}),
-                            dag.AgGrid(
-                                rowData=df.sort_values(['DESC_UND_FED', 'CODG_ANO', 'DESC_VAR']).to_dict('records'),
-                                columnDefs=columnDefs,
-                                defaultColDef=defaultColDef,
-                                dashGridOptions={
-                                    "pagination": True,
-                                    "paginationPageSize": 10,
-                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "domLayout": "autoHeight",  # Alterado de "normal"
-                                    "suppressMovableColumns": True,
-                                    "animateRows": True,
-                                    "suppressColumnVirtualisation": True
-                                    # Remova autoSizeAllColumns
-                                },
-                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
-                            )
-                        ], style={
-                            'width': '100%', 
-                            'marginTop': '20px',
-                            'border': '1px solid #dee2e6',
-                            'borderRadius': '4px',
-                            'padding': '15px'
-                        })
-                    ])
+                                    ], width=12)
+                                ], className="mb-4")
+                            ], width=7),
+                            # Coluna da direita com o mapa e dropdown
+                            dbc.Col([
+                                # Container do mapa com dropdown
+                                html.Div([
+                                    html.Label("Ano:", 
+                                        style={
+                                            'fontWeight': 'bold',
+                                            'marginBottom': '5px',
+                                            'display': 'block'
+                                        }
+                                    ),
+                                    dcc.Dropdown(
+                                        id={'type': 'year-dropdown', 'index': indicador_id},
+                                        options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                                        value=sorted(df['CODG_ANO'].unique())[-1],
+                                        style={'width': '200px', 'marginBottom': '10px'}
+                                    ),
+                                    dcc.Graph(
+                                        id={'type': 'choropleth-map', 'index': indicador_id},
+                                        figure=fig_map,
+                                        style={
+                                            'height': '700px'
+                                        }
+                                    )
+                                ], style={
+                                    'border': '1px solid #dee2e6',
+                                    'borderRadius': '4px',
+                                    'padding': '15px',
+                                    'height': '800px',
+                                    'marginBottom': '0px'
+                                })
+                            ], width=5)
+                        ])
+                    ]
                 except Exception as e:
                     print(f"Erro ao atualizar gráficos: {e}")
                     raise PreventUpdate
@@ -1363,16 +1335,17 @@ def update_card_content(*args):
                                             )
 
                                         # Cria a visualização com o valor inicial do dropdown
-                                        grid = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
-                                        tab_content.append(grid)
+                                        vis_content = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
+                                        # Cria o container AQUI e adiciona o conteúdo da visualização
+                                        tab_content.append(html.Div(vis_content, id={'type': 'graph-container', 'index': row['ID_INDICADOR']}))
                                     else:
-                                        # Se não tiver variáveis, mostra a descrição do indicador
+                                        # Define o tab_content para o caso sem variáveis
+                                        vis_content = create_visualization(df_dados, row['ID_INDICADOR'])
                                         tab_content = [
-                                            html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                                            html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                                            # Cria o container AQUI e adiciona o conteúdo da visualização
+                                            html.Div(vis_content, id={'type': 'graph-container', 'index': row['ID_INDICADOR']}) 
                                         ]
-                                    
-                                    grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                                    tab_content.append(grid)
                                 except Exception as e:
                                     print(f"Erro ao processar dropdown de variáveis: {e}")
                                     tab_content = [
@@ -1524,16 +1497,17 @@ def update_card_content(*args):
                                     )
 
                                 # Cria a visualização com o valor inicial do dropdown
-                                grid = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
-                                tab_content.append(grid)
+                                vis_content = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial)
+                                # Cria o container AQUI e adiciona o conteúdo da visualização
+                                tab_content.append(html.Div(vis_content, id={'type': 'graph-container', 'index': row['ID_INDICADOR']}))
                             else:
-                                # Se não tiver variáveis, mostra a descrição do indicador
+                                # Define o tab_content para o caso sem variáveis
+                                vis_content = create_visualization(df_dados, row['ID_INDICADOR'])
                                 tab_content = [
-                                    html.P(row['DESC_INDICADOR'], className="text-justify p-3")
+                                    html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
+                                    # Cria o container AQUI e adiciona o conteúdo da visualização
+                                    html.Div(vis_content, id={'type': 'graph-container', 'index': row['ID_INDICADOR']}) 
                                 ]
-                                
-                                grid = create_visualization(df_dados, row['ID_INDICADOR'])
-                                tab_content.append(grid)
                         except Exception as e:
                             print(f"Erro ao processar dropdown de variáveis: {e}")
                             tab_content = [
@@ -2165,63 +2139,29 @@ def update_graphs(selected_var, dropdown_id):
                                 trace.name = '<b>Goiás</b>'
                     
                     # Adiciona o gráfico de pizza à estrutura, mas mantém oculto se não houver menos de 5 anos
-                    return html.Div([
-                        html.Div(
-                            id={'type': 'graph-container', 'index': indicador_id},
-                            children=[
+                    # MODIFICADO: Retorna lista de componentes internos, não Div externo
+                    return [
+                        dbc.Row([
+                            # Coluna da esquerda com os gráficos
+                            dbc.Col([
+                                # Primeira linha com os gráficos (linha/barra ou pizza)
                                 dbc.Row([
-                                    # Coluna da esquerda com os gráficos
                                     dbc.Col([
-                                        # Primeira linha com os gráficos (linha/barra ou pizza)
-                                        dbc.Row([
-                                            dbc.Col([
-                                                # Container para gráficos de linha e barra
-                                                html.Div([
-                                                    dcc.Graph(figure=fig_line, style={'height': '370px'}),
-                                                    dcc.Graph(figure=fig_bar, style={'height': '370px'})
-                                                ], style={
-                                                    'display': 'none' if mostrar_pizza else 'block',
-                                                    'border': '1px solid #dee2e6',
-                                                    'borderRadius': '4px',
-                                                    'padding': '15px',
-                                                    'height': '800px',
-                                                    'marginBottom': '0px'
-                                                }),
-                                                # Container para gráfico de pizza
-                                                html.Div([
-                                                    html.Label("Ano", 
-                                                        style={
-                                                            'fontWeight': 'bold',
-                                                            'marginBottom': '5px',
-                                                            'display': 'block'
-                                                        }
-                                                    ),
-                                                    dcc.Dropdown(
-                                                        id={'type': 'pie-year-dropdown', 'index': indicador_id},
-                                                        options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                                                        value=anos_unicos[-1] if anos_unicos else None,
-                                                        style={'width': '200px', 'marginBottom': '10px'}
-                                                    ),
-                                                    dcc.Graph(
-                                                        figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
-                                                        id={'type': 'pie-chart', 'index': indicador_id},
-                                                        style={'height': '700px'}
-                                                    )
-                                                ], style={
-                                                    'display': 'block' if mostrar_pizza else 'none',
-                                                    'border': '1px solid #dee2e6',
-                                                    'borderRadius': '4px',
-                                                    'padding': '15px',
-                                                    'height': '800px'
-                                                })
-                                            ], width=12)
-                                        ], className="mb-4")
-                                    ], width=7),
-                                    # Coluna da direita com o mapa e dropdown
-                                    dbc.Col([
-                                        # Container do mapa com dropdown
+                                        # Container para gráficos de linha e barra
                                         html.Div([
-                                            html.Label("Ano:", 
+                                            dcc.Graph(figure=fig_line, style={'height': '370px'}),
+                                            dcc.Graph(figure=fig_bar, style={'height': '370px'})
+                                        ], style={
+                                            'display': 'none' if mostrar_pizza else 'block',
+                                            'border': '1px solid #dee2e6',
+                                            'borderRadius': '4px',
+                                            'padding': '15px',
+                                            'height': '800px',
+                                            'marginBottom': '0px'
+                                        }),
+                                        # Container para gráfico de pizza
+                                        html.Div([
+                                            html.Label("Ano", 
                                                 style={
                                                     'fontWeight': 'bold',
                                                     'marginBottom': '5px',
@@ -2229,55 +2169,60 @@ def update_graphs(selected_var, dropdown_id):
                                                 }
                                             ),
                                             dcc.Dropdown(
-                                                id={'type': 'year-dropdown', 'index': indicador_id},
-                                                options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                                                value=sorted(df['CODG_ANO'].unique())[-1],
+                                                id={'type': 'pie-year-dropdown', 'index': indicador_id},
+                                                options=[{'label': ano, 'value': ano} for ano in anos_unicos],
+                                                value=anos_unicos[-1] if anos_unicos else None,
                                                 style={'width': '200px', 'marginBottom': '10px'}
                                             ),
                                             dcc.Graph(
-                                                id={'type': 'choropleth-map', 'index': indicador_id},
-                                                figure=fig_map,
-                                                style={
-                                                    'height': '700px'
-                                                }
+                                                figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
+                                                id={'type': 'pie-chart', 'index': indicador_id},
+                                                style={'height': '700px'}
                                             )
                                         ], style={
+                                            'display': 'block' if mostrar_pizza else 'none',
                                             'border': '1px solid #dee2e6',
                                             'borderRadius': '4px',
                                             'padding': '15px',
-                                            'height': '800px',
-                                            'marginBottom': '0px'
+                                            'height': '800px'
                                         })
-                                    ], width=5)
-                                ])
-                            ]
-                        ),
-                        html.Div([
-                            html.H5("Dados Detalhados", className="mt-4 mb-3", style={'marginLeft': '20px'}),
-                            dag.AgGrid(
-                                rowData=df.sort_values(['DESC_UND_FED', 'CODG_ANO', 'DESC_VAR']).to_dict('records'),
-                                columnDefs=columnDefs,
-                                defaultColDef=defaultColDef,
-                                dashGridOptions={
-                                    "pagination": True,
-                                    "paginationPageSize": 10,
-                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "domLayout": "autoHeight",  # Alterado de "normal"
-                                    "suppressMovableColumns": True,
-                                    "animateRows": True,
-                                    "suppressColumnVirtualisation": True
-                                    # Remova autoSizeAllColumns
-                                },
-                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
-                            )
-                        ], style={
-                            'width': '100%', 
-                            'marginTop': '20px',
-                            'border': '1px solid #dee2e6',
-                            'borderRadius': '4px',
-                            'padding': '15px'
-                        })
-                    ])
+                                    ], width=12)
+                                ], className="mb-4")
+                            ], width=7),
+                            # Coluna da direita com o mapa e dropdown
+                            dbc.Col([
+                                # Container do mapa com dropdown
+                                html.Div([
+                                    html.Label("Ano:", 
+                                        style={
+                                            'fontWeight': 'bold',
+                                            'marginBottom': '5px',
+                                            'display': 'block'
+                                        }
+                                    ),
+                                    dcc.Dropdown(
+                                        id={'type': 'year-dropdown', 'index': indicador_id},
+                                        options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
+                                        value=sorted(df['CODG_ANO'].unique())[-1],
+                                        style={'width': '200px', 'marginBottom': '10px'}
+                                    ),
+                                    dcc.Graph(
+                                        id={'type': 'choropleth-map', 'index': indicador_id},
+                                        figure=fig_map,
+                                        style={
+                                            'height': '700px'
+                                        }
+                                    )
+                                ], style={
+                                    'border': '1px solid #dee2e6',
+                                    'borderRadius': '4px',
+                                    'padding': '15px',
+                                    'height': '800px',
+                                    'marginBottom': '0px'
+                                })
+                            ], width=5)
+                        ])
+                    ]
                 except Exception as e:
                     print(f"Erro ao atualizar gráficos: {e}")
                     raise PreventUpdate
