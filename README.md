@@ -2,19 +2,35 @@
 
 Este é um painel interativo desenvolvido com Dash para visualização dos Objetivos de Desenvolvimento Sustentável (ODS) do Instituto Mauro Borges.
 
+## 📑 Índice
+- [Análise do Projeto](#análise-do-projeto)
+- [Tecnologias](#tecnologias)
+- [Arquitetura](#arquitetura)
+- [Documentação](#documentação)
+- [Instalação](#instalação)
+- [Banco de Dados](#banco-de-dados)
+- [Autenticação](#autenticação)
+- [API Endpoints](#api-endpoints)
+- [Desenvolvimento](#desenvolvimento)
+- [Testes](#testes)
+- [Contribuição](#contribuição)
+
 ## 📊 Análise do Projeto
 
 ### Estrutura Geral
+
 O projeto é um painel de visualização de dados relacionado aos Objetivos de Desenvolvimento Sustentável (ODS), desenvolvido com Dash, um framework Python baseado em Flask para criação de aplicações web analíticas.
 
 ### Componentes Principais
 
 #### 1. Configuração e Inicialização
+
 - O aplicativo é configurado com temas Bootstrap e serviços de arquivos estáticos
 - Implementa uma configuração flexível baseada em variáveis de ambiente através de um arquivo `.env`
 - Possui um modo de manutenção que pode ser ativado/desativado remotamente
 
 #### 2. Estrutura de Dados
+
 - Os dados são organizados hierarquicamente:
   - **Objetivos**: representam os Objetivos de Desenvolvimento Sustentável
   - **Metas**: subdivisões dos objetivos
@@ -22,11 +38,13 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
   - **Variáveis**: diferentes aspectos mensuráveis dos indicadores
 
 #### 3. Sistema de Cache
+
 - Utiliza `lru_cache` para otimizar o carregamento de dados
 - Implementa cache para objetivos, metas, indicadores e dados específicos
 - Inclui uma rota `/limpar-cache` para atualizar os dados quando necessário
 
 #### 4. Visualizações de Dados
+
 - Oferece diferentes tipos de visualizações:
   - Gráficos de linha para evolução temporal
   - Mapas coropléticos para visualização geográfica
@@ -34,17 +52,20 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
   - Tabelas de dados detalhados
 
 #### 5. Interatividade
+
 - Implementa callbacks para:
   - Navegação entre objetivos, metas e indicadores
   - Seleção de anos e variáveis nos filtros
   - Atualização dinâmica dos gráficos baseada nas seleções do usuário
 
 #### 6. Segurança
+
 - Proteção por senha para o modo de manutenção
 - Geração segura de chaves secretas para o Flask
 - Armazenamento seguro de senhas com hash bcrypt
 
 #### 7. Gerenciamento de Recursos
+
 - Carrega dados de arquivos CSV e Parquet
 - Oferece tratamento de erros para lidar com dados ausentes ou incorretos
 - Implementa convertibilidade de formatos para garantir compatibilidade
@@ -68,18 +89,6 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
 - **Configuração Flexível**: Permite ajustar parâmetros via variáveis de ambiente
 - **Tratamento de Erros Robusto**: Garante que o sistema continue funcionando mesmo com dados parciais ou ausentes
 
-## 📑 Índice
-- [Tecnologias](#-tecnologias)
-- [Arquitetura](#-arquitetura)
-- [Documentação](#-documentação)
-- [Instalação](#-instalação)
-- [Banco de Dados](#-banco-de-dados)
-- [Autenticação](#-autenticação)
-- [API Endpoints](#-api-endpoints)
-- [Desenvolvimento](#-desenvolvimento)
-- [Testes](#-testes)
-- [Contribuição](#-contribuição)
-
 ## 🛠️ Tecnologias
 
 - Python 3.8+
@@ -95,6 +104,7 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
 ## 🏗️ Arquitetura
 
 ### Estrutura do Projeto
+
 ```
 painel-ods/
 ├── app/                    # Código fonte da aplicação
@@ -119,6 +129,7 @@ painel-ods/
 ## 📚 Documentação
 
 ### Funcionalidades
+
 - Visualização interativa dos ODS
 - Gráficos dinâmicos e interativos
 - Mapa coroplético do Brasil
@@ -131,9 +142,11 @@ painel-ods/
 - Sugestões automáticas de visualização
 
 ### Visualizações
+
 O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 
 #### 1. Gráfico de Linhas
+
 - Evolução temporal dos valores
 - Linhas suavizadas para tendências
 - Destaque para Goiás
@@ -141,12 +154,14 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 - Legenda interativa
 
 #### 2. Gráfico de Barras
+
 - Comparação entre estados
 - Destaque para Goiás
 - Hover com informações detalhadas
 - Visualização de valores absolutos
 
 #### 3. Gráfico de Pizza
+
 - Distribuição percentual
 - Seletor de ano
 - Hover com estado, valor e percentual
@@ -155,6 +170,7 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 - Legenda interativa
 
 #### 4. Mapa Coroplético
+
 - Visualização geográfica
 - Seletor de ano
 - Escala de cores Viridis
@@ -162,6 +178,7 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 - Ajuste automático do território
 
 ### Layout
+
 - Gráficos de linha e barra: 60% da largura à esquerda
 - Gráfico de pizza e mapa: 40% da largura à direita
 - Dropdown de ano acima do pizza e mapa
@@ -171,31 +188,36 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 ## 📦 Instalação
 
 ### Requisitos
+
 - Python 3.8+
 - Docker (opcional, para desenvolvimento local)
 - OpenShift CLI (oc) para deploy no OpenShift
 
 ### Passos de Instalação
 
-1. Clone o repositório:
+1.Clone o repositório:
+
 ```bash
 git clone https://github.com/seu-usuario/painel-ods.git
 cd painel-ods
 ```
 
-2. Crie um ambiente virtual:
+2.Crie um ambiente virtual:
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
 
-3. Instale as dependências:
+3.Instale as dependências:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Configure as variáveis de ambiente:
+4.Configure as variáveis de ambiente:
+
 ```bash
 # Copie o arquivo de exemplo
 cp .env.example .env
@@ -204,7 +226,8 @@ cp .env.example .env
 python generate_password.py
 ```
 
-5. Inicie o servidor:
+5.Inicie o servidor:
+
 ```bash
 python app.py
 ```
@@ -214,6 +237,7 @@ A aplicação estará disponível em `http://localhost:8050`
 ## 💾 Banco de Dados
 
 ### Estrutura Básica
+
 Todos os arquivos parquet seguem uma estrutura básica comum:
 
 | Coluna | Descrição | Tipo |
@@ -226,6 +250,7 @@ Todos os arquivos parquet seguem uma estrutura básica comum:
 | CODG_ANO | Código do ano | Inteiro |
 
 ### Campos Adicionais
+
 Além da estrutura básica, os indicadores podem conter campos adicionais para desagregação dos dados:
 
 | Campo | Descrição | Tipo |
@@ -252,14 +277,17 @@ Além da estrutura básica, os indicadores podem conter campos adicionais para d
 O sistema utiliza autenticação básica para acesso restrito e página de manutenção.
 
 ### Configuração da Senha
-1. Abra o arquivo `generate_password.py`
-2. Modifique a variável `current_password` com a senha desejada
-3. Execute o script para gerar o hash:
+
+1.Abra o arquivo `generate_password.py`
+2.Modifique a variável `current_password` com a senha desejada
+3.Execute o script para gerar o hash:
+
 ```bash
 python generate_password.py
 ```
 
 ### Modo de Manutenção
+
 Para ativar/desativar o modo de manutenção, faça uma requisição POST para `/toggle-maintenance` com a senha:
 
 ```bash
@@ -283,19 +311,22 @@ curl -X POST -H "Content-Type: application/json" -d '{"password":"sua_senha"}' h
 
 ### Desenvolvimento Local com Docker
 
-1. Criar ambiente virtual:
+1.Criar ambiente virtual:
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
 
-2. Instalar dependências:
+2.Instalar dependências:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Executar com Docker:
+3.Executar com Docker:
+
 ```bash
 docker compose up --build
 ```
@@ -303,32 +334,40 @@ docker compose up --build
 ### Deploy no OpenShift
 
 #### Pré-requisitos
-1. OpenShift CLI (oc) instalado
-2. Acesso a um cluster OpenShift
-3. Login no cluster:
+
+1.OpenShift CLI (oc) instalado
+2.Acesso a um cluster OpenShift
+3.Login no cluster:
+
 ```bash
 oc login <cluster-url>
 ```
 
 #### Configuração Inicial
-1. Usar o projeto colocation-imb:
+
+1.Usar o projeto colocation-imb:
+
 ```bash
 oc project colocation-imb
 ```
 
-2. Criar recursos de build:
+2.Criar recursos de build:
+
 ```bash
 oc apply -f k8s/imagestream.yaml
 oc apply -f k8s/buildconfig.yaml
 ```
 
 #### Deploy da Aplicação
-1. Iniciar o build:
+
+1.Iniciar o build:
+
 ```bash
 oc start-build painel-ods --follow
 ```
 
-2. Deploy dos recursos:
+2.Deploy dos recursos:
+
 ```bash
 oc apply -f k8s/
 ```
@@ -336,6 +375,7 @@ oc apply -f k8s/
 ## 🧪 Testes
 
 ### Executando Testes
+
 ```bash
 python -m pytest tests/
 ```
