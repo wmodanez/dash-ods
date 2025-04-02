@@ -602,35 +602,32 @@ app.layout = dbc.Container([
             dbc.Card([
                 dbc.CardBody([
                     dbc.Row([
-                        # Coluna das imagens
+                        # Coluna Imagem SGG
                         dbc.Col([
-                            dbc.Row([
-                                # Imagem da SGG
-                                dbc.Col([
-                                    html.Img(
-                                        src='/assets/img/sgg.png',
-                                        style={'width': '40%', 'height': '100%'},
-                                        className="img-fluid"
-                                    )
-                                ], width=6),
-                                # Imagem do IMB
-                                dbc.Col([
-                                    html.Img(
-                                        src='/assets/img/imb720.png',
-                                        style={'width': '30%', 'height': '100%'},
-                                        className="img-fluid"
-                                    )
-                                ], width=6)
-                            ], className="align-items-center")
-                        ], width=6),
+                            html.Img(
+                                src='/assets/img/sgg.png',
+                                className="img-fluid",
+                                style={'maxWidth': '150px', 'height': 'auto'} # Define max-width inline
+                            )
+                        ], xs=12, sm=6, md=3, className="p-2"),  # Adicionado padding
+
+                        # Coluna Imagem IMB
+                        dbc.Col([
+                            html.Img(
+                                src='/assets/img/imb720.png',
+                                className="img-fluid",  # Apenas img-fluid para controle de tamanho
+                                style={'maxWidth': '150px', 'height': 'auto'} # Define max-width inline
+                            )
+                        ], xs=12, sm=6, md=3, className="p-2"),  # Adicionado padding
+
                         # Coluna do título
                         dbc.Col([
                             html.H1(
                                 'Instituto Mauro Borges - ODS - Agenda ',
-                                className="text-center align-middle",
+                                className="align-middle",
                                 style={'margin': '0', 'padding': '0'}
                             )
-                        ], width=6, className="d-flex align-items-center")
+                        ],  xs=12, sm=12, md=6, className="d-flex align-items-center justify-content-center justify-content-md-start p-2")
                     ], className="align-items-center")
                 ])
             ], className="mb-4", style={
