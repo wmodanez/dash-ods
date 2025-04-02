@@ -31,13 +31,6 @@ spec:
           value: "1001"
         - name: USER_NAME
           value: "python"
-    resources:
-      requests:
-        memory: "512Mi"
-        cpu: "250m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
   output:
     to:
       kind: ImageStreamTag
