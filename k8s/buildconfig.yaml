@@ -11,7 +11,7 @@ spec:
     type: Git
     git:
       uri: "https://github.com/wmodanez/dash-ods.git"
-      ref: "openshift"
+      ref: "develop"
   strategy:
     type: Docker
     dockerStrategy:
