@@ -2,6 +2,72 @@
 
 Este é um painel interativo desenvolvido com Dash para visualização dos Objetivos de Desenvolvimento Sustentável (ODS) do Instituto Mauro Borges.
 
+## 📊 Análise do Projeto
+
+### Estrutura Geral
+O projeto é um painel de visualização de dados relacionado aos Objetivos de Desenvolvimento Sustentável (ODS), desenvolvido com Dash, um framework Python baseado em Flask para criação de aplicações web analíticas.
+
+### Componentes Principais
+
+#### 1. Configuração e Inicialização
+- O aplicativo é configurado com temas Bootstrap e serviços de arquivos estáticos
+- Implementa uma configuração flexível baseada em variáveis de ambiente através de um arquivo `.env`
+- Possui um modo de manutenção que pode ser ativado/desativado remotamente
+
+#### 2. Estrutura de Dados
+- Os dados são organizados hierarquicamente:
+  - **Objetivos**: representam os Objetivos de Desenvolvimento Sustentável
+  - **Metas**: subdivisões dos objetivos
+  - **Indicadores**: métricas para avaliar o progresso das metas
+  - **Variáveis**: diferentes aspectos mensuráveis dos indicadores
+
+#### 3. Sistema de Cache
+- Utiliza `lru_cache` para otimizar o carregamento de dados
+- Implementa cache para objetivos, metas, indicadores e dados específicos
+- Inclui uma rota `/limpar-cache` para atualizar os dados quando necessário
+
+#### 4. Visualizações de Dados
+- Oferece diferentes tipos de visualizações:
+  - Gráficos de linha para evolução temporal
+  - Mapas coropléticos para visualização geográfica
+  - Gráficos de pizza para distribuição percentual
+  - Tabelas de dados detalhados
+
+#### 5. Interatividade
+- Implementa callbacks para:
+  - Navegação entre objetivos, metas e indicadores
+  - Seleção de anos e variáveis nos filtros
+  - Atualização dinâmica dos gráficos baseada nas seleções do usuário
+
+#### 6. Segurança
+- Proteção por senha para o modo de manutenção
+- Geração segura de chaves secretas para o Flask
+- Armazenamento seguro de senhas com hash bcrypt
+
+#### 7. Gerenciamento de Recursos
+- Carrega dados de arquivos CSV e Parquet
+- Oferece tratamento de erros para lidar com dados ausentes ou incorretos
+- Implementa convertibilidade de formatos para garantir compatibilidade
+
+### Funcionalidades Destacadas
+
+1. **Visualização Interativa**: O usuário pode navegar pelos diferentes objetivos, metas e indicadores, visualizando os dados de forma dinâmica.
+
+2. **Exploração Multidimensional**: Permite a análise por diferentes variáveis, anos e unidades federativas.
+
+3. **Modo de Manutenção**: Possibilita que administradores coloquem o sistema em manutenção sem interromper completamente o serviço.
+
+4. **Sistema de Cache Eficiente**: Otimiza o desempenho ao armazenar em cache dados frequentemente acessados.
+
+5. **Responsividade**: Interface adaptável com componentes do Bootstrap e AG Grid para uma melhor experiência do usuário.
+
+### Otimizações Implementadas
+
+- **Uso de LRU Cache**: Melhora o desempenho ao evitar carregar repetidamente os mesmos dados
+- **Lazy Loading**: Carrega apenas os dados necessários quando solicitados
+- **Configuração Flexível**: Permite ajustar parâmetros via variáveis de ambiente
+- **Tratamento de Erros Robusto**: Garante que o sistema continue funcionando mesmo com dados parciais ou ausentes
+
 ## 📑 Índice
 - [Tecnologias](#-tecnologias)
 - [Arquitetura](#-arquitetura)
@@ -209,6 +275,9 @@ curl -X POST -H "Content-Type: application/json" -d '{"password":"sua_senha"}' h
 | GET | `/` | Página principal do painel |
 | POST | `/toggle-maintenance` | Ativa/desativa modo de manutenção |
 | GET | `/maintenance` | Página de manutenção |
+| GET | `/limpar-cache` | Limpa o cache do sistema e redireciona para a página inicial |
+| GET | `/assets/<path>` | Serve arquivos estáticos |
+| GET | `/_dash-component-suites/<path>` | Serve arquivos de componentes Dash |
 
 ## 💻 Desenvolvimento
 
