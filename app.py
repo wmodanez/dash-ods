@@ -1206,8 +1206,12 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                         # ----> NOVA LINHA PARA TABELA DETALHADA <----
                         dbc.Row([
                             dbc.Col([
-                                dbc.Card([
-                                    dbc.CardHeader("Dados Detalhados"),
+                                dbc.Card([                                    
+                                    html.H5(
+                                        "Dados Detalhados", 
+                                        className="mt-4", 
+                                        style={'marginLeft': '20px'}
+                                    ),
                                     dbc.CardBody([
                                         dag.AgGrid(
                                             id={'type': 'detail-table', 'index': indicador_id},
@@ -1226,7 +1230,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                             style={"width": "100%"}
                                         )
                                     ])
-                                ], className="mt-4") # Adiciona margem no topo
+                                ]) # Card não tem mais className="mt-4", H5 tem.
                             ])
                         ])
                         # ----> FIM DA NOVA LINHA <----
@@ -2255,8 +2259,14 @@ def update_graphs(selected_var, dropdown_id):
                         # ----> NOVA LINHA PARA TABELA DETALHADA <----
                         dbc.Row([
                             dbc.Col([
+                                # Remove o CardHeader e adiciona um H5 acima do Card
+                                html.H5(
+                                    "Dados Detalhados", 
+                                    className="mt-4", 
+                                    style={'marginLeft': '20px'} # Adiciona margem esquerda
+                                ), # Adiciona título H5
                                 dbc.Card([
-                                    dbc.CardHeader("Dados Detalhados"),
+                                    # dbc.CardHeader("Dados Detalhados"), # Linha removida
                                     dbc.CardBody([
                                         dag.AgGrid(
                                             id={'type': 'detail-table', 'index': indicador_id},
@@ -2275,7 +2285,7 @@ def update_graphs(selected_var, dropdown_id):
                                             style={"width": "100%"}
                                         )
                                     ])
-                                ], className="mt-4") # Adiciona margem no topo
+                                ]) # Card não tem mais className="mt-4", H5 tem.
                             ])
                         ])
                         # ----> FIM DA NOVA LINHA <----
