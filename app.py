@@ -862,6 +862,9 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     # ==============================================
                     # GRÁFICO DE LINHA - Evolução temporal dos valores
                     # ==============================================
+                    # Cria uma cópia do DataFrame ANTES do groupby para usar na tabela detalhada
+                    df_original = df.copy()
+
                     # Configura o gráfico de linha
                     config = {
                         'x': 'CODG_ANO',  # Voltando para CODG_ANO no eixo X
@@ -1199,7 +1202,34 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                     'marginBottom': '0px'
                                 })
                             ], width=5)
+                        ]),
+                        # ----> NOVA LINHA PARA TABELA DETALHADA <----
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Dados Detalhados"),
+                                    dbc.CardBody([
+                                        dag.AgGrid(
+                                            id={'type': 'detail-table', 'index': indicador_id},
+                                            rowData=df_original.to_dict('records'), # Usa o df_original
+                                            columnDefs=columnDefs,
+                                            defaultColDef=defaultColDef,
+                                            dashGridOptions={
+                                                "pagination": True,
+                                                "paginationPageSize": 10,
+                                                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                                "domLayout": "autoHeight",
+                                                "suppressMovableColumns": True,
+                                                "animateRows": True,
+                                                "suppressColumnVirtualisation": True
+                                            },
+                                            style={"width": "100%"}
+                                        )
+                                    ])
+                                ], className="mt-4") # Adiciona margem no topo
+                            ])
                         ])
+                        # ----> FIM DA NOVA LINHA <----
                     ]
                 except Exception as e:
                     print(f"Erro ao atualizar gráficos: {e}")
@@ -1881,6 +1911,9 @@ def update_graphs(selected_var, dropdown_id):
                     # ==============================================
                     # GRÁFICO DE LINHA - Evolução temporal dos valores
                     # ==============================================
+                    # Cria uma cópia do DataFrame ANTES do groupby para usar na tabela detalhada
+                    df_original = df.copy()
+
                     # Configura o gráfico de linha
                     config = {
                         'x': 'CODG_ANO',  # Voltando para CODG_ANO no eixo X
@@ -2218,7 +2251,34 @@ def update_graphs(selected_var, dropdown_id):
                                     'marginBottom': '0px'
                                 })
                             ], width=5)
+                        ]),
+                        # ----> NOVA LINHA PARA TABELA DETALHADA <----
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Card([
+                                    dbc.CardHeader("Dados Detalhados"),
+                                    dbc.CardBody([
+                                        dag.AgGrid(
+                                            id={'type': 'detail-table', 'index': indicador_id},
+                                            rowData=df_original.to_dict('records'), # Usa o df_original
+                                            columnDefs=columnDefs,
+                                            defaultColDef=defaultColDef,
+                                            dashGridOptions={
+                                                "pagination": True,
+                                                "paginationPageSize": 10,
+                                                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                                "domLayout": "autoHeight",
+                                                "suppressMovableColumns": True,
+                                                "animateRows": True,
+                                                "suppressColumnVirtualisation": True
+                                            },
+                                            style={"width": "100%"}
+                                        )
+                                    ])
+                                ], className="mt-4") # Adiciona margem no topo
+                            ])
                         ])
+                        # ----> FIM DA NOVA LINHA <----
                     ]
                 except Exception as e:
                     print(f"Erro ao atualizar gráficos: {e}")
