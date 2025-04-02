@@ -95,6 +95,10 @@ CORS(app.server)
 # Endpoint para logging de erros do cliente
 @app.server.route('/log', methods=['POST'])
 def log_message():
+    # Verifica se o servidor está em modo debug
+    if not app.server.debug:
+        return '', 204 # Retorna "No Content" se debug estiver desativado
+    
     try:
         data = request.get_json(force=True)
         print("\n====================== ERRO DO NAVEGADOR ======================")
@@ -584,7 +588,9 @@ DEFAULT_LAYOUT = {
     'yaxis': dict(
         showgrid=False,  # Remove as linhas de grade do eixo Y
         zeroline=False   # Remove a linha do zero do eixo Y
-    )
+    ),
+    'xaxis_automargin': False, # Desativa auto-margin para eixo X
+    'yaxis_automargin': False  # Desativa auto-margin para eixo Y
 }
 
 # Define o layout do aplicativo
@@ -673,7 +679,7 @@ app.layout = dbc.Container([
                                     html.H3(id='card-header', children=initial_header)
                                 ),
                                 dbc.CardBody([
-                                    html.P(id='card-content', children=initial_content),
+                                    html.Div(id='card-content', children=initial_content),
                                     dbc.Nav(
                                         id='metas-nav',
                                         pills=True,
@@ -685,7 +691,7 @@ app.layout = dbc.Container([
                                         },
                                         children=[]
                                     ),
-                                    html.P(
+                                    html.Div(
                                         id='meta-description',
                                         children=initial_meta_description,
                                         className="text-justify mt-4"
@@ -809,8 +815,6 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     "autoHeight": True,
                     "suppressSizeToFit": False,
                     "cellStyle": {"whiteSpace": "normal"},
-                    "autoSize": True,
-                    "suppressAutoSize": False,
                     "cellClass": "wrap-text"
                 })
         
@@ -823,8 +827,6 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             "autoHeight": True,
             "suppressSizeToFit": False,
             "cellStyle": {"whiteSpace": "normal"},
-            "autoSize": True,
-            "suppressAutoSize": False,
             "cellClass": "wrap-text"
         }
         
@@ -849,14 +851,13 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                     "pagination": True,
                                     "paginationPageSize": 10,
                                     "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
-                                    "domLayout": "normal",  # Em vez de "autoHeight"
+                                    "domLayout": "autoHeight",  # Alterado de "normal"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
                                     "suppressColumnVirtualisation": True
                                     # Remova autoSizeAllColumns
                                 },
-                                style={"height": "100%", "width": "100%"},
+                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
                             )
                         ])
                     
@@ -1215,14 +1216,13 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                     "pagination": True,
                                     "paginationPageSize": 10,
                                     "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
-                                    "domLayout": "normal",  # Em vez de "autoHeight"
+                                    "domLayout": "autoHeight",  # Alterado de "normal"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
                                     "suppressColumnVirtualisation": True
                                     # Remova autoSizeAllColumns
                                 },
-                                style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
+                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
                             )
                         ], style={
                             'width': '100%', 
@@ -1245,14 +1245,13 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                 "pagination": True,
                 "paginationPageSize": 10,
                 "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                "rowHeight": 40,  # Valor numérico em vez de "auto"
-                "domLayout": "normal",  # Em vez de "autoHeight"
+                "domLayout": "autoHeight",  # Alterado de "normal"
                 "suppressMovableColumns": True,
                 "animateRows": True,
                 "suppressColumnVirtualisation": True
                 # Remova autoSizeAllColumns
             },
-            style={"height": "100%", "width": "100%"},
+            style={"width": "100%"}, # Removido height: 100%
         )
     except Exception as e:
         print(f"Erro ao atualizar gráficos: {e}")
@@ -1823,8 +1822,6 @@ def update_graphs(selected_var, dropdown_id):
                     "autoHeight": True,
                     "suppressSizeToFit": False,
                     "cellStyle": {"whiteSpace": "normal"},
-                    "autoSize": True,
-                    "suppressAutoSize": False,
                     "cellClass": "wrap-text"
                 })
         
@@ -1837,8 +1834,6 @@ def update_graphs(selected_var, dropdown_id):
             "autoHeight": True,
             "suppressSizeToFit": False,
             "cellStyle": {"whiteSpace": "normal"},
-            "autoSize": True,
-            "suppressAutoSize": False,
             "cellClass": "wrap-text"
         }
         
@@ -1863,14 +1858,13 @@ def update_graphs(selected_var, dropdown_id):
                                     "pagination": True,
                                     "paginationPageSize": 10,
                                     "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
-                                    "domLayout": "normal",  # Em vez de "autoHeight"
+                                    "domLayout": "autoHeight",  # Alterado de "normal"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
                                     "suppressColumnVirtualisation": True
                                     # Remova autoSizeAllColumns
                                 },
-                                style={"height": "100%", "width": "100%"},
+                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
                             )
                         ])
                     
@@ -2025,6 +2019,15 @@ def update_graphs(selected_var, dropdown_id):
                         hovertemplate="<b>%{location}</b><br>" +
                                     "Valor: %{z}<br>" +
                                     "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>"
+                    )
+                    
+                    # Atualiza o layout do mapa
+                    fig_map.update_layout(
+                        margin=dict(r=0, l=0, t=0, b=0),
+                        coloraxis_colorbar=dict(
+                            title=None,
+                            tickfont=dict(size=12, color='black')
+                        )
                     )
                     
                     # ==============================================
@@ -2220,14 +2223,13 @@ def update_graphs(selected_var, dropdown_id):
                                     "pagination": True,
                                     "paginationPageSize": 10,
                                     "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
-                                    "domLayout": "normal",  # Em vez de "autoHeight"
+                                    "domLayout": "autoHeight",  # Alterado de "normal"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
                                     "suppressColumnVirtualisation": True
                                     # Remova autoSizeAllColumns
                                 },
-                                style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
+                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
                             )
                         ], style={
                             'width': '100%', 
@@ -2250,14 +2252,13 @@ def update_graphs(selected_var, dropdown_id):
                 "pagination": True,
                 "paginationPageSize": 10,
                 "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                "rowHeight": 40,  # Valor numérico em vez de "auto"
-                "domLayout": "normal",  # Em vez de "autoHeight"
+                "domLayout": "autoHeight",  # Alterado de "normal"
                 "suppressMovableColumns": True,
                 "animateRows": True,
                 "suppressColumnVirtualisation": True
                 # Remova autoSizeAllColumns
             },
-            style={"height": "100%", "width": "100%"},
+            style={"width": "100%"}, # Removido height: 100%
         )
     except Exception as e:
         print(f"Erro ao atualizar gráficos: {e}")
