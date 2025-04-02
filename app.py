@@ -19,6 +19,7 @@ from functools import lru_cache
 from flask import session, redirect, send_from_directory, request, jsonify
 import bcrypt
 from generate_password import generate_password_hash, generate_secret_key, update_env_file, check_password
+from flask_cors import CORS
 
 # Carrega as variáveis de ambiente primeiro
 load_dotenv()
@@ -87,6 +88,23 @@ app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 @app.server.route('/assets/<path:path>')
 def serve_static(path):
     return send_from_directory('assets', path)
+
+# Adicionando CORS para permitir as requisições de log
+CORS(app.server)
+
+# Endpoint para logging de erros do cliente
+@app.server.route('/log', methods=['POST'])
+def log_message():
+    try:
+        data = request.get_json(force=True)
+        print("\n====================== ERRO DO NAVEGADOR ======================")
+        print(f"Mensagem: {data.get('message', 'Sem mensagem')}")
+        print(f"Stack: {data.get('stack', 'Sem stack')}")
+        print("===============================================================\n")
+        return jsonify({"status": "logged", "success": True})
+    except Exception as e:
+        print(f"Erro ao processar log do cliente: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # Rota para servir arquivos do dash
 @app.server.route('/_dash-component-suites/<path:path>')
@@ -190,6 +208,64 @@ app.index_string = '''
             {%scripts%}
             {%renderer%}
         </footer>
+        <script>
+        (function() {
+            // Função para enviar log para o servidor
+            function enviarLog(mensagem, stack) {
+                console.log("Enviando log para o servidor:", mensagem);
+                
+                fetch('/log', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        message: typeof mensagem === 'object' ? JSON.stringify(mensagem) : String(mensagem),
+                        stack: stack || new Error().stack
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Falha na requisição: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Log enviado com sucesso:", data);
+                })
+                .catch(err => {
+                    console.log("Erro ao enviar log:", err);
+                });
+            }
+            
+            // Sobrescreve o console.error original
+            const originalConsoleError = console.error;
+            console.error = function() {
+                // Captura os argumentos
+                const args = Array.from(arguments);
+                const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
+                
+                // Envia para o servidor
+                enviarLog(message, new Error().stack);
+                
+                // Chama o console.error original
+                originalConsoleError.apply(console, arguments);
+            };
+            
+            // Captura erros não tratados
+            window.addEventListener('error', function(event) {
+                enviarLog(event.message, event.error ? event.error.stack : null);
+                return false;
+            });
+            
+            // Captura promessas rejeitadas não tratadas
+            window.addEventListener('unhandledrejection', function(event) {
+                enviarLog(
+                    'Promessa rejeitada não tratada: ' + (event.reason ? event.reason.toString() : 'Razão desconhecida'),
+                    event.reason && event.reason.stack ? event.reason.stack : null
+                );
+            });
+            
+        })();
+        </script>
     </body>
 </html>
 '''
@@ -446,7 +522,7 @@ if meta_inicial:
                                         value=valor_inicial,
                                         style={'width': '70%'}
                                     )
-                                ], style={'padding-bottom': '20px', 'padding-top': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
+                                ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                             )
 
                         # Cria a visualização com o valor inicial do dropdown
@@ -733,7 +809,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                     "autoHeight": True,
                     "suppressSizeToFit": False,
                     "cellStyle": {"whiteSpace": "normal"},
-                    "autoSizeAllColumns": True,
+                    "autoSize": True,
                     "suppressAutoSize": False,
                     "cellClass": "wrap-text"
                 })
@@ -747,7 +823,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             "autoHeight": True,
             "suppressSizeToFit": False,
             "cellStyle": {"whiteSpace": "normal"},
-            "autoSizeAllColumns": True,
+            "autoSize": True,
             "suppressAutoSize": False,
             "cellClass": "wrap-text"
         }
@@ -772,18 +848,13 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                 dashGridOptions={
                                     "pagination": True,
                                     "paginationPageSize": 10,
-                                    "rowHeight": "auto",
-                                    "domLayout": "autoHeight",
+                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
+                                    "domLayout": "normal",  # Em vez de "autoHeight"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
-                                    "suppressColumnVirtualisation": True,
-                                    "autoSizeAllColumns": True,
-                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                                    "suppressColumnVirtualisation": True
+                                    # Remova autoSizeAllColumns
                                 },
                                 style={"height": "100%", "width": "100%"},
                             )
@@ -1085,7 +1156,7 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                                         style={'width': '200px', 'marginBottom': '10px'}
                                                     ),
                                                     dcc.Graph(
-                                                        figure=fig_pie if mostrar_pizza else None,
+                                                        figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
                                                         id={'type': 'pie-chart', 'index': indicador_id},
                                                         style={'height': '700px'}
                                                     )
@@ -1143,18 +1214,13 @@ def create_visualization(df, indicador_id=None, selected_var=None):
                                 dashGridOptions={
                                     "pagination": True,
                                     "paginationPageSize": 10,
-                                    "rowHeight": "auto",
-                                    "domLayout": "autoHeight",
+                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
+                                    "domLayout": "normal",  # Em vez de "autoHeight"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
-                                    "suppressColumnVirtualisation": True,
-                                    "autoSizeAllColumns": True,
-                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                                    "suppressColumnVirtualisation": True
+                                    # Remova autoSizeAllColumns
                                 },
                                 style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
                             )
@@ -1178,18 +1244,13 @@ def create_visualization(df, indicador_id=None, selected_var=None):
             dashGridOptions={
                 "pagination": True,
                 "paginationPageSize": 10,
-                "rowHeight": "auto",
-                "domLayout": "autoHeight",
+                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                "rowHeight": 40,  # Valor numérico em vez de "auto"
+                "domLayout": "normal",  # Em vez de "autoHeight"
                 "suppressMovableColumns": True,
                 "animateRows": True,
-                "suppressColumnVirtualisation": True,
-                "autoSizeAllColumns": True,
-                "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                "suppressColumnVirtualisation": True
+                # Remova autoSizeAllColumns
             },
             style={"height": "100%", "width": "100%"},
         )
@@ -1299,7 +1360,7 @@ def update_card_content(*args):
                                                         value=valor_inicial,
                                                         style={'width': '70%'}
                                                     )
-                                                ], style={'padding-bottom': '20px', 'padding-top': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
+                                                ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                             )
 
                                         # Cria a visualização com o valor inicial do dropdown
@@ -1460,7 +1521,7 @@ def update_card_content(*args):
                                                 value=valor_inicial,
                                                 style={'width': '70%'}
                                             )
-                                        ], style={'padding-bottom': '20px', 'padding-top': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
+                                        ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
                                     )
 
                                 # Cria a visualização com o valor inicial do dropdown
@@ -1762,7 +1823,7 @@ def update_graphs(selected_var, dropdown_id):
                     "autoHeight": True,
                     "suppressSizeToFit": False,
                     "cellStyle": {"whiteSpace": "normal"},
-                    "autoSizeColumn": True,
+                    "autoSize": True,
                     "suppressAutoSize": False,
                     "cellClass": "wrap-text"
                 })
@@ -1776,7 +1837,7 @@ def update_graphs(selected_var, dropdown_id):
             "autoHeight": True,
             "suppressSizeToFit": False,
             "cellStyle": {"whiteSpace": "normal"},
-            "autoSizeColumn": True,
+            "autoSize": True,
             "suppressAutoSize": False,
             "cellClass": "wrap-text"
         }
@@ -1801,18 +1862,13 @@ def update_graphs(selected_var, dropdown_id):
                                 dashGridOptions={
                                     "pagination": True,
                                     "paginationPageSize": 10,
-                                    "rowHeight": "auto",
-                                    "domLayout": "autoHeight",
+                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
+                                    "domLayout": "normal",  # Em vez de "autoHeight"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
-                                    "suppressColumnVirtualisation": True,
-                                    "autoSizeAllColumns": True,
-                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                                    "suppressColumnVirtualisation": True
+                                    # Remova autoSizeAllColumns
                                 },
                                 style={"height": "100%", "width": "100%"},
                             )
@@ -2105,7 +2161,7 @@ def update_graphs(selected_var, dropdown_id):
                                                         style={'width': '200px', 'marginBottom': '10px'}
                                                     ),
                                                     dcc.Graph(
-                                                        figure=fig_pie if mostrar_pizza else None,
+                                                        figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
                                                         id={'type': 'pie-chart', 'index': indicador_id},
                                                         style={'height': '700px'}
                                                     )
@@ -2163,18 +2219,13 @@ def update_graphs(selected_var, dropdown_id):
                                 dashGridOptions={
                                     "pagination": True,
                                     "paginationPageSize": 10,
-                                    "rowHeight": "auto",
-                                    "domLayout": "autoHeight",
+                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                    "rowHeight": 40,  # Valor numérico em vez de "auto"
+                                    "domLayout": "normal",  # Em vez de "autoHeight"
                                     "suppressMovableColumns": True,
                                     "animateRows": True,
-                                    "suppressColumnVirtualisation": True,
-                                    "autoSizeAllColumns": True,
-                                    "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                                    "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                                    "suppressColumnVirtualisation": True
+                                    # Remova autoSizeAllColumns
                                 },
                                 style={"height": "100%", "width": "calc(100% - 40px)", "marginLeft": "20px"},
                             )
@@ -2198,18 +2249,13 @@ def update_graphs(selected_var, dropdown_id):
             dashGridOptions={
                 "pagination": True,
                 "paginationPageSize": 10,
-                "rowHeight": "auto",
-                "domLayout": "autoHeight",
+                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                "rowHeight": 40,  # Valor numérico em vez de "auto"
+                "domLayout": "normal",  # Em vez de "autoHeight"
                 "suppressMovableColumns": True,
                 "animateRows": True,
-                "suppressColumnVirtualisation": True,
-                "autoSizeAllColumns": True,
-                "onGridReady": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onGridSizeChanged": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onFirstDataRendered": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onColumnResized": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onColumnVisible": {"function": "function(params) { params.api.sizeColumnsToFit(); }"},
-                "onColumnPinned": {"function": "function(params) { params.api.sizeColumnsToFit(); }"}
+                "suppressColumnVirtualisation": True
+                # Remova autoSizeAllColumns
             },
             style={"height": "100%", "width": "100%"},
         )
