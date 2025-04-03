@@ -439,7 +439,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         df_filtered = pd.merge(df_filtered, merge_data, on=filter_col_code, how='left')
                         df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
                     except Exception as merge_err:
-                        print(f"[Debug {indicador_id}] Erro no merge para {desc_col_code}: {merge_err}. Criando com N/D.")
                         df_filtered[desc_col_code] = 'N/D'
                 else:
                     # Se não existe nem no original ou falta a chave no filtrado, cria com N/D
@@ -509,14 +508,13 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                  # Combina props base com field/headerName/flex específicos
                  columnDefs.append({**base_props, "field": field_name, "headerName": col_def['headerName'], "flex": flex_value})
 
-        print(f"[Debug {indicador_id}] ColumnDefs Finais com Flex: {columnDefs}")
         # defaultColDef agora só precisa de propriedades que não variam por coluna
         defaultColDef = {
             "minWidth": 100, 
             "resizable": True, 
             "wrapText": True, 
             "autoHeight": True, 
-            "cellStyle": {"whiteSpace": "normal", 'text-align': 'center', 'font-weight': 'bold'} # Centraliza e aplica negrito
+            "cellStyle": {"whiteSpace": "normal", 'text-align': 'left'} # Alinha à esquerda e remove negrito
         }
 
         # --- Criação da Visualização (Gráficos + Tabela) --- 
@@ -656,7 +654,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 layout_updates = DEFAULT_LAYOUT.copy()
                 layout_updates.update({
                     'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black')), # Configurações base
-                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'))
+                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), showticklabels=False) # Adicionado showticklabels=False
                 })
                 if 'CODG_ANO' in df_grouped.columns: # Atualiza ticks do eixo X se CODG_ANO existe
                      layout_updates['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in sorted(df_grouped['CODG_ANO'].unique())]
@@ -858,23 +856,48 @@ def update_card_content(*args):
                         try:
                             # Identifica filtros dinâmicos
                             filter_cols = identify_filter_columns(df_dados)
-                            for filter_col_code in filter_cols:
+                            num_filters = len(filter_cols)
+
+                            for idx, filter_col_code in enumerate(filter_cols):
+                                # Determina o nome da coluna de descrição
                                 desc_col_code = 'DESC_' + filter_col_code[5:]
+
+                                # Cria mapeamento codigo->descrição (código existente)
+                                # ... (código de mapeamento)
                                 code_to_desc = {}
                                 if desc_col_code in df_dados.columns:
                                     try:
                                         mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
-                                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, index=mapping_df[filter_col_code].astype(str)).to_dict()
+                                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
+                                                                 index=mapping_df[filter_col_code].astype(str)).to_dict()
                                     except Exception as map_err:
-                                        print(f"Erro mapeamento {filter_col_code}: {map_err}")
-                                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
-                                col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                                              [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+                                        print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
+
+                                # Gera opções (código existente)
+                                # ... (código de geração de opções)
+                                col_options = [{'label': 'Todos', 'value': 'all'}]
+                                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
+                                for code_val_str in unique_codes:
+                                    label = code_to_desc.get(code_val_str, code_val_str)
+                                    col_options.append({'label': str(label), 'value': code_val_str})
+
                                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-                                dynamic_filters_div.append(dbc.Col([
-                                    html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                                    dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code}, options=col_options, value='all', style={'marginBottom': '10px'})
-                                ], md=6, xs=12))
+                                
+                                # --- Define larguras (md) condicionalmente (7/5 alternado) ---
+                                md_width = 7 if idx % 2 == 0 else 5
+                                # --- Fim da definição de larguras ---
+
+                                dynamic_filters_div.append(
+                                    dbc.Col([ # Wrap in dbc.Col
+                                        html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
+                                        dcc.Dropdown(
+                                            id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code},
+                                            options=col_options,
+                                            value='all',
+                                            style={'marginBottom': '10px'}
+                                        )
+                                    ], md=md_width, xs=12) # Aplica largura condicional md e sempre xs=12
+                                )
 
                             # Dropdown de variável principal
                             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row_ind['ID_INDICADOR']]
@@ -977,8 +1000,11 @@ def update_card_content(*args):
                     if df_dados is not None and not df_dados.empty:
                         try:
                             filter_cols = identify_filter_columns(df_dados)
-                            for filter_col_code in filter_cols:
+                            num_filters = len(filter_cols)
+
+                            for idx, filter_col_code in enumerate(filter_cols):
                                 desc_col_code = 'DESC_' + filter_col_code[5:]
+                                # ... (código de mapeamento e geração de opções) ...
                                 code_to_desc = {}
                                 if desc_col_code in df_dados.columns:
                                     try:
@@ -990,10 +1016,15 @@ def update_card_content(*args):
                                 col_options = [{'label': 'Todos', 'value': 'all'}] + \
                                               [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
+
+                                # --- Define larguras (md) condicionalmente (7/5 alternado) ---
+                                md_width = 7 if idx % 2 == 0 else 5
+                                # --- Fim da definição de larguras ---
+
                                 dynamic_filters_div.append(dbc.Col([
                                     html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
                                     dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code}, options=col_options, value='all', style={'marginBottom': '10px'})
-                                ], md=6, xs=12))
+                                ], md=md_width, xs=12))
 
                             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row_ind['ID_INDICADOR']]
                             has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
@@ -1257,12 +1288,9 @@ def update_visualization_from_store(store_data, store_id):
     selected_var = store_data.get('selected_var')
     selected_filters = store_data.get('selected_filters', {})
 
-    # print(f"Atualizando visualização para {indicador_id} com var={selected_var}, filters={selected_filters}") # REMOVIDO DEBUG
-
     try:
         df = load_dados_indicador_cache(indicador_id)
         if df is None or df.empty:
-            # print(f"Dados vazios para {indicador_id} em update_visualization_from_store") # REMOVIDO DEBUG
             return dbc.Alert(f"Dados não encontrados para o indicador {indicador_id} ao atualizar visualização.", color="warning")
 
         return create_visualization(df, indicador_id, selected_var, selected_filters)
