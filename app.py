@@ -388,30 +388,74 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if df_filtered.empty:
              return dbc.Alert("Nenhum dado encontrado após aplicar os filtros.", color="warning")
 
-        # Substitui códigos de UF pelos nomes
+        # --- Adiciona/Garante Colunas de Descrição --- 
+        # Descrição UF
         if 'CODG_UND_FED' in df_filtered.columns:
             df_filtered['DESC_UND_FED'] = df_filtered['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
             df_filtered = df_filtered.dropna(subset=['DESC_UND_FED'])
+        elif 'DESC_UND_FED' not in df_filtered.columns: # Garante a coluna mesmo que CODG não exista
+             df_filtered['DESC_UND_FED'] = 'N/D'
 
-        # Adiciona descrições de variável e unidade de medida
+        # Descrição Variável
         df_variavel_loaded = load_variavel()
         if 'CODG_VAR' in df_filtered.columns and not df_variavel_loaded.empty:
             df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str)
             df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
+            # Realiza o merge e preenche NaNs imediatamente
             df_filtered = df_filtered.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
             df_filtered['DESC_VAR'] = df_filtered['DESC_VAR'].fillna('N/D')
-        else:
+        elif 'DESC_VAR' not in df_filtered.columns:
             df_filtered['DESC_VAR'] = 'N/D'
 
+        # Descrição Unidade de Medida
         df_unidade_medida_loaded = load_unidade_medida()
         if 'CODG_UND_MED' in df_filtered.columns and not df_unidade_medida_loaded.empty:
             df_filtered['CODG_UND_MED'] = df_filtered['CODG_UND_MED'].astype(str)
             df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
             df_filtered = df_filtered.merge(df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
             df_filtered['DESC_UND_MED'] = df_filtered['DESC_UND_MED'].fillna('N/D')
-        else:
+        elif 'DESC_UND_MED' not in df_filtered.columns:
             df_filtered['DESC_UND_MED'] = 'N/D'
 
+        # Descrições para Filtros Dinâmicos
+        dynamic_filter_cols = identify_filter_columns(df) # Identifica filtros no DF ORIGINAL
+        print(f"[Debug {indicador_id}] Filtros Dinâmicos Identificados: {dynamic_filter_cols}")
+        processed_desc_cols = set() # Para evitar processar a mesma coluna duas vezes
+
+        for filter_col_code in dynamic_filter_cols:
+            desc_col_code = 'DESC_' + filter_col_code[5:]
+            if desc_col_code in processed_desc_cols:
+                continue # Já processamos esta coluna de descrição
+            
+            print(f"[Debug {indicador_id}] Processando Descrição para: {desc_col_code}")
+            # Garante que a coluna de descrição exista em df_filtered ANTES de copiar
+            if desc_col_code not in df_filtered.columns:
+                if desc_col_code in df.columns and filter_col_code in df_filtered.columns and filter_col_code in df.columns:
+                    try:
+                        # Tenta merge para buscar descrições do DF original
+                        merge_data = df[[filter_col_code, desc_col_code]].drop_duplicates().copy()
+                        # Converte a coluna de código para string em ambos DFs antes do merge
+                        df_filtered[filter_col_code] = df_filtered[filter_col_code].astype(str)
+                        merge_data[filter_col_code] = merge_data[filter_col_code].astype(str)
+                        
+                        df_filtered = pd.merge(df_filtered, merge_data, on=filter_col_code, how='left')
+                        df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
+                        print(f"[Debug {indicador_id}] Merge de {desc_col_code} realizado.")
+                    except Exception as merge_err:
+                        print(f"[Debug {indicador_id}] Erro no merge para {desc_col_code}: {merge_err}. Criando com N/D.")
+                        df_filtered[desc_col_code] = 'N/D'
+                else:
+                    # Se não existe nem no original ou falta a chave no filtrado, cria com N/D
+                    print(f"[Debug {indicador_id}] Coluna {desc_col_code} não encontrada para merge. Criando com N/D.")
+                    df_filtered[desc_col_code] = 'N/D'
+            else:
+                # Se já existe, apenas garante que não há NaNs (pode acontecer pós-filtro)
+                df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
+                print(f"[Debug {indicador_id}] Coluna {desc_col_code} já existia. Preenchendo NaNs.")
+            
+            processed_desc_cols.add(desc_col_code)
+
+        # Ordena e limpa dados numéricos ANTES de criar df_original_for_table
         df_filtered = df_filtered.sort_values('CODG_ANO')
         df_filtered['VLR_VAR'] = pd.to_numeric(df_filtered['VLR_VAR'], errors='coerce')
         df_filtered = df_filtered.dropna(subset=['VLR_VAR'])
@@ -419,20 +463,47 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if df_filtered.empty:
             return dbc.Alert("Não há dados numéricos válidos para criar a visualização.", color="warning", className="text-center p-3")
 
-        df_sugestoes = load_sugestoes_visualizacao()
-        column_order = [
-            ('DESC_UND_FED', 'Unidade Federativa'), ('CODG_ANO', 'Ano'),
-            ('DESC_VAR', 'Descrição da Variável'), ('VLR_VAR', 'Valor'),
-            ('DESC_UND_MED', 'Unidade de Medida')
-        ]
-        columnDefs = [{
-            "field": col, "headerName": header, "sortable": True, "filter": True,
-            "flex": 1, "minWidth": 100, "resizable": True, "wrapText": True,
-            "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}
-        } for col, header in column_order if col in df_filtered.columns]
+        # Cria a cópia para a tabela AG Grid DEPOIS de adicionar todas as descrições
+        df_original_for_table = df_filtered.copy()
 
+        # --- Lógica dos Gráficos (continua igual, usando df_filtered ou df_grouped) ---
+        df_sugestoes = load_sugestoes_visualizacao()
+
+        # --- Definição Dinâmica das Colunas da Tabela --- 
+        base_col_defs = [
+            # Colunas base que sempre aparecem (se existirem nos dados)
+            {"field": 'DESC_UND_FED', "headerName": 'Unidade Federativa'},
+            {"field": 'CODG_ANO', "headerName": 'Ano'},
+            {"field": 'DESC_VAR', "headerName": 'Variável'}, # Nome ajustado
+        ]
+
+        # Adiciona definições das colunas de descrição dos filtros dinâmicos
+        dynamic_desc_col_defs = []
+        for filter_col_code in dynamic_filter_cols: # Itera sobre filtros identificados
+             desc_col_code = 'DESC_' + filter_col_code[5:]
+             if desc_col_code in df_original_for_table.columns: # Verifica se a coluna existe na tabela final
+                  readable_name = constants.COLUMN_NAMES.get(desc_col_code, desc_col_code.replace('DESC_','').replace('_',' ').title())
+                  dynamic_desc_col_defs.append({"field": desc_col_code, "headerName": readable_name})
+
+        # Junta as colunas base, de descrição dinâmica e as finais
+        final_col_defs = base_col_defs + dynamic_desc_col_defs + [
+             {"field": 'VLR_VAR', "headerName": 'Valor'},
+             {"field": 'DESC_UND_MED', "headerName": 'Unidade de Medida'}
+        ]
+
+        # Aplica propriedades comuns (sortable, filter, etc.) a todas as colunas
+        columnDefs = []
+        present_columns = df_original_for_table.columns # Verifica colunas presentes no DF final da tabela
+        for col_def in final_col_defs:
+            if col_def['field'] in present_columns:
+                 base_props = {"sortable": True, "filter": True, "flex": 1, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
+                 # Combina props base com field/headerName específicos
+                 columnDefs.append({**base_props, **col_def})
+
+        print(f"[Debug {indicador_id}] ColumnDefs Finais: {columnDefs}") # DEBUG
         defaultColDef = {"flex": 1, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
 
+        # --- Criação da Visualização (Gráficos + Tabela) --- 
         if indicador_id and not df_sugestoes.empty:
             sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
             if not sugestoes_indicador.empty:
@@ -440,13 +511,13 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     return html.Div([
                         dbc.Alert("Dados insuficientes para gráficos. Mostrando tabela.", color="info", className="text-center p-3"),
                         dag.AgGrid(
-                            rowData=df_filtered.to_dict('records'), columnDefs=columnDefs, defaultColDef=defaultColDef,
+                            rowData=df_original_for_table.to_dict('records'), # Usa df_original_for_table
+                            columnDefs=columnDefs, # Usa columnDefs atualizado
+                            defaultColDef=defaultColDef,
                             dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight"},
                             style={"width": "100%"}
                         )
                     ])
-
-                df_original_for_table = df_filtered.copy() # Cópia para tabela AG Grid
 
                 # Agrupa dados para gráficos de linha/barra (se houver UF)
                 group_cols = ['CODG_ANO', 'DESC_UND_FED'] if 'DESC_UND_FED' in df_filtered.columns else ['CODG_ANO']
@@ -613,8 +684,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 return graph_layout
 
         # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
+        # Use df_original_for_table aqui também para incluir descrições
         return dag.AgGrid(
-            rowData=df_filtered.to_dict('records'), columnDefs=columnDefs, defaultColDef=defaultColDef,
+            rowData=df_original_for_table.to_dict('records'), # Usa df_original_for_table
+            columnDefs=columnDefs, # Usa columnDefs atualizado
+            defaultColDef=defaultColDef,
             dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight"},
             style={"width": "100%"}
         )
