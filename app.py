@@ -419,15 +419,13 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
         # Descrições para Filtros Dinâmicos
         dynamic_filter_cols = identify_filter_columns(df) # Identifica filtros no DF ORIGINAL
-        print(f"[Debug {indicador_id}] Filtros Dinâmicos Identificados: {dynamic_filter_cols}")
         processed_desc_cols = set() # Para evitar processar a mesma coluna duas vezes
 
         for filter_col_code in dynamic_filter_cols:
             desc_col_code = 'DESC_' + filter_col_code[5:]
             if desc_col_code in processed_desc_cols:
-                continue # Já processamos esta coluna de descrição
+                continue
             
-            print(f"[Debug {indicador_id}] Processando Descrição para: {desc_col_code}")
             # Garante que a coluna de descrição exista em df_filtered ANTES de copiar
             if desc_col_code not in df_filtered.columns:
                 if desc_col_code in df.columns and filter_col_code in df_filtered.columns and filter_col_code in df.columns:
@@ -440,18 +438,15 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         
                         df_filtered = pd.merge(df_filtered, merge_data, on=filter_col_code, how='left')
                         df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
-                        print(f"[Debug {indicador_id}] Merge de {desc_col_code} realizado.")
                     except Exception as merge_err:
                         print(f"[Debug {indicador_id}] Erro no merge para {desc_col_code}: {merge_err}. Criando com N/D.")
                         df_filtered[desc_col_code] = 'N/D'
                 else:
                     # Se não existe nem no original ou falta a chave no filtrado, cria com N/D
-                    print(f"[Debug {indicador_id}] Coluna {desc_col_code} não encontrada para merge. Criando com N/D.")
                     df_filtered[desc_col_code] = 'N/D'
             else:
-                # Se já existe, apenas garante que não há NaNs (pode acontecer pós-filtro)
+                # Se já existe, apenas garante que não há NaNs
                 df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
-                print(f"[Debug {indicador_id}] Coluna {desc_col_code} já existia. Preenchendo NaNs.")
             
             processed_desc_cols.add(desc_col_code)
 
@@ -514,7 +509,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                  # Combina props base com field/headerName/flex específicos
                  columnDefs.append({**base_props, "field": field_name, "headerName": col_def['headerName'], "flex": flex_value})
 
-        print(f"[Debug {indicador_id}] ColumnDefs Finais com Flex: {columnDefs}") # DEBUG
         # defaultColDef agora só precisa de propriedades que não variam por coluna
         defaultColDef = {"minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
 
@@ -576,6 +570,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             trace.line.color = '#229846'
                             trace.line.width = 6
                             trace.name = '<b>Goiás</b>'
+                        elif trace.name == 'Maranhão': # Adiciona cor para Maranhão
+                             trace.line.color = '#D2B48C' # Muda para marrom pastel (Tan)
                 else:
                     fig_line.update_traces(customdata=df_grouped[['DESC_UND_MED']])
 
@@ -604,6 +600,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                          if trace.name == 'Goiás':
                              trace.marker.color = '#229846'
                              trace.name = '<b>Goiás</b>'
+                         elif trace.name == 'Maranhão': # Adiciona cor para Maranhão
+                              trace.marker.color = '#D2B48C' # Muda para marrom pastel (Tan)
                 else:
                      fig_bar.update_traces(customdata=df_grouped[['DESC_UND_MED']],
                                            hovertemplate=(
@@ -1221,28 +1219,24 @@ def update_store_from_filters(filter_values, filter_ids, current_data):
 @app.callback(
     Output({'type': 'graph-container', 'index': MATCH}, 'children'),
     Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    State({'type': 'visualization-state-store', 'index': MATCH}, 'id'), # Para obter o indicador_id
-    # prevent_initial_call=True # Removido para permitir atualização inicial
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'id'), 
+    # prevent_initial_call=True # Comentado intencionalmente
 )
 def update_visualization_from_store(store_data, store_id):
-    # Permite a execução inicial ou se o store_data for explicitamente definido
-    if store_id is None: # Não deve acontecer com MATCH, mas é uma checagem segura
+    if store_id is None:
         raise PreventUpdate
 
     indicador_id = store_id['index']
-
-    # Se store_data for None na carga inicial, inicializa com valores padrão
     store_data = store_data or {'selected_var': None, 'selected_filters': {}}
-
     selected_var = store_data.get('selected_var')
     selected_filters = store_data.get('selected_filters', {})
 
-    print(f"Atualizando visualização para {indicador_id} com var={selected_var}, filters={selected_filters}") # Linha de Debug
+    # print(f"Atualizando visualização para {indicador_id} com var={selected_var}, filters={selected_filters}") # REMOVIDO DEBUG
 
     try:
         df = load_dados_indicador_cache(indicador_id)
         if df is None or df.empty:
-            print(f"Dados vazios para {indicador_id} em update_visualization_from_store")
+            # print(f"Dados vazios para {indicador_id} em update_visualization_from_store") # REMOVIDO DEBUG
             return dbc.Alert(f"Dados não encontrados para o indicador {indicador_id} ao atualizar visualização.", color="warning")
 
         return create_visualization(df, indicador_id, selected_var, selected_filters)
