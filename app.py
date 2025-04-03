@@ -509,8 +509,15 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                  # Combina props base com field/headerName/flex específicos
                  columnDefs.append({**base_props, "field": field_name, "headerName": col_def['headerName'], "flex": flex_value})
 
+        print(f"[Debug {indicador_id}] ColumnDefs Finais com Flex: {columnDefs}")
         # defaultColDef agora só precisa de propriedades que não variam por coluna
-        defaultColDef = {"minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
+        defaultColDef = {
+            "minWidth": 100, 
+            "resizable": True, 
+            "wrapText": True, 
+            "autoHeight": True, 
+            "cellStyle": {"whiteSpace": "normal", 'text-align': 'center', 'font-weight': 'bold'} # Centraliza e aplica negrito
+        }
 
         # --- Criação da Visualização (Gráficos + Tabela) --- 
         if indicador_id and not df_sugestoes.empty:
@@ -672,10 +679,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                      html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie, style={'height': '700px'})], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px'})
                                  ], width=12)
                              ], className="mb-4")
-                         ], width=7),
+                         ], md=7, xs=12), # Ajustado para responsividade
                          dbc.Col([
                              html.Div([html.Label("Ano:", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_mapa], value=anos_unicos_mapa[-1] if anos_unicos_mapa else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map, style={'height': '700px'})], style={'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px', 'marginBottom': '0px'})
-                         ], width=5)
+                         ], md=5, xs=12) # Ajustado para responsividade
                      ]))
                 else: # Layout sem Mapa (apenas linha/barra ou pizza)
                      graph_layout.append(dbc.Row([
@@ -800,7 +807,19 @@ def update_card_content(*args):
     try:
         # --- Clique em uma META ---
         if 'meta-button' in triggered_id_str:
-            meta_id = json.loads(triggered_id_str.split('.')[0])['index']
+            # Forma mais robusta de obter o ID usando o contexto
+            if isinstance(ctx.triggered_id, dict):
+                meta_id = ctx.triggered_id.get('index')
+            else: # Fallback (menos provável de ser necessário agora)
+                 try:
+                      meta_id = json.loads(triggered_id_str.split('.')[0])['index']
+                 except (json.JSONDecodeError, IndexError, KeyError):
+                      print(f"Erro ao parsear meta_id de: {triggered_id_str}")
+                      raise PreventUpdate
+            
+            if not meta_id:
+                 raise PreventUpdate # Não conseguiu obter o meta_id
+
             meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
             if meta_filtrada.empty:
                  return no_update, no_update, no_update, "Meta não encontrada.", [] # Atualiza descrição
@@ -922,7 +941,14 @@ def update_card_content(*args):
             ]
 
             if not metas_com_indicadores:
-                return header, content, [], "Não existem metas com indicadores disponíveis para este objetivo.", []
+                # Retorna o alerta na seção de indicadores com estilo
+                alert_message = dbc.Alert(
+                    "Não existem metas com indicadores disponíveis para este objetivo.", 
+                    color="warning", 
+                    className="mt-4",
+                    style={'text-align': 'center', 'font-weight': 'bold'} # Adiciona estilo aqui
+                )
+                return header, content, [], "", [alert_message] # Limpa descrição da meta, mostra alerta
 
             # Seleciona a primeira meta e gera a navegação
             meta_selecionada = metas_com_indicadores[0]
