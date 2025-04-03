@@ -687,12 +687,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                          dcc.Graph(figure=fig_line, style={'border': '1px solid #dee2e6', 'marginBottom': '15px'}), 
                                          dcc.Graph(figure=fig_bar, style={'border': '1px solid #dee2e6'})
                                      ], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'}),
-                                     html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
+                                     html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '100%', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
                                  ], width=12)
                              ], className="mb-4")
                          ], md=7, xs=12), # Ajustado para responsividade
                          dbc.Col([
-                             html.Div([html.Label("Ano:", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_mapa], value=anos_unicos_mapa[-1] if anos_unicos_mapa else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)], style={'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'})
+                             html.Div([html.Label("Ano:", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_mapa], value=anos_unicos_mapa[-1] if anos_unicos_mapa else None, style={'width': '100%', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)], style={'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'})
                          ], md=5, xs=12) # Ajustado para responsividade
                      ]))
                 else: # Layout sem Mapa (apenas linha/barra ou pizza)
@@ -703,7 +703,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                  dcc.Graph(figure=fig_line, style={'border': '1px solid #dee2e6', 'marginBottom': '15px'}), 
                                  dcc.Graph(figure=fig_bar, style={'border': '1px solid #dee2e6'})
                              ], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'}),
-                             html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
+                             html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '100%', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
                          ], width=12) # Ocupa largura total se não houver mapa
                      ]))
 
@@ -752,21 +752,19 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 # Define o layout padrão
 DEFAULT_LAYOUT = {
     'showlegend': True,
-    # Modificado para legenda horizontal abaixo e centralizada
     'legend': dict(
-        title=None, # Título pode ser definido dinamicamente se necessário
-        orientation="h", 
-        yanchor="top", # Alterado para "top" para posicionar abaixo
-        y=1.2, # Valor positivo para posicionar abaixo do gráfico
-        xanchor="center", 
-        x=0.5
+        title=None,
+        orientation="h",  # Legenda horizontal
+        yanchor="top",
+        y=1.2,  # Posiciona abaixo do gráfico
+        xanchor="center",
+        x=0.5  # Centraliza horizontalmente
     ),
-    # Ajusta margens para acomodar a legenda abaixo
-    'margin': dict(l=20, r=20, t=40, b=100), 
+    'margin': dict(l=20, r=20, t=40, b=100),  # Ajusta margens para acomodar a legenda
     'xaxis': dict(showgrid=False, zeroline=False),
     'yaxis': dict(showgrid=False, zeroline=False),
-    'xaxis_automargin': True, # Permite margem automática
-    'yaxis_automargin': True  # Permite margem automática
+    'xaxis_automargin': True,
+    'yaxis_automargin': True
 }
 
 # Define o layout do aplicativo
@@ -915,11 +913,10 @@ def update_card_content(*args):
                                 dynamic_filters_div.append(
                                     dbc.Col([ # Wrap in dbc.Col
                                         html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                                        dcc.Dropdown(
-                                            id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code},
+                                        dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code},
                                             options=col_options,
                                             value='all',
-                                            style={'marginBottom': '10px'}
+                                            style={'marginBottom': '10px', 'width': '100%'}
                                         )
                                     ], md=md_width, xs=12) # Aplica largura condicional md e sempre xs=12
                                 )
@@ -1048,7 +1045,7 @@ def update_card_content(*args):
 
                                 dynamic_filters_div.append(dbc.Col([
                                     html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                                    dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code}, options=col_options, value='all', style={'marginBottom': '10px'})
+                                    dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code}, options=col_options, value='all', style={'marginBottom': '10px', 'width': '100%'})
                                 ], md=md_width, xs=12))
 
                             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row_ind['ID_INDICADOR']]
@@ -1455,9 +1452,9 @@ def update_maintenance_mode(new_state: bool):
     # Se o arquivo .env existe, lê as variáveis existentes
     if os.path.exists('.env'):
         with open('.env', 'r', encoding='utf-8') as f:
-            for line in f:
-                if '=' in line:
-                    key, value = line.strip().split('=', 1)
+            for loc in f:
+                if '=' in loc:
+                    key, value = loc.strip().split('=', 1)
                     env_vars[key] = value
     else:
         # Se o arquivo não existe, define valores padrão
@@ -1489,7 +1486,7 @@ def toggle_maintenance():
             return jsonify({
                 'success': False,
                 'message': 'Por favor, forneça a senha de manutenção para continuar.',
-                'maintenance_mode': MAINTENANCE_MODE
+                'maintenance_mode': MAINTELANCE_MODE
             }), 400
 
         stored_hash = get_maintenance_password_hash()
@@ -1497,14 +1494,14 @@ def toggle_maintenance():
             return jsonify({
                 'success': False,
                 'message': 'Configuração de senha não encontrada. Por favor, entre em contato com o administrador do sistema.',
-                'maintenance_mode': MAINTENANCE_MODE
+                'maintenance_mode': MAINTELANCE_MODE
             }), 500
 
         if not check_password(data['password'], stored_hash):
             return jsonify({
                 'success': False,
                 'message': 'A senha fornecida está incorreta. Por favor, verifique e tente novamente.',
-                'maintenance_mode': MAINTENANCE_MODE
+                'maintenance_mode': MAINTELANCE_MODE
             }), 401
 
         MAINTENANCE_MODE = not MAINTENANCE_MODE
@@ -1521,7 +1518,7 @@ def toggle_maintenance():
         return jsonify({
             'success': False,
             'message': 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.',
-            'maintenance_mode': MAINTENANCE_MODE,
+            'maintenance_mode': MAINTELANCE_MODE,
             'error': str(e)
         }), 500
 
