@@ -1,5 +1,8 @@
 import dash
-from dash import html, dcc, Input, Output, State, callback, dash_table
+from dash import (
+    html, dcc, Input, Output, State, callback, dash_table,
+    callback_context, ALL, MATCH, no_update # Adiciona ALL e MATCH aqui
+)
 import dash_bootstrap_components as dbc
 import dash_ag_grid as dag
 import pandas as pd
@@ -9,9 +12,8 @@ import json
 import os
 from datetime import datetime
 import numpy as np
-from dash.exceptions import PreventUpdate
-from dash import callback_context
-import plotly.io as pio
+from dash.exceptions import PreventUpdate # Mantém import específico
+# Removido o import plotly.io as pio (já importado abaixo)
 from config import *
 import secrets
 from dotenv import load_dotenv
@@ -26,15 +28,10 @@ import constants  # Importar constantes
 load_dotenv()
 
 # Configuração do tema do Plotly
+import plotly.io as pio # Movido para cá para evitar re-import
 pio.templates.default = "plotly_white"
 
-import dash_ag_grid as dag
-import dash_bootstrap_components as dbc
-import pandas as pd
-import plotly.express as px
-from dash import ALL, MATCH, Dash, callback_context, dcc, html, no_update
-from dash.dependencies import Input, Output, State
-from dash.exceptions import PreventUpdate
+# Remove imports redundantes que estavam abaixo
 
 from config import (
     DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG,
@@ -49,20 +46,16 @@ def maintenance_middleware():
     """Middleware para verificar se o sistema está em manutenção"""
     global MAINTENANCE_MODE
     if MAINTENANCE_MODE and request.remote_addr not in ['127.0.0.1']:
-        # Se a requisição for para um arquivo estático ou arquivos do dash, serve normalmente
         if request.path.startswith('/assets/') or '_dash-component-suites' in request.path:
             return None
-        # Se for a página principal, serve a página de manutenção
         return send_from_directory('assets', 'maintenance.html')
     return None
-
 
 def capitalize_words(text):
     return ' '.join(word.capitalize() for word in text.split())
 
-
 # Inicializa o aplicativo Dash com tema Bootstrap
-app = Dash(
+app = dash.Dash(
     __name__,
     external_stylesheets=[
         dbc.themes.MATERIA,
@@ -72,7 +65,7 @@ app = Dash(
     assets_folder='assets',
     assets_url_path='/assets/',
     serve_locally=True,
-    **DASH_CONFIG  # Aplica as configurações de performance
+    **DASH_CONFIG
 )
 
 # Registra o middleware de manutenção
@@ -85,21 +78,16 @@ for key, value in SERVER_CONFIG.items():
 # Configura a chave secreta do Flask
 app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 
-# Configura o Flask para servir arquivos estáticos
 @app.server.route('/assets/<path:path>')
 def serve_static(path):
     return send_from_directory('assets', path)
 
-# Adicionando CORS para permitir as requisições de log
 CORS(app.server)
 
-# Endpoint para logging de erros do cliente
 @app.server.route('/log', methods=['POST'])
 def log_message():
-    # Verifica se o servidor está em modo debug
     if not app.server.debug:
-        return '', 204 # Retorna "No Content" se debug estiver desativado
-    
+        return '', 204
     try:
         data = request.get_json(force=True)
         print("\n====================== ERRO DO NAVEGADOR ======================")
@@ -111,90 +99,66 @@ def log_message():
         print(f"Erro ao processar log do cliente: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-# Rota para servir arquivos do dash
 @app.server.route('/_dash-component-suites/<path:path>')
 def serve_dash_files(path):
     return send_from_directory('_dash-component-suites', path)
 
-
-# Cache em memória para os dados dos indicadores
 indicadores_cache = {}
 
-# Função com cache para carregar dados do indicador
 @lru_cache(maxsize=10000)
 def load_dados_indicador_cache(indicador_id):
     try:
-        # Verifica se os dados já estão no cache
         if indicador_id in indicadores_cache:
             return indicadores_cache[indicador_id]
-        
-        # Remove apenas "Indicador " do início e mantém os pontos
         nome_arquivo = indicador_id.lower().replace("indicador ", "")
-        
-        # Define os caminhos dos arquivos
         arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
         arquivo_metadados = f'db/resultados/indicador{nome_arquivo}_metadata.json'
-        
-        # Verifica se o arquivo existe
         if not os.path.exists(arquivo_parquet):
-            return pd.DataFrame()  # Retorna um DataFrame vazio em vez de None
-        
-        # Carrega os metadados primeiro
+            return pd.DataFrame()
         try:
             with open(arquivo_metadados, 'r', encoding='utf-8') as f:
                 metadados = json.load(f)
         except Exception as e:
             metadados = None
-        
-        # Carrega o arquivo parquet
         try:
-            df = pd.read_parquet(arquivo_parquet)
-            if df.empty:
+            df_load = pd.read_parquet(arquivo_parquet)
+            if df_load.empty:
                 return pd.DataFrame()
         except Exception as e:
             return pd.DataFrame()
-        
-        # Se tiver metadados, aplica as configurações
         if metadados:
-            # Configura os tipos das colunas conforme os metadados
             for coluna, tipo in metadados['colunas'].items():
-                if coluna in df.columns:
+                if coluna in df_load.columns:
                     try:
                         if coluna == 'CODG_ANO':
-                            df[coluna] = df[coluna].astype(str)
+                            df_load[coluna] = df_load[coluna].astype(str)
                         elif 'Int64' in tipo:
-                            df[coluna] = pd.to_numeric(df[coluna], errors='coerce').astype('Int64')
+                            df_load[coluna] = pd.to_numeric(df_load[coluna], errors='coerce').astype('Int64')
                         elif 'float' in tipo:
-                            df[coluna] = pd.to_numeric(df[coluna], errors='coerce')
+                            df_load[coluna] = pd.to_numeric(df_load[coluna], errors='coerce')
                         elif 'category' in tipo:
-                            df[coluna] = df[coluna].astype('category')
+                            df_load[coluna] = df_load[coluna].astype('category')
                     except Exception as e:
                         pass
-        
-        # Armazena no cache
-        indicadores_cache[indicador_id] = df
-        return df
+        indicadores_cache[indicador_id] = df_load
+        return df_load
     except Exception as e:
-        return pd.DataFrame()  # Retorna um DataFrame vazio em vez de None
+        return pd.DataFrame()
 
-# Função para limpar o cache dos indicadores
 def limpar_cache_indicadores():
     global indicadores_cache
     indicadores_cache.clear()
     load_dados_indicador_cache.cache_clear()
 
-# Modifica a rota de limpar cache para também limpar o cache dos indicadores
 @app.server.route('/limpar-cache')
 def limpar_cache():
     try:
         session.clear()
         limpar_cache_indicadores()
-        return redirect('/')  # Redireciona para a página inicial
+        return redirect('/')
     except Exception as e:
-        return redirect('/')  # Redireciona para a página inicial mesmo em caso de erro
+        return redirect('/')
 
-
-# Template HTML básico com otimizações
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -215,10 +179,7 @@ app.index_string = '''
         </footer>
         <script>
         (function() {
-            // Função para enviar log para o servidor
             function enviarLog(mensagem, stack) {
-                console.log("Enviando log para o servidor:", mensagem);
-                
                 fetch('/log', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -227,238 +188,127 @@ app.index_string = '''
                         stack: stack || new Error().stack
                     })
                 })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Falha na requisição: ' + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log("Log enviado com sucesso:", data);
-                })
-                .catch(err => {
-                    console.log("Erro ao enviar log:", err);
-                });
+                .then(response => response.ok ? response.json() : Promise.reject('Falha na requisição: ' + response.status))
+                .then(data => console.log("Log enviado:", data))
+                .catch(err => console.log("Erro ao enviar log:", err));
             }
-            
-            // Sobrescreve o console.error original
             const originalConsoleError = console.error;
             console.error = function() {
-                // Captura os argumentos
                 const args = Array.from(arguments);
                 const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg) : String(arg)).join(' ');
-                
-                // Envia para o servidor
                 enviarLog(message, new Error().stack);
-                
-                // Chama o console.error original
                 originalConsoleError.apply(console, arguments);
             };
-            
-            // Captura erros não tratados
             window.addEventListener('error', function(event) {
                 enviarLog(event.message, event.error ? event.error.stack : null);
                 return false;
             });
-            
-            // Captura promessas rejeitadas não tratadas
             window.addEventListener('unhandledrejection', function(event) {
                 enviarLog(
                     'Promessa rejeitada não tratada: ' + (event.reason ? event.reason.toString() : 'Razão desconhecida'),
                     event.reason && event.reason.stack ? event.reason.stack : null
                 );
             });
-            
         })();
         </script>
     </body>
 </html>
 '''
 
-
-# Lê o arquivo CSV de objetivos
 @lru_cache(maxsize=1)
 def load_objetivos():
     try:
-        df = pd.read_csv(
-            'db/objetivos.csv',
-            low_memory=False,
-            encoding='utf-8',
-            dtype=str,
-            sep=';',
-            on_bad_lines='skip'
-        )
-        
-        # Remover a primeira linha se ela contiver #
-        if df.iloc[(0,)].name == '#':
-            df = df.iloc[1:]
-        # Garantir que as colunas necessárias existam
+        df_obj = pd.read_csv('db/objetivos.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
+        if df_obj.iloc[(0,)].name == '#':
+            df_obj = df_obj.iloc[1:]
         required_columns = ['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64']
-        for col in required_columns:
-            if col not in df.columns:
-                return pd.DataFrame(columns=required_columns)
-        return df
+        if not all(col in df_obj.columns for col in required_columns):
+             return pd.DataFrame(columns=required_columns)
+        return df_obj
     except Exception as e:
         return pd.DataFrame(columns=['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64'])
-
 
 @lru_cache(maxsize=1)
 def load_metas():
     try:
-        df_metas = pd.read_csv(
-            'db/metas.csv',
-            low_memory=False,
-            encoding='utf-8',
-            dtype=str,
-            sep=';',
-            on_bad_lines='skip'
-        )
+        return pd.read_csv('db/metas.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
     except Exception as e:
-        df_metas = pd.DataFrame()
-    return df_metas
-
+        return pd.DataFrame()
 
 @lru_cache(maxsize=1)
 def load_indicadores():
     try:
-        df_indicadores = pd.read_csv(
-            'db/indicadores.csv',
-            low_memory=False,
-            encoding='utf-8',
-            dtype=str,
-            sep=';',
-            on_bad_lines='skip'
-        )
-        df_indicadores['RBC'] = pd.to_numeric(df_indicadores['RBC'], errors='coerce')
-        df_indicadores = df_indicadores.loc[df_indicadores['RBC'] == 1]
-        return df_indicadores
+        df_ind = pd.read_csv('db/indicadores.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
+        df_ind['RBC'] = pd.to_numeric(df_ind['RBC'], errors='coerce')
+        return df_ind.loc[df_ind['RBC'] == 1]
     except Exception as e:
         return pd.DataFrame()
-
 
 @lru_cache(maxsize=1)
 def load_sugestoes_visualizacao():
     try:
-        df_sugestoes = pd.read_csv(
-            'db/sugestoes_visualizacao.csv',
-            low_memory=False,
-            encoding='utf-8',
-            dtype=str,
-            sep=';',
-            on_bad_lines='skip'
-        )
-        return df_sugestoes
+        return pd.read_csv('db/sugestoes_visualizacao.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
     except Exception as e:
         return pd.DataFrame()
 
-
 @lru_cache(maxsize=1)
 def load_unidade_medida():
+    cols = ['CODG_UND_MED', 'DESC_UND_MED']
     try:
-        # Tenta ler o arquivo com diferentes configurações
         try:
-            df_unidade_medida = pd.read_csv(
-                'db/unidade_medida.csv',
-                low_memory=False,
-                encoding='utf-8',
-                dtype=str,
-                sep=';'
-            )
+            df_um = pd.read_csv('db/unidade_medida.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';')
         except:
-            # Se falhar, tenta ler com vírgula como separador
-            df_unidade_medida = pd.read_csv(
-                'db/unidade_medida.csv',
-                low_memory=False,
-                encoding='utf-8',
-                dtype=str,
-                sep=','
-            )
-        
-        # Verifica se as colunas necessárias existem
-        if len(df_unidade_medida.columns) == 1 and ',' in df_unidade_medida.columns[0]:
-            # Se as colunas estiverem juntas, separa-as
-            df_unidade_medida = pd.DataFrame([x.split(',') for x in df_unidade_medida[df_unidade_medida.columns[0]]])
-            # Pega apenas as colunas necessárias (CODG_UND_MED e DESC_UND_MED)
-            if len(df_unidade_medida.columns) >= 2:
-                df_unidade_medida = df_unidade_medida.iloc[:, [0, 1]]
-                df_unidade_medida.columns = ['CODG_UND_MED', 'DESC_UND_MED']
-        
-        # Garante que as colunas estejam presentes e com os nomes corretos
-        if 'CODG_UND_MED' not in df_unidade_medida.columns or 'DESC_UND_MED' not in df_unidade_medida.columns:
-            return pd.DataFrame(columns=['CODG_UND_MED', 'DESC_UND_MED'])
-        
-        # Remove espaços extras e aspas das colunas
-        df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].str.strip().str.strip('"')
-        df_unidade_medida['DESC_UND_MED'] = df_unidade_medida['DESC_UND_MED'].str.strip().str.strip('"')
-        
-        return df_unidade_medida
+            df_um = pd.read_csv('db/unidade_medida.csv', low_memory=False, encoding='utf-8', dtype=str, sep=',')
+        if len(df_um.columns) == 1 and ',' in df_um.columns[0]:
+            df_um = pd.DataFrame([x.split(',') for x in df_um[df_um.columns[0]]])
+            if len(df_um.columns) >= 2:
+                df_um = df_um.iloc[:, [0, 1]]
+                df_um.columns = cols
+        if not all(col in df_um.columns for col in cols):
+            return pd.DataFrame(columns=cols)
+        for col in cols:
+            df_um[col] = df_um[col].str.strip().str.strip('"')
+        return df_um
     except Exception as e:
-        return pd.DataFrame(columns=['CODG_UND_MED', 'DESC_UND_MED'])
-
+        return pd.DataFrame(columns=cols)
 
 @lru_cache(maxsize=1)
 def load_variavel():
+    cols = ['CODG_VAR', 'DESC_VAR']
     try:
-        # Tenta ler o arquivo com diferentes configurações
         try:
-            df_variavel = pd.read_csv(
-                'db/variavel.csv',
-                low_memory=False,
-                encoding='utf-8',
-                dtype=str,
-                sep=';'
-            )
+            df_var = pd.read_csv('db/variavel.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';')
         except:
-            # Se falhar, tenta ler com vírgula como separador
-            df_variavel = pd.read_csv(
-                'db/variavel.csv',
-                low_memory=False,
-                encoding='utf-8',
-                dtype=str,
-                sep=','
-            )
-        
-        # Verifica se as colunas necessárias existem
-        if len(df_variavel.columns) == 1 and ',' in df_variavel.columns[0]:
-            # Se as colunas estiverem juntas, separa-as
-            df_variavel = pd.DataFrame([x.split(',') for x in df_variavel[df_variavel.columns[0]]])
-            # Pega apenas as colunas necessárias (CODG_VAR e DESC_VAR)
-            if len(df_variavel.columns) >= 2:
-                df_variavel = df_variavel.iloc[:, [0, 1]]
-                df_variavel.columns = ['CODG_VAR', 'DESC_VAR']
-        
-        # Garante que as colunas estejam presentes e com os nomes corretos
-        if 'CODG_VAR' not in df_variavel.columns or 'DESC_VAR' not in df_variavel.columns:
-            return pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
-        
-        # Remove espaços extras e aspas das colunas
-        df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].str.strip().str.strip('"')
-        df_variavel['DESC_VAR'] = df_variavel['DESC_VAR'].str.strip().str.strip('"')
-        
-        return df_variavel
+            df_var = pd.read_csv('db/variavel.csv', low_memory=False, encoding='utf-8', dtype=str, sep=',')
+        if len(df_var.columns) == 1 and ',' in df_var.columns[0]:
+            df_var = pd.DataFrame([x.split(',') for x in df_var[df_var.columns[0]]])
+            if len(df_var.columns) >= 2:
+                df_var = df_var.iloc[:, [0, 1]]
+                df_var.columns = cols
+        if not all(col in df_var.columns for col in cols):
+            return pd.DataFrame(columns=cols)
+        for col in cols:
+            df_var[col] = df_var[col].str.strip().str.strip('"')
+        return df_var
     except Exception as e:
-        return pd.DataFrame(columns=['CODG_VAR', 'DESC_VAR'])
+        return pd.DataFrame(columns=cols)
 
-
-# Carrega os dados
 df = load_objetivos()
 df_metas = load_metas()
 df_indicadores = load_indicadores()
 df_unidade_medida = load_unidade_medida()
 df_variavel = load_variavel()
 
-# Define o conteúdo inicial do card
 if not df.empty:
     row_objetivo_0 = df.iloc[(0,)]
     initial_header = row_objetivo_0['RES_OBJETIVO']
     initial_content = row_objetivo_0['DESC_OBJETIVO']
 else:
     initial_header = "Erro ao carregar dados"
-    initial_content = "Não foi possível carregar os dados dos objetivos. Por favor, verifique se os arquivos CSV estão presentes na pasta db."
+    initial_content = "Não foi possível carregar dados dos objetivos."
 
 initial_meta_description = ""
-
-# Prepara as metas iniciais do objetivo 0
+meta_inicial = None
 if not df.empty and not df_metas.empty:
     try:
         metas_filtradas_inicial = df_metas[df_metas['ID_OBJETIVO'] == df.iloc[(0,)]['ID_OBJETIVO']]
@@ -466,359 +316,56 @@ if not df.empty and not df_metas.empty:
             meta for _, meta in metas_filtradas_inicial.iterrows()
             if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
         ]
-        
-        # Define a meta inicial e sua descrição
-        meta_inicial = metas_com_indicadores_inicial[0] if metas_com_indicadores_inicial else None
-        initial_meta_description = meta_inicial['DESC_META'] if meta_inicial else ""
+        if metas_com_indicadores_inicial:
+             meta_inicial = metas_com_indicadores_inicial[0]
+             initial_meta_description = meta_inicial['DESC_META']
     except Exception as e:
-        meta_inicial = None
-        initial_meta_description = ""
-else:
-    meta_inicial = None
-    initial_meta_description = ""
+        pass
 
 # Prepara os indicadores iniciais
-initial_indicadores_section = []
+initial_indicadores_section = [] # INICIALIZA AQUI
 if meta_inicial:
     indicadores_meta_inicial = df_indicadores[df_indicadores['ID_META'] == meta_inicial['ID_META']]
-    if not indicadores_meta_inicial.empty:
-        tabs_indicadores = []
-        for _, row in indicadores_meta_inicial.iterrows():
-            df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
-            tab_content = []
-            dynamic_filters_div = [] # Container para filtros dinâmicos
-
-            if df_dados is not None and not df_dados.empty:
-                try:
-                    # Identifica colunas de filtro dinâmico
-                    filter_cols = identify_filter_columns(df_dados)
-                    for filter_col_code in filter_cols:
-                        # Determina o nome da coluna de descrição
-                        desc_col_code = 'DESC_' + filter_col_code[5:]
-
-                        # Cria mapeamento codigo->descrição
-                        code_to_desc = {}
-                        if desc_col_code in df_dados.columns:
-                            try:
-                                mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
-                                code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
-                                                         index=mapping_df[filter_col_code].astype(str)).to_dict()
-                            except Exception as map_err:
-                                print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
-
-                        # Gera opções
-                        col_options = [{'label': 'Todos', 'value': 'all'}]
-                        # Pega códigos únicos da coluna original, convertidos para string
-                        unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
-                        for code_val_str in unique_codes:
-                            # Tenta obter a descrição do mapeamento usando o código string
-                            label = code_to_desc.get(code_val_str, code_val_str) # Fallback para o próprio código string
-
-                            col_options.append({'label': str(label), 'value': code_val_str}) # Value é sempre o código string
-
-                        filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-                        dynamic_filters_div.append(
-                            dbc.Col([ # Wrap in dbc.Col
-                                html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                                dcc.Dropdown(
-                                    id={'type': 'dynamic-filter-dropdown', 'index': row['ID_INDICADOR'], 'filter_col': filter_col_code},
-                                    options=col_options,
-                                    value='all', # Valor inicial 'Todos'
-                                    style={'marginBottom': '10px'} # Remove width
-                                )
-                            ], md=6, xs=12) # Add responsiveness: 50% on medium+, 100% on extra-small
-                        )
-
-                    # Verifica se o indicador tem VARIAVEIS = 1 (dropdown de variável principal)
-                    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
-                    has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
-
-                    variable_dropdown_div = [] # Container para dropdown de variável principal
-                    valor_inicial_variavel = None
-                    if has_variable_dropdown:
-                        df_variavel_loaded = load_variavel()
-                        # Garante que a coluna CODG_VAR existe antes de filtrar
-                        if 'CODG_VAR' in df_dados.columns:
-                            variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
-                            # Filtra df_variavel_loaded apenas se não estiver vazio
-                            if not df_variavel_loaded.empty:
-                                df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
-                                valor_inicial_variavel = df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None
-
-                        if not df_variavel_loaded.empty:
-                            variable_dropdown_div = [
-                                html.Div([
-                                    html.Label("Selecione uma Variável:",
-                                        style={
-                                            'fontWeight': 'bold',
-                                            'display': 'block',
-                                            'marginBottom': '5px'
-                                        },
-                                        id={'type': 'var-label', 'index': row['ID_INDICADOR']}
-                                    ),
-                                    dcc.Dropdown(
-                                        id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
-                                        options=[
-                                            {'label': desc, 'value': cod}
-                                            for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
-                                        ],
-                                        value=valor_inicial_variavel,
-                                        style={'width': '100%'}
-                                    )
-                                ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
-                            ]
-
-                    # Monta o conteúdo da aba: Descrição + Filtros + Gráficos
-                    # A visualização inicial é chamada sem filtros dinâmicos (eles são 'all')
-                    initial_visualization = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial_variavel, None)
-
-                    # Reestrutura a criação de tab_content
-                    tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")]
-                    tab_content.extend(variable_dropdown_div)
-                    if dynamic_filters_div: # Only add row if there are filters
-                        tab_content.append(dbc.Row(dynamic_filters_div))
-                    tab_content.append(html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
-                                                    children=initial_visualization
-                                                    ))
-
-                except Exception as e:
-                    print(f"Erro ao processar indicador inicial {row['ID_INDICADOR']}: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    tab_content = [
-                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
-                        dbc.Alert(f"Erro ao gerar visualização inicial para {row['ID_INDICADOR']}.", color="danger")
-                    ]
-            else:
-                 tab_content = [
-                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
-                        dbc.Alert(f"Dados não disponíveis ou vazios para {row['ID_INDICADOR']}.", color="warning")
-                    ]
-
-            tabs_indicadores.append(
-                dbc.Tab(
-                    tab_content,
-                    label=row['ID_INDICADOR'],
-                    tab_id=f"tab-{row['ID_INDICADOR']}",
-                    id={'type': 'tab-indicador', 'index': row['ID_INDICADOR']}
-                )
-            )
-
-        initial_indicadores_section = [
-            html.H5("Indicadores", className="mt-4 mb-3"),
-            dbc.Card(
-                dbc.CardBody(
-                    dbc.Tabs(
-                        children=tabs_indicadores,
-                        active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None
-                    )
-                ),
-                className="mt-3"
-            )
-        ]
-
-# Layout padrão para todos os gráficos
-DEFAULT_LAYOUT = {
-    'showlegend': True,
-    'legend': dict(
-        title="Unidade Federativa",
-        yanchor="top",
-        y=0.99,
-        xanchor="left",
-        x=1.05,
-        orientation="v"
-    ),
-    'margin': dict(r=150),  # Margem à direita para acomodar a legenda
-    'xaxis': dict(
-        showgrid=False,  # Remove as linhas de grade do eixo X
-        zeroline=False   # Remove a linha do zero do eixo X
-    ),
-    'yaxis': dict(
-        showgrid=False,  # Remove as linhas de grade do eixo Y
-        zeroline=False   # Remove a linha do zero do eixo Y
-    ),
-    'xaxis_automargin': False, # Desativa auto-margin para eixo X
-    'yaxis_automargin': False  # Desativa auto-margin para eixo Y
-}
-
-# Define o layout do aplicativo
-app.layout = dbc.Container([
-    # Header com imagens e título
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    dbc.Row([
-                        # Coluna Imagem SGG
-                        dbc.Col([
-                            html.Img(
-                                src='/assets/img/sgg.png',
-                                className="img-fluid",
-                                style={'maxWidth': '150px', 'height': 'auto'} # Define max-width inline
-                            )
-                        ], xs=12, sm=6, md=3, className="p-2"),  # Adicionado padding
-
-                        # Coluna Imagem IMB
-                        dbc.Col([
-                            html.Img(
-                                src='/assets/img/imb720.png',
-                                className="img-fluid",  # Apenas img-fluid para controle de tamanho
-                                style={'maxWidth': '150px', 'height': 'auto'} # Define max-width inline
-                            )
-                        ], xs=12, sm=6, md=3, className="p-2"),  # Adicionado padding
-
-                        # Coluna do título
-                        dbc.Col([
-                            html.H1(
-                                'Instituto Mauro Borges - ODS - Agenda 2030',
-                                className="align-middle",
-                                style={'margin': '0', 'padding': '0'}
-                            )
-                        ],  xs=12, sm=12, md=6, className="d-flex align-items-center justify-content-center justify-content-md-start p-2")
-                    ], className="align-items-center")
-                ])
-            ], className="mb-4", style={
-                'marginTop': '15px',
-                'marginLeft': '15px',
-                'marginRight': '15px'
-            })
-        ])
-    ]),
-
-    # Card Principal
-    dbc.Row([
-        # Menu Lateral
-        dbc.Col([
-            dbc.Card([
-                dbc.CardBody([
-                    dbc.Row([
-                        # Menu
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    dbc.Row([
-                                        dbc.Col([
-                                            html.Div([
-                                                html.Img(
-                                                    src=row['BASE64'],
-                                                    style={
-                                                        'width': '100%',
-                                                        'marginBottom': '10px',
-                                                        'cursor': 'pointer'
-                                                    },
-                                                    className="img-fluid",
-                                                    id=f"objetivo{idx}",
-                                                    n_clicks=1 if idx == 0 else 0
-                                                )
-                                            ])
-                                        ], width=4) for idx, row in df.iterrows()
-                                    ], className="g-2")
-                                ])
-                            ])
-                        ], lg=2),
-
-                        # Main
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader(
-                                    html.H3(id='card-header', children=initial_header)
-                                ),
-                                dbc.CardBody([
-                                    html.Div(id='card-content', children=initial_content),
-                                    dbc.Nav(
-                                        id='metas-nav',
-                                        pills=True,
-                                        className="nav nav-pills gap-2",
-                                        style={
-                                            'display': 'flex',
-                                            'flexWrap': 'wrap',
-                                            'marginBottom': '1rem'
-                                        },
-                                        children=[]
-                                    ),
-                                    html.Div(
-                                        id='meta-description',
-                                        children=initial_meta_description,
-                                        className="text-justify mt-4"
-                                    ),
-                                    html.Div(id='loading-indicator', children=[]),
-                                    html.Div(id='indicadores-section', children=initial_indicadores_section)
-                                ])
-                            ])
-                        ], lg=10)
-                    ])
-                ])
-            ], className="border-0 shadow-none")
-        ])
-    ])
-], fluid=True)
-
 
 # Função auxiliar para identificar colunas de filtro
 def identify_filter_columns(df):
     """Identifica colunas no DataFrame que devem ser usadas como filtros dinâmicos."""
     if df is None or df.empty:
         return []
-
     all_cols = set(df.columns)
-    # Colunas que NUNCA são filtros dinâmicos
     non_filter_cols = {
-        'CODG_ANO', 'VLR_VAR', 'CODG_UND_FED', 'CODG_UND_MED', 'CODG_VAR', # Códigos principais
-        'DESC_ANO', 'DESC_UND_FED', 'DESC_UND_MED', 'DESC_VAR', # Descrições principais
-        'ID_INDICADOR', 'ID_META', 'ID_OBJETIVO', # IDs (caso existam no df)
-         # Adiciona explicitamente colunas de descrição conhecidas que podem não começar com DESC_
+        'CODG_ANO', 'VLR_VAR', 'CODG_UND_FED', 'CODG_UND_MED', 'CODG_VAR',
+        'DESC_ANO', 'DESC_UND_FED', 'DESC_UND_MED', 'DESC_VAR',
+        'ID_INDICADOR', 'ID_META', 'ID_OBJETIVO',
         'Unidade Federativa', 'Ano', 'Variável', 'Valor', 'Unidade de Medida'
     }
-    # Adiciona todas as colunas 'DESC_' à lista de não-filtros
     non_filter_cols.update({col for col in all_cols if col.startswith('DESC_')})
-
-    # Colunas candidatas a filtro = Todas as colunas - Colunas não-filtro
     candidate_cols = all_cols - non_filter_cols
-
-    # Filtra candidatos: devem existir em constants.COLUMN_NAMES e ter mais de 1 valor único (exclui colunas constantes)
-    # e não serem colunas compostas apenas por NaN/None
     filter_cols = [
         col for col in candidate_cols
-        if col in constants.COLUMN_NAMES and df[col].nunique() > 1 and not df[col].isnull().all()
+        if col in constants.COLUMN_NAMES and df[col].nunique(dropna=True) > 1
     ]
-
-    return sorted(filter_cols) # Retorna ordenado para consistência
-
+    return sorted(filter_cols)
 
 def create_visualization(df, indicador_id=None, selected_var=None, selected_filters=None):
     """Cria uma visualização (gráfico ou tabela) com os dados do DataFrame, aplicando filtros."""
     if df is None or df.empty:
-        return html.Div([
-            dbc.Alert(
-                "Nenhum dado disponível para este indicador.",
-                color="warning",
-                className="text-center p-3"
-            )
-        ])
- 
+        return dbc.Alert("Nenhum dado disponível para este indicador.", color="warning", className="text-center p-3")
+
     try:
-        # Verifica se as colunas necessárias existem
         colunas_necessarias = ['CODG_ANO', 'VLR_VAR']
         if not all(col in df.columns for col in colunas_necessarias):
-            return html.Div([
-                dbc.Alert(
-                    f"Dados incompletos para criar a visualização. Colunas necessárias: {', '.join(colunas_necessarias)}",
-                    color="warning",
-                    className="text-center p-3"
-                )
-            ])
+            missing = [col for col in colunas_necessarias if col not in df.columns]
+            return dbc.Alert(f"Dados incompletos. Colunas faltando: {', '.join(missing)}", color="warning", className="text-center p-3")
 
-        # Cria uma cópia do DataFrame para evitar modificações no original
-        df = df.copy()
-        
-        # Aplica filtro de VARIÁVEL PRINCIPAL (se aplicável)
-        if 'CODG_VAR' in df.columns and selected_var:
-            # Garante que a comparação seja feita com strings
-            df['CODG_VAR'] = df['CODG_VAR'].astype(str).str.strip()
+        df_filtered = df.copy()
+
+        # Aplica filtro de VARIÁVEL PRINCIPAL
+        if 'CODG_VAR' in df_filtered.columns and selected_var:
+            df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str).str.strip()
             selected_var_str = str(selected_var).strip()
-            df = df[df['CODG_VAR'] == selected_var_str]
-            if df.empty:
-                 # Usa a descrição da variável, se disponível
+            df_filtered = df_filtered[df_filtered['CODG_VAR'] == selected_var_str]
+            if df_filtered.empty:
                 var_name = selected_var_str
                 df_var_desc = load_variavel()
                 if not df_var_desc.empty:
@@ -827,545 +374,301 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                          var_name = var_info['DESC_VAR'].iloc[0]
                 return dbc.Alert(f"Nenhum dado encontrado para a variável '{var_name}'.", color="warning")
 
-        # Aplica FILTROS DINÂMICOS (se houver)
+        # Aplica FILTROS DINÂMICOS
         if selected_filters:
             for col_code, selected_value in selected_filters.items():
-                # Só aplica o filtro se um valor diferente de 'todos' for selecionado e a coluna existir
-                if selected_value is not None and selected_value != 'all' and col_code in df.columns:
-                    # Garante que a comparação seja feita com strings
-                    df[col_code] = df[col_code].astype(str).str.strip()
+                if selected_value is not None and selected_value != 'all' and col_code in df_filtered.columns:
+                    df_filtered[col_code] = df_filtered[col_code].astype(str).str.strip()
                     selected_value_str = str(selected_value).strip()
-                    df = df[df[col_code] == selected_value_str]
-                    if df.empty:
-                        # Tenta obter nome legível do filtro
+                    df_filtered = df_filtered[df_filtered[col_code] == selected_value_str]
+                    if df_filtered.empty:
                         filter_name = constants.COLUMN_NAMES.get(col_code, col_code)
-                        # Para filtros dinâmicos, o valor selecionado já é a descrição/label
                         return dbc.Alert(f"Nenhum dado encontrado para o filtro '{filter_name}' = '{selected_value_str}'.", color="warning")
 
-        # Se após filtros o df ficar vazio
-        if df.empty:
-             return dbc.Alert("Nenhum dado encontrado após aplicar os filtros selecionados.", color="warning")
+        if df_filtered.empty:
+             return dbc.Alert("Nenhum dado encontrado após aplicar os filtros.", color="warning")
 
-        # ---- INÍCIO DA LÓGICA DE VISUALIZAÇÃO EXISTENTE (usando df) ----
+        # Substitui códigos de UF pelos nomes
+        if 'CODG_UND_FED' in df_filtered.columns:
+            df_filtered['DESC_UND_FED'] = df_filtered['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+            df_filtered = df_filtered.dropna(subset=['DESC_UND_FED'])
 
-        # Substitui os códigos das UFs pelos nomes completos
-        if 'CODG_UND_FED' in df.columns:
-            df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-            df = df.dropna(subset=['DESC_UND_FED'])
-        
-        # Adiciona as descrições da variável e unidade de medida antes do agrupamento
-        if 'CODG_VAR' in df.columns and not df_variavel.empty:
-            df['CODG_VAR'] = df['CODG_VAR'].astype(str)
-            df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].astype(str)
-            df = df.merge(df_variavel[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
-            df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
+        # Adiciona descrições de variável e unidade de medida
+        df_variavel_loaded = load_variavel()
+        if 'CODG_VAR' in df_filtered.columns and not df_variavel_loaded.empty:
+            df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str)
+            df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
+            df_filtered = df_filtered.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
+            df_filtered['DESC_VAR'] = df_filtered['DESC_VAR'].fillna('N/D')
         else:
-            df['DESC_VAR'] = 'Descrição não disponível'
-        
-        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
-            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
-            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
-            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
+            df_filtered['DESC_VAR'] = 'N/D'
+
+        df_unidade_medida_loaded = load_unidade_medida()
+        if 'CODG_UND_MED' in df_filtered.columns and not df_unidade_medida_loaded.empty:
+            df_filtered['CODG_UND_MED'] = df_filtered['CODG_UND_MED'].astype(str)
+            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+            df_filtered = df_filtered.merge(df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df_filtered['DESC_UND_MED'] = df_filtered['DESC_UND_MED'].fillna('N/D')
         else:
-            df['DESC_UND_MED'] = 'Unidade não disponível'
-        
-        # Garante que os dados estão ordenados por ano
-        df = df.sort_values('CODG_ANO')
-        
-        # Converte o campo VLR_VAR para numérico e remove valores inválidos
-        df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
-        df = df.dropna(subset=['VLR_VAR'])
-        
-        if df.empty:
-            return html.Div([
-                dbc.Alert(
-                    "Não há dados numéricos válidos para criar a visualização.",
-                    color="warning",
-                    className="text-center p-3"
-                )
-            ])
-        
-        # Carrega as sugestões de visualização
+            df_filtered['DESC_UND_MED'] = 'N/D'
+
+        df_filtered = df_filtered.sort_values('CODG_ANO')
+        df_filtered['VLR_VAR'] = pd.to_numeric(df_filtered['VLR_VAR'], errors='coerce')
+        df_filtered = df_filtered.dropna(subset=['VLR_VAR'])
+
+        if df_filtered.empty:
+            return dbc.Alert("Não há dados numéricos válidos para criar a visualização.", color="warning", className="text-center p-3")
+
         df_sugestoes = load_sugestoes_visualizacao()
-        
-        # Define as configurações da tabela
-        columnDefs = []
-        
-        # Define a ordem das colunas
         column_order = [
-            ('DESC_UND_FED', 'Unidade Federativa'),
-            ('CODG_ANO', 'Ano'),
-            ('DESC_VAR', 'Descrição da Variável'),
-            ('VLR_VAR', 'Valor'),
+            ('DESC_UND_FED', 'Unidade Federativa'), ('CODG_ANO', 'Ano'),
+            ('DESC_VAR', 'Descrição da Variável'), ('VLR_VAR', 'Valor'),
             ('DESC_UND_MED', 'Unidade de Medida')
         ]
-        
-        # Adiciona as colunas na ordem especificada
-        for col, header in column_order:
-            if col in df.columns:
-                columnDefs.append({
-                    "field": col,
-                    "headerName": header,
-                    "sortable": True,
-                    "filter": True,
-                    "flex": 1,
-                    "minWidth": 100,
-                    "maxWidth": None,
-                    "resizable": True,
-                    "wrapText": True,
-                    "autoHeight": True,
-                    "suppressSizeToFit": False,
-                    "cellStyle": {"whiteSpace": "normal"},
-                    "cellClass": "wrap-text"
-                })
-        
-        defaultColDef = {
-            "flex": 1,
-            "minWidth": 100,
-            "maxWidth": None,
-            "resizable": True,
-            "wrapText": True,
-            "autoHeight": True,
-            "suppressSizeToFit": False,
-            "cellStyle": {"whiteSpace": "normal"},
-            "cellClass": "wrap-text"
-        }
-        
-        # Se tiver um indicador específico e sugestões disponíveis
+        columnDefs = [{
+            "field": col, "headerName": header, "sortable": True, "filter": True,
+            "flex": 1, "minWidth": 100, "resizable": True, "wrapText": True,
+            "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}
+        } for col, header in column_order if col in df_filtered.columns]
+
+        defaultColDef = {"flex": 1, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
+
         if indicador_id and not df_sugestoes.empty:
             sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
             if not sugestoes_indicador.empty:
-                try:
-                    # Verifica se há dados suficientes para criar os gráficos
-                    if len(df) < 2:
-                        return html.Div([
-                            dbc.Alert(
-                                "Não há dados suficientes para criar os gráficos. Mostrando apenas a tabela de dados.",
-                                color="warning",
-                                className="text-center p-3"
-                            ),
-                            dag.AgGrid(
-                                rowData=df.to_dict('records'),
-                                columnDefs=columnDefs,
-                                defaultColDef=defaultColDef,
-                                dashGridOptions={
-                                    "pagination": True,
-                                    "paginationPageSize": 10,
-                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "domLayout": "autoHeight",  # Alterado de "normal"
-                                    "suppressMovableColumns": True,
-                                    "animateRows": True,
-                                    "suppressColumnVirtualisation": True
-                                    # Remova autoSizeAllColumns
-                                },
-                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
-                            )
-                        ])
-                    
-                    # ==============================================
-                    # GRÁFICO DE LINHA - Evolução temporal dos valores
-                    # ==============================================
-                    # Cria uma cópia do DataFrame ANTES do groupby para usar na tabela detalhada
-                    df_original = df.copy()
+                if len(df_filtered) < 2:
+                    return html.Div([
+                        dbc.Alert("Dados insuficientes para gráficos. Mostrando tabela.", color="info", className="text-center p-3"),
+                        dag.AgGrid(
+                            rowData=df_filtered.to_dict('records'), columnDefs=columnDefs, defaultColDef=defaultColDef,
+                            dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight"},
+                            style={"width": "100%"}
+                        )
+                    ])
 
-                    # Configura o gráfico de linha
-                    config = {
-                        'x': 'CODG_ANO',  # Voltando para CODG_ANO no eixo X
-                        'y': 'VLR_VAR',
-                        'color': 'DESC_UND_FED'  # Voltando para DESC_UND_FED para colorir por estado
-                    }
-                    
-                    # Tratamento para dados anuais
-                    if 'DESC_UND_FED' in df.columns:
-                        df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).agg({
-                            'VLR_VAR': 'first',
-                            'DESC_UND_MED': 'first',
-                            'DESC_VAR': 'first'
-                        })
-                    else:
-                        df = df.groupby('CODG_ANO', as_index=False).agg({
-                            'VLR_VAR': 'first',
-                            'DESC_UND_MED': 'first',
-                            'DESC_VAR': 'first'
-                        })
-                    
-                    # Atualiza os labels dos eixos
-                    config['labels'] = {
-                        'x': "",  # Removendo o label do eixo X
-                        'y': "",
-                        'color': f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>"  # Voltando para UF
-                    }
-                    
-                    # Cria os gráficos
-                    fig_line = px.line(df, **config)
-                    
-                    # Cria um dicionário para mapear cada estado com sua unidade de medida
-                    estado_unidade = df.groupby('DESC_UND_FED')['DESC_UND_MED'].first().to_dict()
-                    
-                    # Atualiza cada traço individualmente para garantir que o customdata corresponda ao estado correto
+                df_original_for_table = df_filtered.copy() # Cópia para tabela AG Grid
+
+                # Agrupa dados para gráficos de linha/barra (se houver UF)
+                group_cols = ['CODG_ANO', 'DESC_UND_FED'] if 'DESC_UND_FED' in df_filtered.columns else ['CODG_ANO']
+                df_grouped = df_filtered.groupby(group_cols, as_index=False).agg(
+                    VLR_VAR=('VLR_VAR', 'first'), # Ou 'mean', 'sum' dependendo do caso
+                    DESC_UND_MED=('DESC_UND_MED', 'first'),
+                    DESC_VAR=('DESC_VAR', 'first')
+                ).sort_values('CODG_ANO')
+
+                # --- Gráfico de Linha ---
+                config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
+                if 'DESC_UND_FED' in df_grouped.columns:
+                    config_line['color'] = 'DESC_UND_FED'
+                    config_line['labels']['color'] = f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>"
+                fig_line = px.line(df_grouped, **config_line)
+                estado_unidade = df_grouped.set_index('DESC_UND_FED')['DESC_UND_MED'].to_dict() if 'DESC_UND_FED' in df_grouped.columns else {}
+                fig_line.update_traces(
+                    line_shape='spline', mode='lines+markers',
+                    marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
+                    hovertemplate = (
+                        "<b>%{customdata[0]}</b><br>" +
+                        "Ano: %{x}<br>" +
+                        "Valor: %{y}<br>" +
+                        "Unidade: %{customdata[1]}<extra></extra>"
+                    ) if 'DESC_UND_FED' in df_grouped.columns else (
+                        "Ano: %{x}<br>" +
+                        "Valor: %{y}<br>" +
+                        "Unidade: %{customdata[0]}<extra></extra>"
+                    )
+                )
+                # Define customdata
+                if 'DESC_UND_FED' in df_grouped.columns:
+                    fig_line.update_traces(customdata=df_grouped[['DESC_UND_FED', 'DESC_UND_MED']])
                     for trace in fig_line.data:
-                        estado = trace.name
-                        trace.update(
-                            line_shape='spline',
-                            mode='lines+markers',
-                            marker=dict(
-                                size=14,
-                                symbol='circle',
-                                line=dict(width=2, color='white')
-                            ),
-                            hovertemplate="<b>" + estado + "</b><br>" +
-                                        "Ano: %{x}<br>" +
-                                        "Valor: %{y}<br>" +
-                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
-                        )
-                        if estado == 'Goiás':
-                            trace.line = dict(color='#229846', width=6)
+                        if trace.name == 'Goiás':
+                            trace.line.color = '#229846'
+                            trace.line.width = 6
                             trace.name = '<b>Goiás</b>'
-                    
-                    # Atualiza o layout do gráfico de linha
-                    fig_line.update_layout(
-                        xaxis=dict(
-                            tickangle=45,  # Rotaciona os rótulos para melhor visualização
-                            tickfont=dict(size=12)
+                else:
+                    fig_line.update_traces(customdata=df_grouped[['DESC_UND_MED']])
+
+                fig_line.update_layout(xaxis_tickangle=45, xaxis_tickfont_size=12)
+
+                # --- Gráfico de Barras ---
+                config_bar = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': ""}}
+                if 'DESC_UND_FED' in df_grouped.columns:
+                    config_bar['color'] = 'DESC_UND_FED'
+                    config_bar['labels']['color'] = 'UF'
+                fig_bar = px.bar(df_grouped, **config_bar)
+                fig_bar.update_layout(
+                    xaxis=dict(tickfont_size=12, tickangle=45, ticktext=[f"<b>{x}</b>" for x in df_grouped['CODG_ANO'].unique()], tickvals=df_grouped['CODG_ANO'].unique()),
+                    yaxis=dict(tickfont_size=12, showticklabels=False),
+                    margin=dict(b=100), showlegend=('DESC_UND_FED' in df_grouped.columns)
+                )
+                if 'DESC_UND_FED' in df_grouped.columns:
+                     fig_bar.update_traces(customdata=df_grouped[['DESC_UND_FED', 'DESC_UND_MED']],
+                                           hovertemplate=(
+                                            "<b>%{customdata[0]}</b><br>" +
+                                            "Ano: %{x}<br>" +
+                                            "Valor: %{y}<br>" +
+                                            "Unidade: %{customdata[1]}<extra></extra>")
+                                          )
+                     for trace in fig_bar.data:
+                         if trace.name == 'Goiás':
+                             trace.marker.color = '#229846'
+                             trace.name = '<b>Goiás</b>'
+                else:
+                     fig_bar.update_traces(customdata=df_grouped[['DESC_UND_MED']],
+                                           hovertemplate=(
+                                            "Ano: %{x}<br>" +
+                                            "Valor: %{y}<br>" +
+                                            "Unidade: %{customdata[0]}<extra></extra>")
+                                          )
+
+                # --- Mapa --- (Apenas se houver UF)
+                fig_map = go.Figure()
+                anos_unicos_mapa = sorted(df_filtered['CODG_ANO'].unique())
+                if 'DESC_UND_FED' in df_filtered.columns:
+                    try:
+                        with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
+                        # Usar dados filtrados, não agrupados, para o mapa
+                        df_map_data = df_filtered[df_filtered['CODG_ANO'] == anos_unicos_mapa[-1]] # Ano mais recente por padrão
+                        und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
+                        fig_map = px.choropleth(
+                            df_map_data,
+                            geojson=geojson, locations='DESC_UND_FED', featureidkey='properties.name',
+                            color='VLR_VAR', color_continuous_scale='Greens_r', scope="south america"
                         )
-                    )
-                    
-                    # ==============================================
-                    # GRÁFICO DE BARRAS - Comparação entre UFs
-                    # ==============================================
-                    # Cria o gráfico de barras
-                    fig_bar = px.bar(
-                        df,
-                        x='CODG_ANO',
-                        y='VLR_VAR',
-                        color='DESC_UND_FED',
-                        labels={
-                            'DESC_UND_FED': 'Unidade Federativa',
-                            'VLR_VAR': 'Valor',
-                            'CODG_ANO': ""  # Removendo o label do eixo X
-                        }
-                    )
-                    
-                    # Atualiza o layout do gráfico de barras
-                    fig_bar.update_layout(
-                        showlegend=True,
-                        xaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            tickangle=45,
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
-                            tickvals=sorted(df['CODG_ANO'].unique())
-                        ),
-                        yaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            showticklabels=False  # Remove os valores do eixo Y
-                        ),
-                        margin=dict(b=100)  # Margem inferior para os rótulos rotacionados
-                    )
-                    
-                    # Atualiza o hover do gráfico de barras
-                    for trace in fig_bar.data:
-                        estado = trace.name
-                        trace.update(
-                            hovertemplate="<b>" + estado + "</b><br>" +
-                                        "Ano: %{x}<br>" +
-                                        "Valor: %{y}<br>" +
-                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
-                        )
-                        if estado == 'Goiás':
-                            trace.marker.color = '#229846'
-                            trace.marker.line.width = 6
-                            trace.name = '<b>Goiás</b>'
-                    
-                    # ==============================================
-                    # MAPA COROPLÉTICO - Visualização geográfica
-                    # ==============================================
-                    # Carrega o GeoJSON do Brasil
-                    with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-                        geojson = json.load(f)
-                    
-                    # Cria o mapa coroplético
-                    fig_map = px.choropleth(
-                        df,
-                        geojson=geojson,
-                        locations='DESC_UND_FED',
-                        featureidkey='properties.name',
-                        color='VLR_VAR',
-                        color_continuous_scale='Greens_r',
-                        scope="south america"
-                    )
-                    
-                    # Ajusta o layout do mapa
-                    fig_map.update_geos(
-                        visible=False,
-                        showcoastlines=True,
-                        coastlinecolor="White",
-                        showland=True,
-                        landcolor="white",
-                        showframe=False,
-                        center=dict(lat=-12.9598, lon=-53.2729),
-                        projection=dict(
-                            type='mercator',
-                            scale=2.6
-                        )
-                    )
-                    
-                    # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
-                    fig_map.update_traces(
-                        marker_line_color='white',
-                        marker_line_width=1,
-                        hovertemplate="<b>%{location}</b><br>" +
-                                    "Valor: %{z}<br>" +
-                                    "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>"
-                    )
-                    
-                    # Atualiza o layout do mapa
-                    fig_map.update_layout(
-                        margin=dict(r=0, l=0, t=0, b=0),
-                        coloraxis_colorbar=dict(
-                            title=None,
-                            tickfont=dict(size=12, color='black')
-                        )
-                    )
-                    
-                    # ==============================================
-                    # TABELA DE DADOS - Visualização detalhada
-                    # ==============================================
-                    # Aplica o layout padrão
-                    layout = DEFAULT_LAYOUT.copy()
-                    layout.update({
-                        'xaxis_title': config['labels']['x'],
-                        'yaxis_title': config['labels']['y'],
-                        'xaxis': dict(
-                            showgrid=False,
-                            zeroline=False,
-                            tickfont=dict(size=12, color='black'),
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
-                            tickvals=sorted(df['CODG_ANO'].unique())
-                        ),
-                        'yaxis': dict(
-                            showgrid=False,
-                            zeroline=False,
-                            tickfont=dict(size=12, color='black')
-                        )
-                    })
-                    
-                    # Aplica os layouts
-                    fig_line.update_layout(layout)
-                    fig_bar.update_layout(layout)
-                    
-                    # Remove linhas de grade
-                    fig_line.update_xaxes(showgrid=False, zeroline=False)
-                    fig_bar.update_xaxes(showgrid=False, zeroline=False)
-                    
-                    # Destaca Goiás
-                    if 'DESC_UND_FED' in df.columns:
-                        for trace in fig_line.data:
-                            if hasattr(trace, 'name') and trace.name == 'Goiás':
-                                trace.line = dict(color='#229846', width=6)
-                                trace.name = '<b>Goiás</b>'
-                        for trace in fig_bar.data:
-                            if hasattr(trace, 'name') and trace.name == 'Goiás':
-                                trace.marker.color = '#229846'
-                                trace.marker.line.width = 6
-                                trace.name = '<b>Goiás</b>'
-                    
-                    # ==============================================
-                    # GRÁFICO DE PIZZA - Distribuição percentual
-                    # ==============================================
-                    # Verifica se há menos de 5 anos de dados
-                    anos_unicos = sorted(df['CODG_ANO'].unique())
-                    mostrar_pizza = len(anos_unicos) < 5
-                    
-                    # Cria o gráfico de pizza apenas se houver menos de 5 anos
-                    if mostrar_pizza:
-                        # Cria o gráfico de pizza
-                        fig_pie = px.pie(
-                            df,
-                            values='VLR_VAR',
-                            names='DESC_UND_FED',
-                            labels={
-                                'DESC_UND_FED': 'Unidade Federativa',
-                                'VLR_VAR': 'Valor'
-                            }
-                        )
-                        
-                        # Atualiza o layout do gráfico de pizza
-                        fig_pie.update_layout(
-                            showlegend=True,
-                            legend=dict(
-                                title="Unidade Federativa",
-                                yanchor="top",
-                                y=0.99,
-                                xanchor="left",
-                                x=1.05,
-                                orientation="v"
-                            ),
-                            margin=dict(r=150)  # Margem à direita para acomodar a legenda
-                        )
-                        
-                        # Atualiza o hover do gráfico de pizza
-                        fig_pie.update_traces(
-                            hovertemplate="<b>%{label}</b><br>" +
-                                        "Valor: %{value}<br>" +
-                                        "Percentual: %{percent:.1%}<br>" +
-                                        "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>",
-                            textinfo="label+value+percent",
-                            texttemplate="<b>%{label}</b><br>%{value}<br>%{percent:.1%}",
-                            textposition="outside",
-                            showlegend=False,
-                            hoverinfo="skip"
-                        )
-                        
-                        # Destaca Goiás no gráfico de pizza
-                        for trace in fig_pie.data:
-                            if trace.name == 'Goiás':
-                                trace.marker = dict(color='#229846')
-                                trace.name = '<b>Goiás</b>'
-                    
-                    # Adiciona o gráfico de pizza à estrutura, mas mantém oculto se não houver menos de 5 anos
-                    # MODIFICADO: Retorna lista de componentes internos, não Div externo
-                    return [
-                        dbc.Row([
-                            # Coluna da esquerda com os gráficos
-                            dbc.Col([
-                                # Primeira linha com os gráficos (linha/barra ou pizza)
-                                dbc.Row([
-                                    dbc.Col([
-                                        # Container para gráficos de linha e barra
-                                        html.Div([
-                                            dcc.Graph(figure=fig_line, style={'height': '370px'}),
-                                            dcc.Graph(figure=fig_bar, style={'height': '370px'})
-                                        ], style={
-                                            'display': 'none' if mostrar_pizza else 'block',
-                                            'border': '1px solid #dee2e6',
-                                            'borderRadius': '4px',
-                                            'padding': '15px',
-                                            'height': '800px',
-                                            'marginBottom': '0px'
-                                        }),
-                                        # Container para gráfico de pizza
-                                        html.Div([
-                                            html.Label("Ano", 
-                                                style={
-                                                    'fontWeight': 'bold',
-                                                    'marginBottom': '5px',
-                                                    'display': 'block'
-                                                }
-                                            ),
-                                            dcc.Dropdown(
-                                                id={'type': 'pie-year-dropdown', 'index': indicador_id},
-                                                options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                                                value=anos_unicos[-1] if anos_unicos else None,
-                                                style={'width': '200px', 'marginBottom': '10px'}
-                                            ),
-                                            dcc.Graph(
-                                                figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
-                                                id={'type': 'pie-chart', 'index': indicador_id},
-                                                style={'height': '700px'}
-                                            )
-                                        ], style={
-                                            'display': 'block' if mostrar_pizza else 'none',
-                                            'border': '1px solid #dee2e6',
-                                            'borderRadius': '4px',
-                                            'padding': '15px',
-                                            'height': '800px'
-                                        })
-                                    ], width=12)
-                                ], className="mb-4")
-                            ], width=7),
-                            # Coluna da direita com o mapa e dropdown
-                            dbc.Col([
-                                # Container do mapa com dropdown
-                                html.Div([
-                                    html.Label("Ano:", 
-                                        style={
-                                            'fontWeight': 'bold',
-                                            'marginBottom': '5px',
-                                            'display': 'block'
-                                        }
-                                    ),
-                                    dcc.Dropdown(
-                                        id={'type': 'year-dropdown', 'index': indicador_id},
-                                        options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                                        value=sorted(df['CODG_ANO'].unique())[-1],
-                                        style={'width': '200px', 'marginBottom': '10px'}
-                                    ),
-                                    dcc.Graph(
-                                        id={'type': 'choropleth-map', 'index': indicador_id},
-                                        figure=fig_map,
-                                        style={
-                                            'height': '700px'
-                                        }
-                                    )
-                                ], style={
-                                    'border': '1px solid #dee2e6',
-                                    'borderRadius': '4px',
-                                    'padding': '15px',
-                                    'height': '800px',
-                                    'marginBottom': '0px'
-                                })
-                            ], width=5)
-                        ]),
-                        # ----> NOVA LINHA PARA TABELA DETALHADA <----
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Card([                                    
-                                    html.H5(
-                                        "Dados Detalhados", 
-                                        className="mt-4", 
-                                        style={'marginLeft': '20px'}
-                                    ),
-                                    dbc.CardBody([
-                                        dag.AgGrid(
-                                            id={'type': 'detail-table', 'index': indicador_id},
-                                            rowData=df_original.to_dict('records'), # Usa o df_original
-                                            columnDefs=columnDefs,
-                                            defaultColDef=defaultColDef,
-                                            dashGridOptions={
-                                                "pagination": True,
-                                                "paginationPageSize": 10,
-                                                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                                "domLayout": "autoHeight",
-                                                "suppressMovableColumns": True,
-                                                "animateRows": True,
-                                                "suppressColumnVirtualisation": True
-                                            },
-                                            style={"width": "100%"}
-                                        )
-                                    ])
-                                ]) # Card não tem mais className="mt-4", H5 tem.
-                            ])
-                        ])
-                        # ----> FIM DA NOVA LINHA <----
-                    ]
-                except Exception as e:
-                    print(f"Erro ao atualizar gráficos: {e}")
-                    raise PreventUpdate
-        
+                        fig_map.update_geos(visible=False, showcoastlines=True, coastlinecolor="White", showland=True, landcolor="white", showframe=False, center=dict(lat=-12.9598, lon=-53.2729), projection=dict(type='mercator', scale=2.6))
+                        fig_map.update_traces(marker_line_color='white', marker_line_width=1, hovertemplate=f"<b>%{{location}}</b><br>Valor: %{{z}}{' ' + und_med_map if und_med_map else ''}<extra></extra>")
+                        fig_map.update_layout(margin=dict(r=0, l=0, t=0, b=0), coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
+                    except Exception as map_err:
+                         print(f"Erro ao gerar mapa: {map_err}")
+                         fig_map = go.Figure() # Figura vazia em caso de erro
+
+                # --- Gráfico de Pizza --- (Apenas se menos de 5 anos e houver UF)
+                fig_pie = go.Figure()
+                anos_unicos_pie = sorted(df_filtered['CODG_ANO'].unique())
+                mostrar_pizza = len(anos_unicos_pie) < 5 and 'DESC_UND_FED' in df_filtered.columns
+                if mostrar_pizza:
+                    # Usa dados filtrados, não agrupados
+                    df_pie_data = df_filtered[df_filtered['CODG_ANO'] == anos_unicos_pie[-1]] # Ano mais recente por padrão
+                    und_med_pie = df_pie_data['DESC_UND_MED'].iloc[0] if not df_pie_data['DESC_UND_MED'].empty else ''
+                    fig_pie = px.pie(df_pie_data, values='VLR_VAR', names='DESC_UND_FED', labels={'DESC_UND_FED': 'UF', 'VLR_VAR': 'Valor'})
+                    fig_pie.update_layout(showlegend=True, legend=dict(title="UF", yanchor="top", y=0.99, xanchor="left", x=1.05, orientation="v"), margin=dict(r=150))
+                    fig_pie.update_traces(hovertemplate=f"<b>%{{label}}</b><br>Valor: %{{value}}<br>%{{percent:.1%}}<br>Unidade: {und_med_pie}<extra></extra>", textinfo="label+value+percent", texttemplate="<b>%{label}</b><br>%{value}<br>%{percent:.1%}", textposition="outside", showlegend=False, hoverinfo="skip")
+                    for trace in fig_pie.data:
+                        if trace.name == 'Goiás': trace.marker.color = '#229846'
+
+                # Aplica layout padrão aos gráficos de linha e barra
+                layout_updates = DEFAULT_LAYOUT.copy()
+                layout_updates.update({
+                    'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black')), # Configurações base
+                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'))
+                })
+                if 'CODG_ANO' in df_grouped.columns: # Atualiza ticks do eixo X se CODG_ANO existe
+                     layout_updates['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in sorted(df_grouped['CODG_ANO'].unique())]
+                     layout_updates['xaxis']['tickvals'] = sorted(df_grouped['CODG_ANO'].unique())
+
+                fig_line.update_layout(layout_updates)
+                fig_bar.update_layout(layout_updates)
+                fig_line.update_xaxes(showgrid=False, zeroline=False)
+                fig_bar.update_xaxes(showgrid=False, zeroline=False)
+
+                # --- Monta o Layout da Visualização ---
+                graph_layout = []
+                if 'DESC_UND_FED' in df_filtered.columns: # Layout com Mapa
+                     graph_layout.append(dbc.Row([
+                         dbc.Col([
+                             dbc.Row([
+                                 dbc.Col([
+                                     # Linha/Barra ou Pizza
+                                     html.Div([dcc.Graph(figure=fig_line, style={'height': '370px'}), dcc.Graph(figure=fig_bar, style={'height': '370px'})], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px', 'marginBottom': '0px'}),
+                                     html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie, style={'height': '700px'})], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px'})
+                                 ], width=12)
+                             ], className="mb-4")
+                         ], width=7),
+                         dbc.Col([
+                             html.Div([html.Label("Ano:", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_mapa], value=anos_unicos_mapa[-1] if anos_unicos_mapa else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map, style={'height': '700px'})], style={'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px', 'marginBottom': '0px'})
+                         ], width=5)
+                     ]))
+                else: # Layout sem Mapa (apenas linha/barra ou pizza)
+                     graph_layout.append(dbc.Row([
+                         dbc.Col([
+                             # Linha/Barra ou Pizza
+                             html.Div([dcc.Graph(figure=fig_line, style={'height': '370px'}), dcc.Graph(figure=fig_bar, style={'height': '370px'})], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px'}),
+                             html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie, style={'height': '700px'})], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'height': '800px'})
+                         ], width=12) # Ocupa largura total se não houver mapa
+                     ]))
+
+                # Adiciona Tabela Detalhada
+                graph_layout.append(dbc.Row([
+                    dbc.Col(dbc.Card([
+                        html.H5("Dados Detalhados", className="mt-4", style={'marginLeft': '20px'}),
+                        dbc.CardBody(dag.AgGrid(
+                            id={'type': 'detail-table', 'index': indicador_id},
+                            rowData=df_original_for_table.to_dict('records'),
+                            columnDefs=columnDefs, defaultColDef=defaultColDef,
+                            dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight", "suppressMovableColumns": True, "animateRows": True, "suppressColumnVirtualisation": True},
+                            style={"width": "100%"}
+                        ))
+                    ]))
+                ]))
+                return graph_layout
+
         # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
         return dag.AgGrid(
-            rowData=df.to_dict('records'),
-            columnDefs=columnDefs,
-            defaultColDef=defaultColDef,
-            dashGridOptions={
-                "pagination": True,
-                "paginationPageSize": 10,
-                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                "domLayout": "autoHeight",  # Alterado de "normal"
-                "suppressMovableColumns": True,
-                "animateRows": True,
-                "suppressColumnVirtualisation": True
-                # Remova autoSizeAllColumns
-            },
-            style={"width": "100%"}, # Removido height: 100%
+            rowData=df_filtered.to_dict('records'), columnDefs=columnDefs, defaultColDef=defaultColDef,
+            dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight"},
+            style={"width": "100%"}
         )
     except Exception as e:
-        print(f"Erro ao atualizar gráficos: {e}")
-        raise PreventUpdate
+        print(f"Erro em create_visualization para {indicador_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return dbc.Alert(f"Erro ao gerar visualização para {indicador_id}.", color="danger")
 
+# Define o layout padrão
+DEFAULT_LAYOUT = {
+    'showlegend': True,
+    'legend': dict(title="Unidade Federativa", yanchor="top", y=0.99, xanchor="left", x=1.05, orientation="v"),
+    'margin': dict(r=150),
+    'xaxis': dict(showgrid=False, zeroline=False),
+    'yaxis': dict(showgrid=False, zeroline=False),
+    'xaxis_automargin': False,
+    'yaxis_automargin': False
+}
 
-# Modifica o callback de atualização do card para usar AG Grid
+# Define o layout do aplicativo
+app.layout = dbc.Container([
+    # Header com imagens e título
+    dbc.Row(dbc.Col(dbc.Card([
+        dbc.CardBody(dbc.Row([
+            dbc.Col(html.Img(src='/assets/img/sgg.png', className="img-fluid", style={'maxWidth': '150px', 'height': 'auto'}), xs=12, sm=6, md=3, className="p-2"),
+            dbc.Col(html.Img(src='/assets/img/imb720.png', className="img-fluid", style={'maxWidth': '150px', 'height': 'auto'}), xs=12, sm=6, md=3, className="p-2"),
+            dbc.Col(html.H1('Instituto Mauro Borges - ODS - Agenda 2030', className="align-middle", style={'margin': '0', 'padding': '0'}), xs=12, sm=12, md=6, className="d-flex align-items-center justify-content-center justify-content-md-start p-2")
+        ], className="align-items-center"))
+    ], className="mb-4", style={'marginTop': '15px', 'marginLeft': '15px', 'marginRight': '15px'}))),
+    # Card Principal
+    dbc.Row(dbc.Col(dbc.Card([
+        dbc.CardBody(dbc.Row([
+            # Menu Lateral (Objetivos)
+            dbc.Col(dbc.Card(dbc.CardBody(dbc.Row([
+                dbc.Col(html.Div(html.Img(src=row['BASE64'], style={'width': '100%', 'marginBottom': '10px', 'cursor': 'pointer'}, className="img-fluid", id=f"objetivo{idx}", n_clicks=1 if idx == 0 else 0)), width=4)
+                for idx, row in df.iterrows()
+            ], className="g-2"))), lg=2),
+            # Conteúdo Principal (Metas e Indicadores)
+            dbc.Col(dbc.Card([
+                dbc.CardHeader(html.H3(id='card-header', children=initial_header)),
+                dbc.CardBody([
+                    html.Div(id='card-content', children=initial_content),
+                    dbc.Nav(id='metas-nav', pills=True, className="nav nav-pills gap-2", style={'display': 'flex', 'flexWrap': 'wrap', 'marginBottom': '1rem'}, children=[]),
+                    html.Div(id='meta-description', children=initial_meta_description, className="text-justify mt-4"),
+                    html.Div(id='loading-indicator', children=[]),
+                    html.Div(id='indicadores-section', children=initial_indicadores_section)
+                ])
+            ]), lg=10)
+        ]))
+    ], className="border-0 shadow-none")))
+], fluid=True)
+
+# Callback para atualizar o conteúdo do card principal (metas, indicadores)
 @app.callback(
     [
         Output('card-header', 'children'),
@@ -1376,449 +679,241 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
     ],
     [Input(f"objetivo{i}", "n_clicks") for i in range(len(df))] +
     [Input({'type': 'meta-button', 'index': ALL}, 'n_clicks')],
-    [State({'type': 'meta-button', 'index': ALL}, 'active')],
-    prevent_initial_call=False
+    prevent_initial_call=True # Impede execução inicial
 )
 def update_card_content(*args):
     ctx = callback_context
     if not ctx.triggered:
-        return initial_header, initial_content, [], initial_meta_description, []
+        raise PreventUpdate
+
+    triggered_id_str = ctx.triggered[0]['prop_id']
+    triggered_value = ctx.triggered[0]['value']
+
+    # Ignora cliques iniciais ou cliques sem valor (n_clicks=0)
+    if triggered_value is None or triggered_value == 0:
+        raise PreventUpdate
 
     try:
-        triggered_id = ctx.triggered[0]['prop_id']
+        # --- Clique em uma META ---
+        if 'meta-button' in triggered_id_str:
+            meta_id = json.loads(triggered_id_str.split('.')[0])['index']
+            meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
+            if meta_filtrada.empty:
+                 return no_update, no_update, no_update, "Meta não encontrada.", [] # Atualiza descrição
 
-        # Se for um clique em uma meta
-        if 'meta-button' in triggered_id:
-            try:
-                meta_id = triggered_id.split('"index":"')[1].split('"')[0]
-                meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
+            meta_desc = meta_filtrada['DESC_META'].iloc[0]
+            objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[0]
 
-                if not meta_filtrada.empty:
-                    meta_desc = meta_filtrada['DESC_META'].iloc[0]
-                    objetivo_id = meta_filtrada['ID_OBJETIVO'].iloc[0]
-                    metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == objetivo_id]
-                    metas_com_indicadores = [
-                        meta for _, meta in metas_filtradas.iterrows()
-                        if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
-                    ]
-
-                    if not metas_com_indicadores:
-                        return no_update, no_update, [], dbc.Alert(
-                            "Não existem indicadores disponíveis para esta meta.",
-                            color="warning",
-                            className="text-center p-3"
-                        ), []
-
-                    metas_atualizadas = [
-                        dbc.NavLink(
-                            meta['ID_META'],
-                            id={'type': 'meta-button', 'index': meta['ID_META']},
-                            href="#",
-                            active=meta['ID_META'] == meta_id,
-                            className="nav-link"
-                        ) for meta in metas_com_indicadores
-                    ]
-
-                    indicadores_meta = df_indicadores[df_indicadores['ID_META'] == meta_id]
-                    if not indicadores_meta.empty:
-                        tabs_indicadores = []
-                        for _, row in indicadores_meta.iterrows():
-                            df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
-                            tab_content = []
-                            dynamic_filters_div = [] # Container para filtros dinâmicos
-
-                            if df_dados is not None and not df_dados.empty:
-                                try:
-                                    # Identifica colunas de filtro dinâmico
-                                    filter_cols = identify_filter_columns(df_dados)
-                                    for filter_col_code in filter_cols:
-                                        # Determina o nome da coluna de descrição
-                                        desc_col_code = 'DESC_' + filter_col_code[5:]
-
-                                        # Cria mapeamento codigo->descrição
-                                        code_to_desc = {}
-                                        if desc_col_code in df_dados.columns:
-                                            try:
-                                                mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
-                                                code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
-                                                                         index=mapping_df[filter_col_code].astype(str)).to_dict()
-                                            except Exception as map_err:
-                                                print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
-
-                                        # Gera opções
-                                        col_options = [{'label': 'Todos', 'value': 'all'}]
-                                        # Pega códigos únicos da coluna original, convertidos para string
-                                        unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
-                                        for code_val_str in unique_codes:
-                                            # Tenta obter a descrição do mapeamento usando o código string
-                                            label = code_to_desc.get(code_val_str, code_val_str) # Fallback para o próprio código string
-
-                                            col_options.append({'label': str(label), 'value': code_val_str}) # Value é sempre o código string
-
-                                        filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-                                        dynamic_filters_div.append(
-                                            dbc.Col([ # Wrap in dbc.Col
-                                                html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                                                dcc.Dropdown(
-                                                    id={'type': 'dynamic-filter-dropdown', 'index': row['ID_INDICADOR'], 'filter_col': filter_col_code},
-                                                    options=col_options,
-                                                    value='all', # Valor inicial 'Todos'
-                                                    style={'marginBottom': '10px'} # Remove width
-                                                )
-                                            ], md=6, xs=12) # Add responsiveness: 50% on medium+, 100% on extra-small
-                                        )
-
-                                    # Verifica se o indicador tem VARIAVEIS = 1 (dropdown de variável principal)
-                                    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
-                                    has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
-
-                                    variable_dropdown_div = [] # Container para dropdown de variável principal
-                                    valor_inicial_variavel = None
-                                    if has_variable_dropdown:
-                                        df_variavel_loaded = load_variavel()
-                                        # Garante que a coluna CODG_VAR existe antes de filtrar
-                                        if 'CODG_VAR' in df_dados.columns:
-                                            variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
-                                            # Filtra df_variavel_loaded apenas se não estiver vazio
-                                            if not df_variavel_loaded.empty:
-                                                df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
-                                                valor_inicial_variavel = df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None
-
-                                        if not df_variavel_loaded.empty:
-                                            variable_dropdown_div = [
-                                                html.Div([
-                                                    html.Label("Selecione uma Variável:",
-                                                        style={
-                                                            'fontWeight': 'bold',
-                                                            'display': 'block',
-                                                            'marginBottom': '5px'
-                                                        },
-                                                        id={'type': 'var-label', 'index': row['ID_INDICADOR']}
-                                                    ),
-                                                    dcc.Dropdown(
-                                                        id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
-                                                        options=[
-                                                            {'label': desc, 'value': cod}
-                                                            for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
-                                                        ],
-                                                        value=valor_inicial_variavel,
-                                                        style={'width': '100%'}
-                                                    )
-                                                ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
-                                            ]
-
-                                    # Monta o conteúdo da aba: Descrição + Filtros + Gráficos
-                                    # A visualização inicial é chamada sem filtros dinâmicos (eles são 'all')
-                                    initial_visualization = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial_variavel, None)
-
-                                    # Reestrutura a criação de tab_content
-                                    tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")]
-                                    tab_content.extend(variable_dropdown_div)
-                                    if dynamic_filters_div: # Only add row if there are filters
-                                        tab_content.append(dbc.Row(dynamic_filters_div))
-                                    tab_content.append(html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
-                                                                    children=initial_visualization
-                                                                    ))
-
-                                except Exception as e:
-                                    print(f"Erro ao processar indicador inicial {row['ID_INDICADOR']}: {e}")
-                                    import traceback
-                                    traceback.print_exc()
-                                    tab_content = [
-                                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
-                                        dbc.Alert(f"Erro ao gerar visualização inicial para {row['ID_INDICADOR']}.", color="danger")
-                                    ]
-                            else:
-                                 tab_content = [
-                                        html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
-                                        dbc.Alert(f"Dados não disponíveis ou vazios para {row['ID_INDICADOR']}.", color="warning")
-                                    ]
-
-                            tabs_indicadores.append(
-                                dbc.Tab(
-                                    tab_content,
-                                    label=row['ID_INDICADOR'],
-                                    tab_id=f"tab-{row['ID_INDICADOR']}",
-                                    id={'type': 'tab-indicador', 'index': row['ID_INDICADOR']}
-                                )
-                            )
-
-                        indicadores_section = [
-                            html.H5("Indicadores", className="mt-4 mb-3"),
-                            dbc.Card(
-                                dbc.CardBody(
-                                    dbc.Tabs(
-                                        children=tabs_indicadores,
-                                        active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None
-                                    )
-                                ),
-                                className="mt-3"
-                            )
-                        ]
-                    else:
-                        indicadores_section = []
-
-                    return no_update, no_update, metas_atualizadas, meta_desc, indicadores_section
-                else:
-                    return no_update, no_update, [], dbc.Alert(
-                        "Meta não encontrada.",
-                        color="warning",
-                        className="text-center p-3"
-                    ), []
-            except Exception as e:
-                return no_update, no_update, [], dbc.Alert(
-                    f"Erro ao processar meta: {str(e)}",
-                    color="danger",
-                    className="text-center p-3"
-                ), []
-
-        # Se for um clique em um objetivo
-        button_id = triggered_id.split('.')[0]
-        if not button_id.startswith('objetivo'):
-            return initial_header, initial_content, [], initial_meta_description, []
-
-        try:
-            index = int(button_id.replace('objetivo', ''))
-            if index >= len(df):
-                return initial_header, dbc.Alert(
-                    "Objetivo não encontrado.",
-                    color="warning",
-                    className="text-center p-3"
-                ), [], "", []
-            
-            row = df.iloc[index]
-            if not all(key in row for key in ['DESC_OBJETIVO', 'RES_OBJETIVO', 'ID_OBJETIVO']):
-                return initial_header, dbc.Alert(
-                    "Dados do objetivo estão incompletos.",
-                    color="warning",
-                    className="text-center p-3"
-                ), [], "", []
-
-            header = f"{row['ID_OBJETIVO']} - {row['RES_OBJETIVO']}" if index > 0 else row['RES_OBJETIVO']
-            content = row['DESC_OBJETIVO']
-
-            # Se for o objetivo 0, retorna apenas o header e content
-            if index == 0:
-                return header, content, [], "", []
-
-            metas_filtradas = df_metas[df_metas['ID_OBJETIVO'] == row['ID_OBJETIVO']]
+            # Recria a barra de navegação das metas, marcando a ativa
+            metas_obj_filtradas = df_metas[df_metas['ID_OBJETIVO'] == objetivo_id]
             metas_com_indicadores = [
-                meta for _, meta in metas_filtradas.iterrows()
+                meta for _, meta in metas_obj_filtradas.iterrows()
                 if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
             ]
-
-            if not metas_com_indicadores:
-                return header, content, [], dbc.Alert(
-                    "Não existem indicadores disponíveis para este objetivo.",
-                    color="warning",
-                    className="text-center p-3"
-                ), []
-
-            meta_selecionada = metas_com_indicadores[0]
-            metas = [
+            metas_nav_children = [
                 dbc.NavLink(
                     meta['ID_META'],
                     id={'type': 'meta-button', 'index': meta['ID_META']},
                     href="#",
-                    active=meta['ID_META'] == meta_selecionada['ID_META'],
-                    className="nav-link"
+                    active=(meta['ID_META'] == meta_id),
+                    className="nav-link",
+                    n_clicks=0 # Reset n_clicks
                 ) for meta in metas_com_indicadores
             ]
 
-            meta_description = meta_selecionada['DESC_META']
-            indicadores_meta = df_indicadores[df_indicadores['ID_META'] == meta_selecionada['ID_META']]
-
-            if not indicadores_meta.empty:
-                tabs_indicadores = []
-                for _, row in indicadores_meta.iterrows():
-                    df_dados = load_dados_indicador_cache(row['ID_INDICADOR'])
+            # Gera a seção de indicadores para a meta clicada
+            indicadores_meta_selecionada = df_indicadores[df_indicadores['ID_META'] == meta_id]
+            tabs_indicadores = []
+            if not indicadores_meta_selecionada.empty:
+                for _, row_ind in indicadores_meta_selecionada.iterrows():
+                    df_dados = load_dados_indicador_cache(row_ind['ID_INDICADOR'])
                     tab_content = []
-                    dynamic_filters_div = [] # Container para filtros dinâmicos
+                    dynamic_filters_div = []
+                    valor_inicial_variavel = None # Reset para cada indicador
 
                     if df_dados is not None and not df_dados.empty:
                         try:
-                            # Identifica colunas de filtro dinâmico
+                            # Identifica filtros dinâmicos
                             filter_cols = identify_filter_columns(df_dados)
                             for filter_col_code in filter_cols:
-                                # Determina o nome da coluna de descrição
                                 desc_col_code = 'DESC_' + filter_col_code[5:]
-
-                                # Cria mapeamento codigo->descrição
                                 code_to_desc = {}
                                 if desc_col_code in df_dados.columns:
                                     try:
                                         mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
-                                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
-                                                                 index=mapping_df[filter_col_code].astype(str)).to_dict()
+                                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, index=mapping_df[filter_col_code].astype(str)).to_dict()
                                     except Exception as map_err:
-                                        print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
-
-                                # Gera opções
-                                col_options = [{'label': 'Todos', 'value': 'all'}]
-                                # Pega códigos únicos da coluna original, convertidos para string
-                                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
-                                for code_val_str in unique_codes:
-                                    # Tenta obter a descrição do mapeamento usando o código string
-                                    label = code_to_desc.get(code_val_str, code_val_str) # Fallback para o próprio código string
-
-                                    col_options.append({'label': str(label), 'value': code_val_str}) # Value é sempre o código string
-
+                                        print(f"Erro mapeamento {filter_col_code}: {map_err}")
+                                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
+                                col_options = [{'label': 'Todos', 'value': 'all'}] + \
+                                              [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-                                dynamic_filters_div.append(
-                                    dbc.Col([ # Wrap in dbc.Col
-                                        html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                                        dcc.Dropdown(
-                                            id={'type': 'dynamic-filter-dropdown', 'index': row['ID_INDICADOR'], 'filter_col': filter_col_code},
-                                            options=col_options,
-                                            value='all',
-                                            style={'marginBottom': '10px'} # Remove width
-                                        )
-                                    ], md=6, xs=12) # Add responsiveness: 50% on medium+, 100% on extra-small
-                                )
+                                dynamic_filters_div.append(dbc.Col([
+                                    html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
+                                    dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code}, options=col_options, value='all', style={'marginBottom': '10px'})
+                                ], md=6, xs=12))
 
-                            # Verifica se o indicador tem VARIAVEIS = 1
-                            indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row['ID_INDICADOR']]
+                            # Dropdown de variável principal
+                            indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row_ind['ID_INDICADOR']]
                             has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
-
                             variable_dropdown_div = []
-                            valor_inicial_variavel = None
                             if has_variable_dropdown:
                                 df_variavel_loaded = load_variavel()
                                 if 'CODG_VAR' in df_dados.columns:
                                     variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
                                     if not df_variavel_loaded.empty:
-                                        df_variavel_loaded = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
-                                        valor_inicial_variavel = df_variavel_loaded['CODG_VAR'].iloc[0] if not df_variavel_loaded.empty else None
+                                        df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
+                                        if not df_variavel_filtrado.empty:
+                                            valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
+                                            variable_dropdown_div = [html.Div([
+                                                html.Label("Selecione uma Variável:", style={'fontWeight': 'bold','display': 'block','marginBottom': '5px'}, id={'type': 'var-label', 'index': row_ind['ID_INDICADOR']}),
+                                                dcc.Dropdown(id={'type': 'var-dropdown', 'index': row_ind['ID_INDICADOR']}, options=[{'label': desc, 'value': cod} for cod, desc in zip(df_variavel_filtrado['CODG_VAR'], df_variavel_filtrado['DESC_VAR'])], value=valor_inicial_variavel, style={'width': '100%'})], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row_ind['ID_INDICADOR']})]
 
-                                if not df_variavel_loaded.empty:
-                                    variable_dropdown_div = [
-                                        html.Div([
-                                            html.Label("Selecione uma Variável:",
-                                                style={
-                                                    'fontWeight': 'bold',
-                                                    'display': 'block',
-                                                    'marginBottom': '5px'
-                                                },
-                                                id={'type': 'var-label', 'index': row['ID_INDICADOR']}
-                                            ),
-                                            dcc.Dropdown(
-                                                id={'type': 'var-dropdown', 'index': row['ID_INDICADOR']},
-                                                options=[
-                                                    {'label': desc, 'value': cod}
-                                                    for cod, desc in zip(df_variavel_loaded['CODG_VAR'], df_variavel_loaded['DESC_VAR'])
-                                                ],
-                                                value=valor_inicial_variavel,
-                                                style={'width': '100%'}
-                                            )
-                                        ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row['ID_INDICADOR']})
-                                    ]
-
-                            # Monta o conteúdo da aba: Descrição + Filtros + Gráficos
-                            # A visualização inicial é chamada sem filtros dinâmicos (eles são 'all')
-                            initial_visualization = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial_variavel, None)
-
-                            # Reestrutura a criação de tab_content
-                            tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")]
+                            initial_visualization = create_visualization(df_dados, row_ind['ID_INDICADOR'], valor_inicial_variavel, None)
+                            tab_content = [html.P(row_ind['DESC_INDICADOR'], className="text-justify p-3")]
                             tab_content.extend(variable_dropdown_div)
-                            if dynamic_filters_div: # Only add row if there are filters
+                            if dynamic_filters_div:
                                 tab_content.append(dbc.Row(dynamic_filters_div))
-                            tab_content.append(html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
-                                                            children=initial_visualization
-                                                            ))
+                            tab_content.append(html.Div(id={'type': 'graph-container', 'index': row_ind['ID_INDICADOR']}, children=initial_visualization))
 
-                        except Exception as e:
-                            print(f"Erro ao processar indicador inicial {row['ID_INDICADOR']}: {e}")
-                            import traceback
-                            traceback.print_exc()
-                            tab_content = [
-                                html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
-                                dbc.Alert(f"Erro ao gerar visualização inicial para {row['ID_INDICADOR']}.", color="danger")
-                            ]
+                        except Exception as e_inner:
+                            print(f"Erro interno ao gerar conteúdo da aba {row_ind['ID_INDICADOR']}: {e_inner}")
+                            tab_content = [dbc.Alert(f"Erro ao gerar conteúdo para {row_ind['ID_INDICADOR']}.", color="danger")]
                     else:
-                         tab_content = [
-                            html.P(row['DESC_INDICADOR'], className="text-justify p-3"),
-                            dbc.Alert(f"Dados não disponíveis ou vazios para {row['ID_INDICADOR']}.", color="warning")
-                        ]
+                        tab_content = [dbc.Alert(f"Dados não disponíveis para {row_ind['ID_INDICADOR']}.", color="warning")]
 
-                    tabs_indicadores.append(
-                        dbc.Tab(
-                            tab_content,
-                            label=row['ID_INDICADOR'],
-                            tab_id=f"tab-{row['ID_INDICADOR']}",
-                            id={'type': 'tab-indicador', 'index': row['ID_INDICADOR']}
-                        )
-                    )
+                    # Adiciona Store para esta aba
+                    tab_content.append(dcc.Store(id={'type': 'visualization-state-store', 'index': row_ind['ID_INDICADOR']}, data={'selected_var': valor_inicial_variavel, 'selected_filters': {}}))
+                    tabs_indicadores.append(dbc.Tab(tab_content, label=row_ind['ID_INDICADOR'], tab_id=f"tab-{row_ind['ID_INDICADOR']}", id={'type': 'tab-indicador', 'index': row_ind['ID_INDICADOR']}))
 
-                indicadores_section = [
-                    html.H5("Indicadores", className="mt-4 mb-3"),
-                    dbc.Card(
-                        dbc.CardBody(
-                            dbc.Tabs(
-                                children=tabs_indicadores,
-                                active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None
-                            )
-                        ),
-                        className="mt-3"
-                    )
-                ]
-            else:
-                indicadores_section = []
+            indicadores_section = [
+                html.H5("Indicadores", className="mt-4 mb-3"),
+                dbc.Card(dbc.CardBody(dbc.Tabs(id='tabs-indicadores', children=tabs_indicadores, active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None)), className="mt-3")
+            ] if tabs_indicadores else [] # Só mostra seção se houver indicadores
 
-            return header, content, metas, meta_description, indicadores_section
+            # Retorna SEM no_update para header/content para permitir voltar ao desc do objetivo se necessário
+            objetivo_row = df[df['ID_OBJETIVO'] == objetivo_id].iloc[0]
+            header_obj = f"{objetivo_row['ID_OBJETIVO']} - {objetivo_row['RES_OBJETIVO']}"
+            content_obj = objetivo_row['DESC_OBJETIVO']
+            return header_obj, content_obj, metas_nav_children, meta_desc, indicadores_section
 
-        except Exception as e:
-            return initial_header, dbc.Alert(
-                f"Erro ao processar objetivo: {str(e)}",
-                color="danger",
-                className="text-center p-3"
-            ), [], "", []
+        # --- Clique em um OBJETIVO ---
+        elif 'objetivo' in triggered_id_str:
+            index = int(triggered_id_str.replace('objetivo', '').split('.')[0])
+            if index >= len(df):
+                return "Erro", "Objetivo não encontrado.", [], "", []
+            row_obj = df.iloc[index]
+            header = f"{row_obj['ID_OBJETIVO']} - {row_obj['RES_OBJETIVO']}" if index > 0 else row_obj['RES_OBJETIVO']
+            content = row_obj['DESC_OBJETIVO']
 
-    except Exception as e:
-        return initial_header, dbc.Alert(
-            f"Erro ao processar solicitação: {str(e)}",
-            color="danger",
-            className="text-center p-3"
-        ), [], "", []
+            # Se for objetivo 0, limpa metas e indicadores
+            if index == 0:
+                return header, content, [], "", []
 
+            # Encontra metas com indicadores para este objetivo
+            metas_obj_filtradas = df_metas[df_metas['ID_OBJETIVO'] == row_obj['ID_OBJETIVO']]
+            metas_com_indicadores = [
+                meta for _, meta in metas_obj_filtradas.iterrows()
+                if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
+            ]
 
-# Callback para carregar os dados de cada indicador
-@app.callback(
-    Output({'type': 'dados-indicador', 'index': ALL}, 'children'),
-    [Input({'type': 'tab-indicador', 'index': ALL}, 'active')],
-    prevent_initial_call=True
-)
-def load_dados_indicador(*args):
-    ctx = callback_context
-    if not ctx.triggered:
-        raise PreventUpdate
+            if not metas_com_indicadores:
+                return header, content, [], "Não existem metas com indicadores disponíveis para este objetivo.", []
 
-    triggered_id = ctx.triggered[0]['prop_id']
-    if 'tab-indicador' not in triggered_id:
-        raise PreventUpdate
+            # Seleciona a primeira meta e gera a navegação
+            meta_selecionada = metas_com_indicadores[0]
+            metas_nav_children = [
+                dbc.NavLink(
+                    meta['ID_META'],
+                    id={'type': 'meta-button', 'index': meta['ID_META']},
+                    href="#",
+                    active=(meta['ID_META'] == meta_selecionada['ID_META']),
+                    className="nav-link",
+                    n_clicks=0 # Reset n_clicks
+                ) for meta in metas_com_indicadores
+            ]
+            meta_description = meta_selecionada['DESC_META']
 
-    try:
-        indicador_id = triggered_id.split('"index":"')[1].split('"')[0]
-        indicador = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
+            # Gera a seção de indicadores para a primeira meta
+            indicadores_primeira_meta = df_indicadores[df_indicadores['ID_META'] == meta_selecionada['ID_META']]
+            tabs_indicadores = []
+            if not indicadores_primeira_meta.empty:
+                for _, row_ind in indicadores_primeira_meta.iterrows():
+                    df_dados = load_dados_indicador_cache(row_ind['ID_INDICADOR'])
+                    tab_content = []
+                    dynamic_filters_div = []
+                    valor_inicial_variavel = None
 
-        if not indicador.empty:
-            df_dados = load_dados_indicador_cache(indicador_id)
-            if df_dados is not None:
-                grid = create_visualization(df_dados, indicador_id)
-                return [[grid]]
-            else:
-                return [[
-                    html.P(
-                        "Erro ao carregar os dados do indicador.",
-                        className="text-danger"
-                    )
-                ]]
+                    if df_dados is not None and not df_dados.empty:
+                        try:
+                            filter_cols = identify_filter_columns(df_dados)
+                            for filter_col_code in filter_cols:
+                                desc_col_code = 'DESC_' + filter_col_code[5:]
+                                code_to_desc = {}
+                                if desc_col_code in df_dados.columns:
+                                    try:
+                                        mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
+                                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, index=mapping_df[filter_col_code].astype(str)).to_dict()
+                                    except Exception as map_err:
+                                        print(f"Erro mapeamento {filter_col_code}: {map_err}")
+                                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
+                                col_options = [{'label': 'Todos', 'value': 'all'}] + \
+                                              [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+                                filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
+                                dynamic_filters_div.append(dbc.Col([
+                                    html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
+                                    dcc.Dropdown(id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code}, options=col_options, value='all', style={'marginBottom': '10px'})
+                                ], md=6, xs=12))
+
+                            indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == row_ind['ID_INDICADOR']]
+                            has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
+                            variable_dropdown_div = []
+                            if has_variable_dropdown:
+                                df_variavel_loaded = load_variavel()
+                                if 'CODG_VAR' in df_dados.columns:
+                                    variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
+                                    if not df_variavel_loaded.empty:
+                                        df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
+                                        if not df_variavel_filtrado.empty:
+                                            valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
+                                            variable_dropdown_div = [html.Div([
+                                                html.Label("Selecione uma Variável:", style={'fontWeight': 'bold','display': 'block','marginBottom': '5px'}, id={'type': 'var-label', 'index': row_ind['ID_INDICADOR']}),
+                                                dcc.Dropdown(id={'type': 'var-dropdown', 'index': row_ind['ID_INDICADOR']}, options=[{'label': desc, 'value': cod} for cod, desc in zip(df_variavel_filtrado['CODG_VAR'], df_variavel_filtrado['DESC_VAR'])], value=valor_inicial_variavel, style={'width': '100%'})], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': row_ind['ID_INDICADOR']})]
+
+                            initial_visualization = create_visualization(df_dados, row_ind['ID_INDICADOR'], valor_inicial_variavel, None)
+                            tab_content = [html.P(row_ind['DESC_INDICADOR'], className="text-justify p-3")]
+                            tab_content.extend(variable_dropdown_div)
+                            if dynamic_filters_div:
+                                tab_content.append(dbc.Row(dynamic_filters_div))
+                            tab_content.append(html.Div(id={'type': 'graph-container', 'index': row_ind['ID_INDICADOR']}, children=initial_visualization))
+
+                        except Exception as e_inner:
+                             print(f"Erro interno ao gerar conteúdo da aba {row_ind['ID_INDICADOR']} (objetivo): {e_inner}")
+                             tab_content = [dbc.Alert(f"Erro ao gerar conteúdo para {row_ind['ID_INDICADOR']}.", color="danger")]
+                    else:
+                        tab_content = [dbc.Alert(f"Dados não disponíveis para {row_ind['ID_INDICADOR']}.", color="warning")]
+
+                    tab_content.append(dcc.Store(id={'type': 'visualization-state-store', 'index': row_ind['ID_INDICADOR']}, data={'selected_var': valor_inicial_variavel, 'selected_filters': {}}))
+                    tabs_indicadores.append(dbc.Tab(tab_content, label=row_ind['ID_INDICADOR'], tab_id=f"tab-{row_ind['ID_INDICADOR']}", id={'type': 'tab-indicador', 'index': row_ind['ID_INDICADOR']}))
+
+            indicadores_section = [
+                 html.H5("Indicadores", className="mt-4 mb-3"),
+                 dbc.Card(dbc.CardBody(dbc.Tabs(id='tabs-indicadores', children=tabs_indicadores, active_tab=tabs_indicadores[0].tab_id if tabs_indicadores else None)), className="mt-3")
+            ] if tabs_indicadores else []
+
+            return header, content, metas_nav_children, meta_description, indicadores_section
         else:
-            return [[]]
+            # Caso ID não seja nem meta nem objetivo (não deve acontecer)
+            raise PreventUpdate
 
     except Exception as e:
-        print(f"Erro ao carregar dados do indicador: {e}")
-        return [[]]
+        print(f"Erro geral em update_card_content: {e}")
+        import traceback
+        traceback.print_exc()
+        # Retorna um estado seguro em caso de erro inesperado
+        return initial_header, initial_content, [], "Ocorreu um erro.", []
 
+# Callback para carregar os dados de cada indicador (REMOVIDO, pois update_visualization_from_store faz isso)
 
 # Callback para atualizar o mapa coroplético quando o ano é alterado
 @app.callback(
@@ -1844,12 +939,21 @@ def update_map(selected_years, current_figures):
         selected_year = ctx.triggered[0]['value']
         
         # Carrega os dados do indicador
-        df = load_dados_indicador_cache(indicador_id)
-        if df is None or df.empty:
-            raise PreventUpdate
-        
+        df_map = load_dados_indicador_cache(indicador_id)
+        if df_map is None or df_map.empty:
+             # Prevenir atualização se dados não carregarem para este indicador
+             print(f"update_map: Dados não encontrados para {indicador_id}, prevenindo update do mapa.")
+             # Encontra o índice do mapa correspondente para retornar no_update específico
+             target_output_index = -1
+             for i, output_spec in enumerate(ctx.outputs_list):
+                 if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
+                     target_output_index = i
+                     break
+             output_list = [no_update] * len(ctx.outputs_list)
+             return output_list # Retorna lista com no_update para todos
+
         # Filtra os dados para o ano selecionado e cria uma cópia explícita
-        df_ano = df[df['CODG_ANO'] == selected_year].copy()
+        df_ano = df_map[df_map['CODG_ANO'] == selected_year].copy()
         
         # Substitui os códigos das UFs pelos nomes completos
         if 'CODG_UND_FED' in df_ano.columns:
@@ -1857,26 +961,26 @@ def update_map(selected_years, current_figures):
             df_ano = df_ano.dropna(subset=['DESC_UND_FED'])
         
         if df_ano.empty:
-             # Se não houver dados para o ano/UF, retorna um mapa vazio ou uma mensagem
-             # (Opcional: criar uma figura vazia ou com aviso)
-             # Por agora, vamos prevenir a atualização para este mapa específico
-             # Encontra o índice do mapa correspondente
+             # Se não houver dados para o ano/UF específico, retorna no_update para este mapa
+             print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year}, prevenindo update.")
              target_output_index = -1
              for i, output_spec in enumerate(ctx.outputs_list):
                  if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
                      target_output_index = i
                      break
-             
              output_list = [no_update] * len(ctx.outputs_list)
-             if target_output_index != -1:
-                 # Poderia retornar um go.Figure() vazio aqui se quisesse limpar o mapa
-                 output_list[target_output_index] = no_update 
+             # Não precisa atualizar se não há dados
              return output_list
 
         # Carrega o GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
             geojson = json.load(f)
-        
+
+        # Pega a unidade de medida (de forma segura)
+        und_med_map = ''
+        if 'DESC_UND_MED' in df_ano.columns and not df_ano['DESC_UND_MED'].empty:
+            und_med_map = df_ano['DESC_UND_MED'].iloc[0]
+
         # Cria o novo mapa
         fig_map = px.choropleth(
             df_ano,
@@ -1908,7 +1012,7 @@ def update_map(selected_years, current_figures):
             marker_line_color='white',
             marker_line_width=1,
             hovertemplate="<b>%{location}</b><br>" +
-                        f"Valor: %{{z}}" + (f" {df['DESC_UND_MED'].iloc[0]}" if df['DESC_UND_MED'].iloc[0] else "") + "<extra></extra>"
+                        f"Valor: %{{z}}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
         )
         
         # Atualiza o layout do mapa
@@ -1938,566 +1042,9 @@ def update_map(selected_years, current_figures):
         return output_list
         
     except Exception as e:
-        print(f"Erro ao atualizar mapa para indicador {indicador_id}: {e}") # Mensagem mais específica
+        print(f"Erro ao atualizar mapa para indicador {indicador_id}: {e}")
         # Retorna no_update para todas as saídas em caso de erro
         return [no_update] * len(ctx.outputs_list)
-
-
-# Callback para atualizar os gráficos quando a variável é alterada
-@app.callback(
-    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
-    [Input({'type': 'var-dropdown', 'index': MATCH}, 'value')],
-    [State({'type': 'var-dropdown', 'index': MATCH}, 'id')],
-    prevent_initial_call=True
-)
-def update_graphs(selected_var, dropdown_id):
-    if not selected_var:
-        raise PreventUpdate
-    
-    try:
-        # Extrai o ID do indicador
-        indicador_id = dropdown_id['index']
-        
-        # Carrega os dados do indicador
-        df = load_dados_indicador_cache(indicador_id)
-        if df is None or df.empty:
-            print("DataFrame vazio ou None após carregamento")
-            raise PreventUpdate
-        
-        # Cria uma cópia do DataFrame para evitar modificações no original
-        df = df.copy()
-        
-        # Filtra por variável
-        if 'CODG_VAR' in df.columns:
-            df['CODG_VAR'] = df['CODG_VAR'].astype(str).str.strip()
-            selected_var = str(selected_var).strip()
-            df = df[df['CODG_VAR'] == selected_var]
-            
-            if df.empty:
-                return html.Div([
-                    dbc.Alert(
-                        "Nenhum dado disponível para a variável selecionada.",
-                        color="warning",
-                        className="text-center p-3"
-                    )
-                ])
-        
-        # Substitui os códigos das UFs pelos nomes completos
-        if 'CODG_UND_FED' in df.columns:
-            df['DESC_UND_FED'] = df['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-            df = df.dropna(subset=['DESC_UND_FED'])
-        
-        # Adiciona as descrições da variável e unidade de medida antes do agrupamento
-        if 'CODG_VAR' in df.columns and not df_variavel.empty:
-            df['CODG_VAR'] = df['CODG_VAR'].astype(str)
-            df_variavel['CODG_VAR'] = df_variavel['CODG_VAR'].astype(str)
-            df = df.merge(df_variavel[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
-            df['DESC_VAR'] = df['DESC_VAR'].fillna('Descrição não disponível')
-        else:
-            df['DESC_VAR'] = 'Descrição não disponível'
-        
-        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
-            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
-            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
-            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
-        else:
-            df['DESC_UND_MED'] = 'Unidade não disponível'
-        
-        # Garante que os dados estão ordenados por ano
-        df = df.sort_values('CODG_ANO')
-        
-        # Converte o campo VLR_VAR para numérico e remove valores inválidos
-        df['VLR_VAR'] = pd.to_numeric(df['VLR_VAR'], errors='coerce')
-        df = df.dropna(subset=['VLR_VAR'])
-        
-        if df.empty:
-            return html.Div([
-                dbc.Alert(
-                    "Não há dados numéricos válidos para criar a visualização.",
-                    color="warning",
-                    className="text-center p-3"
-                )
-            ])
-        
-        # Carrega as sugestões de visualização
-        df_sugestoes = load_sugestoes_visualizacao()
-        
-        # Define as configurações da tabela
-        columnDefs = []
-        
-        # Define a ordem das colunas
-        column_order = [
-            ('DESC_UND_FED', 'Unidade Federativa'),
-            ('CODG_ANO', 'Ano'),
-            ('DESC_VAR', 'Descrição da Variável'),
-            ('VLR_VAR', 'Valor'),
-            ('DESC_UND_MED', 'Unidade de Medida')
-        ]
-        
-        # Adiciona as colunas na ordem especificada
-        for col, header in column_order:
-            if col in df.columns:
-                columnDefs.append({
-                    "field": col,
-                    "headerName": header,
-                    "sortable": True,
-                    "filter": True,
-                    "flex": 1,
-                    "minWidth": 100,
-                    "maxWidth": None,
-                    "resizable": True,
-                    "wrapText": True,
-                    "autoHeight": True,
-                    "suppressSizeToFit": False,
-                    "cellStyle": {"whiteSpace": "normal"},
-                    "cellClass": "wrap-text"
-                })
-        
-        defaultColDef = {
-            "flex": 1,
-            "minWidth": 100,
-            "maxWidth": None,
-            "resizable": True,
-            "wrapText": True,
-            "autoHeight": True,
-            "suppressSizeToFit": False,
-            "cellStyle": {"whiteSpace": "normal"},
-            "cellClass": "wrap-text"
-        }
-        
-        # Se tiver um indicador específico e sugestões disponíveis
-        if indicador_id and not df_sugestoes.empty:
-            sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
-            if not sugestoes_indicador.empty:
-                try:
-                    # Verifica se há dados suficientes para criar os gráficos
-                    if len(df) < 2:
-                        return html.Div([
-                            dbc.Alert(
-                                "Não há dados suficientes para criar os gráficos. Mostrando apenas a tabela de dados.",
-                                color="warning",
-                                className="text-center p-3"
-                            ),
-                            dag.AgGrid(
-                                rowData=df.to_dict('records'),
-                                columnDefs=columnDefs,
-                                defaultColDef=defaultColDef,
-                                dashGridOptions={
-                                    "pagination": True,
-                                    "paginationPageSize": 10,
-                                    "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                    "domLayout": "autoHeight",  # Alterado de "normal"
-                                    "suppressMovableColumns": True,
-                                    "animateRows": True,
-                                    "suppressColumnVirtualisation": True
-                                    # Remova autoSizeAllColumns
-                                },
-                                style={"width": "calc(100% - 40px)", "marginLeft": "20px"}, # Removido height: 100%
-                            )
-                        ])
-                    
-                    # ==============================================
-                    # GRÁFICO DE LINHA - Evolução temporal dos valores
-                    # ==============================================
-                    # Cria uma cópia do DataFrame ANTES do groupby para usar na tabela detalhada
-                    df_original = df.copy()
-
-                    # Configura o gráfico de linha
-                    config = {
-                        'x': 'CODG_ANO',  # Voltando para CODG_ANO no eixo X
-                        'y': 'VLR_VAR',
-                        'color': 'DESC_UND_FED'  # Voltando para DESC_UND_FED para colorir por estado
-                    }
-                    
-                    # Tratamento para dados anuais
-                    if 'DESC_UND_FED' in df.columns:
-                        df = df.groupby(['CODG_ANO', 'DESC_UND_FED'], as_index=False).agg({
-                            'VLR_VAR': 'first',
-                            'DESC_UND_MED': 'first',
-                            'DESC_VAR': 'first'
-                        })
-                    else:
-                        df = df.groupby('CODG_ANO', as_index=False).agg({
-                            'VLR_VAR': 'first',
-                            'DESC_UND_MED': 'first',
-                            'DESC_VAR': 'first'
-                        })
-                    
-                    # Atualiza os labels dos eixos
-                    config['labels'] = {
-                        'x': "",  # Removendo o label do eixo X
-                        'y': "",
-                        'color': f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'Unidade Federativa')}</b>"  # Voltando para UF
-                    }
-                    
-                    # Cria os gráficos
-                    fig_line = px.line(df, **config)
-                    
-                    # Cria um dicionário para mapear cada estado com sua unidade de medida
-                    estado_unidade = df.groupby('DESC_UND_FED')['DESC_UND_MED'].first().to_dict()
-                    
-                    # Atualiza cada traço individualmente para garantir que o customdata corresponda ao estado correto
-                    for trace in fig_line.data:
-                        estado = trace.name
-                        trace.update(
-                            line_shape='spline',
-                            mode='lines+markers',
-                            marker=dict(
-                                size=14,
-                                symbol='circle',
-                                line=dict(width=2, color='white')
-                            ),
-                            hovertemplate="<b>" + estado + "</b><br>" +
-                                        "Ano: %{x}<br>" +
-                                        "Valor: %{y}<br>" +
-                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
-                        )
-                        if estado == 'Goiás':
-                            trace.line = dict(color='#229846', width=6)
-                            trace.name = '<b>Goiás</b>'
-                    
-                    # Atualiza o layout do gráfico de linha
-                    fig_line.update_layout(
-                        xaxis=dict(
-                            tickangle=45,  # Rotaciona os rótulos para melhor visualização
-                            tickfont=dict(size=12)
-                        )
-                    )
-                    
-                    # ==============================================
-                    # GRÁFICO DE BARRAS - Comparação entre UFs
-                    # ==============================================
-                    # Cria o gráfico de barras
-                    fig_bar = px.bar(
-                        df,
-                        x='CODG_ANO',
-                        y='VLR_VAR',
-                        color='DESC_UND_FED',
-                        labels={
-                            'DESC_UND_FED': 'Unidade Federativa',
-                            'VLR_VAR': 'Valor',
-                            'CODG_ANO': ""  # Removendo o label do eixo X
-                        }
-                    )
-                    
-                    # Atualiza o layout do gráfico de barras
-                    fig_bar.update_layout(
-                        showlegend=True,
-                        xaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            tickangle=45,
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
-                            tickvals=sorted(df['CODG_ANO'].unique())
-                        ),
-                        yaxis=dict(
-                            tickfont=dict(size=12, color='black'),
-                            showticklabels=False  # Remove os valores do eixo Y
-                        ),
-                        margin=dict(b=100)  # Margem inferior para os rótulos rotacionados
-                    )
-                    
-                    # Atualiza o hover do gráfico de barras
-                    for trace in fig_bar.data:
-                        estado = trace.name
-                        trace.update(
-                            hovertemplate="<b>" + estado + "</b><br>" +
-                                        "Ano: %{x}<br>" +
-                                        "Valor: %{y}<br>" +
-                                        "Unidade de Medida: " + estado_unidade[estado] + "<extra></extra>"
-                        )
-                        if estado == 'Goiás':
-                            trace.marker.color = '#229846'
-                            trace.marker.line.width = 6
-                            trace.name = '<b>Goiás</b>'
-                    
-                    # ==============================================
-                    # MAPA COROPLÉTICO - Visualização geográfica
-                    # ==============================================
-                    # Carrega o GeoJSON do Brasil
-                    with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-                        geojson = json.load(f)
-                    
-                    # Cria o mapa coroplético
-                    fig_map = px.choropleth(
-                        df,
-                        geojson=geojson,
-                        locations='DESC_UND_FED',
-                        featureidkey='properties.name',
-                        color='VLR_VAR',
-                        color_continuous_scale='Greens_r',
-                        scope="south america"
-                    )
-                    
-                    # Ajusta o layout do mapa
-                    fig_map.update_geos(
-                        visible=False,
-                        showcoastlines=True,
-                        coastlinecolor="White",
-                        showland=True,
-                        landcolor="white",
-                        showframe=False,
-                        center=dict(lat=-12.9598, lon=-53.2729),
-                        projection=dict(
-                            type='mercator',
-                            scale=2.6
-                        )
-                    )
-                    
-                    # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
-                    fig_map.update_traces(
-                        marker_line_color='white',
-                        marker_line_width=1,
-                        hovertemplate="<b>%{location}</b><br>" +
-                                    "Valor: %{z}<br>" +
-                                    "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>"
-                    )
-                    
-                    # Atualiza o layout do mapa
-                    fig_map.update_layout(
-                        margin=dict(r=0, l=0, t=0, b=0),
-                        coloraxis_colorbar=dict(
-                            title=None,
-                            tickfont=dict(size=12, color='black')
-                        )
-                    )
-                    
-                    # ==============================================
-                    # TABELA DE DADOS - Visualização detalhada
-                    # ==============================================
-                    # Aplica o layout padrão
-                    layout = DEFAULT_LAYOUT.copy()
-                    layout.update({
-                        'xaxis_title': config['labels']['x'],
-                        'yaxis_title': config['labels']['y'],
-                        'xaxis': dict(
-                            showgrid=False,
-                            zeroline=False,
-                            tickfont=dict(size=12, color='black'),
-                            ticktext=[f"<b>{x}</b>" for x in sorted(df['CODG_ANO'].unique())],
-                            tickvals=sorted(df['CODG_ANO'].unique())
-                        ),
-                        'yaxis': dict(
-                            showgrid=False,
-                            zeroline=False,
-                            tickfont=dict(size=12, color='black')
-                        )
-                    })
-                    
-                    # Aplica os layouts
-                    fig_line.update_layout(layout)
-                    fig_bar.update_layout(layout)
-                    
-                    # Remove linhas de grade
-                    fig_line.update_xaxes(showgrid=False, zeroline=False)
-                    fig_bar.update_xaxes(showgrid=False, zeroline=False)
-                    
-                    # Destaca Goiás
-                    if 'DESC_UND_FED' in df.columns:
-                        for trace in fig_line.data:
-                            if hasattr(trace, 'name') and trace.name == 'Goiás':
-                                trace.line = dict(color='#229846', width=6)
-                                trace.name = '<b>Goiás</b>'
-                        for trace in fig_bar.data:
-                            if hasattr(trace, 'name') and trace.name == 'Goiás':
-                                trace.marker.color = '#229846'
-                                trace.marker.line.width = 6
-                                trace.name = '<b>Goiás</b>'
-                    
-                    # ==============================================
-                    # GRÁFICO DE PIZZA - Distribuição percentual
-                    # ==============================================
-                    # Verifica se há menos de 5 anos de dados
-                    anos_unicos = sorted(df['CODG_ANO'].unique())
-                    mostrar_pizza = len(anos_unicos) < 5
-                    
-                    # Cria o gráfico de pizza apenas se houver menos de 5 anos
-                    if mostrar_pizza:
-                        # Cria o gráfico de pizza
-                        fig_pie = px.pie(
-                            df,
-                            values='VLR_VAR',
-                            names='DESC_UND_FED',
-                            labels={
-                                'DESC_UND_FED': 'Unidade Federativa',
-                                'VLR_VAR': 'Valor'
-                            }
-                        )
-                        
-                        # Atualiza o layout do gráfico de pizza
-                        fig_pie.update_layout(
-                            showlegend=True,
-                            legend=dict(
-                                title="Unidade Federativa",
-                                yanchor="top",
-                                y=0.99,
-                                xanchor="left",
-                                x=1.05,
-                                orientation="v"
-                            ),
-                            margin=dict(r=150)  # Margem à direita para acomodar a legenda
-                        )
-                        
-                        # Atualiza o hover do gráfico de pizza
-                        fig_pie.update_traces(
-                            hovertemplate="<b>%{label}</b><br>" +
-                                        "Valor: %{value}<br>" +
-                                        "Percentual: %{percent:.1%}<br>" +
-                                        "Unidade de Medida: " + df['DESC_UND_MED'].iloc[0] + "<extra></extra>",
-                            textinfo="label+value+percent",
-                            texttemplate="<b>%{label}</b><br>%{value}<br>%{percent:.1%}",
-                            textposition="outside",
-                            showlegend=False,
-                            hoverinfo="skip"
-                        )
-                        
-                        # Destaca Goiás no gráfico de pizza
-                        for trace in fig_pie.data:
-                            if trace.name == 'Goiás':
-                                trace.marker = dict(color='#229846')
-                                trace.name = '<b>Goiás</b>'
-                    
-                    # Adiciona o gráfico de pizza à estrutura, mas mantém oculto se não houver menos de 5 anos
-                    # MODIFICADO: Retorna lista de componentes internos, não Div externo
-                    return [
-                        dbc.Row([
-                            # Coluna da esquerda com os gráficos
-                            dbc.Col([
-                                # Primeira linha com os gráficos (linha/barra ou pizza)
-                                dbc.Row([
-                                    dbc.Col([
-                                        # Container para gráficos de linha e barra
-                                        html.Div([
-                                            dcc.Graph(figure=fig_line, style={'height': '370px'}),
-                                            dcc.Graph(figure=fig_bar, style={'height': '370px'})
-                                        ], style={
-                                            'display': 'none' if mostrar_pizza else 'block',
-                                            'border': '1px solid #dee2e6',
-                                            'borderRadius': '4px',
-                                            'padding': '15px',
-                                            'height': '800px',
-                                            'marginBottom': '0px'
-                                        }),
-                                        # Container para gráfico de pizza
-                                        html.Div([
-                                            html.Label("Ano", 
-                                                style={
-                                                    'fontWeight': 'bold',
-                                                    'marginBottom': '5px',
-                                                    'display': 'block'
-                                                }
-                                            ),
-                                            dcc.Dropdown(
-                                                id={'type': 'pie-year-dropdown', 'index': indicador_id},
-                                                options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                                                value=anos_unicos[-1] if anos_unicos else None,
-                                                style={'width': '200px', 'marginBottom': '10px'}
-                                            ),
-                                            dcc.Graph(
-                                                figure=fig_pie if mostrar_pizza else go.Figure(), # Passa figura vazia em vez de None
-                                                id={'type': 'pie-chart', 'index': indicador_id},
-                                                style={'height': '700px'}
-                                            )
-                                        ], style={
-                                            'display': 'block' if mostrar_pizza else 'none',
-                                            'border': '1px solid #dee2e6',
-                                            'borderRadius': '4px',
-                                            'padding': '15px',
-                                            'height': '800px'
-                                        })
-                                    ], width=12)
-                                ], className="mb-4")
-                            ], width=7),
-                            # Coluna da direita com o mapa e dropdown
-                            dbc.Col([
-                                # Container do mapa com dropdown
-                                html.Div([
-                                    html.Label("Ano:", 
-                                        style={
-                                            'fontWeight': 'bold',
-                                            'marginBottom': '5px',
-                                            'display': 'block'
-                                        }
-                                    ),
-                                    dcc.Dropdown(
-                                        id={'type': 'year-dropdown', 'index': indicador_id},
-                                        options=[{'label': ano, 'value': ano} for ano in sorted(df['CODG_ANO'].unique())],
-                                        value=sorted(df['CODG_ANO'].unique())[-1],
-                                        style={'width': '200px', 'marginBottom': '10px'}
-                                    ),
-                                    dcc.Graph(
-                                        id={'type': 'choropleth-map', 'index': indicador_id},
-                                        figure=fig_map,
-                                        style={
-                                            'height': '700px'
-                                        }
-                                    )
-                                ], style={
-                                    'border': '1px solid #dee2e6',
-                                    'borderRadius': '4px',
-                                    'padding': '15px',
-                                    'height': '800px',
-                                    'marginBottom': '0px'
-                                })
-                            ], width=5)
-                        ]),
-                        # ----> NOVA LINHA PARA TABELA DETALHADA <----
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Card([                                    
-                                    html.H5(
-                                        "Dados Detalhados", 
-                                        className="mt-4", 
-                                        style={'marginLeft': '20px'}
-                                    ),
-                                    dbc.CardBody([
-                                        dag.AgGrid(
-                                            id={'type': 'detail-table', 'index': indicador_id},
-                                            rowData=df_original.to_dict('records'), # Usa o df_original
-                                            columnDefs=columnDefs,
-                                            defaultColDef=defaultColDef,
-                                            dashGridOptions={
-                                                "pagination": True,
-                                                "paginationPageSize": 10,
-                                                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                                "domLayout": "autoHeight",
-                                                "suppressMovableColumns": True,
-                                                "animateRows": True,
-                                                "suppressColumnVirtualisation": True
-                                            },
-                                            style={"width": "100%"}
-                                        )
-                                    ])
-                                ]) # Card não tem mais className="mt-4", H5 tem.
-                            ])
-                        ])
-                        # ----> FIM DA NOVA LINHA <----
-                    ]
-                except Exception as e:
-                    print(f"Erro ao atualizar gráficos: {e}")
-                    raise PreventUpdate
-        
-        # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
-        return dag.AgGrid(
-            rowData=df.to_dict('records'),
-            columnDefs=columnDefs,
-            defaultColDef=defaultColDef,
-            dashGridOptions={
-                "pagination": True,
-                "paginationPageSize": 10,
-                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                "domLayout": "autoHeight",  # Alterado de "normal"
-                "suppressMovableColumns": True,
-                "animateRows": True,
-                "suppressColumnVirtualisation": True
-                # Remova autoSizeAllColumns
-            },
-            style={"width": "100%"}, # Removido height: 100%
-        )
-    except Exception as e:
-        print(f"Erro ao atualizar gráficos: {e}")
-        raise PreventUpdate
-
 
 # Callback para controlar a visibilidade do label baseado na existência de variáveis
 @app.callback(
@@ -2514,28 +1061,130 @@ def update_label_visibility(options):
         'marginBottom': '5px'
     }
 
+# --- Novos Callbacks usando dcc.Store ---
+
+# Callback 1: Atualiza o Store quando a variável principal muda
+@app.callback(
+    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
+    Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    prevent_initial_call=True
+)
+def update_store_from_variable(selected_var, current_data):
+    if selected_var is None and not callback_context.triggered_id: # Permite atualização inicial se var for None
+        raise PreventUpdate
+
+    current_data = current_data or {'selected_var': None, 'selected_filters': {}}
+    current_data['selected_var'] = selected_var
+    return current_data
+
+# Callback 2: Atualiza o Store quando um filtro dinâmico muda
+@app.callback(
+    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
+    Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
+    State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    prevent_initial_call=True
+)
+def update_store_from_filters(filter_values, filter_ids, current_data):
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    current_data = current_data or {'selected_var': None, 'selected_filters': {}}
+
+    selected_filters = {}
+    if filter_ids and filter_values:
+        try:
+            if len(filter_ids) != len(filter_values):
+                print(f"Aviso [update_store_from_filters]: Comprimento de filter_ids({len(filter_ids)}) e filter_values({len(filter_values)}) não coincide.")
+                raise PreventUpdate # Evita erro de zip
+
+            for filter_id, filter_value in zip(filter_ids, filter_values):
+                if filter_id and 'filter_col' in filter_id and filter_value is not None and filter_value != 'all':
+                    col_name = filter_id['filter_col']
+                    selected_filters[col_name] = filter_value
+        except Exception as e:
+            print(f"Erro ao processar filtros dinâmicos no store: {e}")
+            raise PreventUpdate
+
+    current_data['selected_filters'] = selected_filters
+    return current_data
+
+# Callback 3: Atualiza a visualização (gráficos/tabela) quando o Store muda
+@app.callback(
+    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
+    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'id'), # Para obter o indicador_id
+    # prevent_initial_call=True # Removido para permitir atualização inicial
+)
+def update_visualization_from_store(store_data, store_id):
+    # Permite a execução inicial ou se o store_data for explicitamente definido
+    if store_id is None: # Não deve acontecer com MATCH, mas é uma checagem segura
+        raise PreventUpdate
+
+    indicador_id = store_id['index']
+
+    # Se store_data for None na carga inicial, inicializa com valores padrão
+    store_data = store_data or {'selected_var': None, 'selected_filters': {}}
+
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+
+    print(f"Atualizando visualização para {indicador_id} com var={selected_var}, filters={selected_filters}") # Linha de Debug
+
+    try:
+        df = load_dados_indicador_cache(indicador_id)
+        if df is None or df.empty:
+            print(f"Dados vazios para {indicador_id} em update_visualization_from_store")
+            return dbc.Alert(f"Dados não encontrados para o indicador {indicador_id} ao atualizar visualização.", color="warning")
+
+        return create_visualization(df, indicador_id, selected_var, selected_filters)
+
+    except Exception as e:
+        print(f"--- ERROR in update_visualization_from_store for indicator {indicador_id} ---")
+        import traceback
+        traceback.print_exc()
+        return dbc.Alert(f"Ocorreu um erro ao atualizar a visualização para o indicador {indicador_id}.", color="danger")
 
 # Callback para atualizar o gráfico de pizza quando o ano é alterado
 @app.callback(
     Output({'type': 'pie-chart', 'index': MATCH}, 'figure'),
     [Input({'type': 'pie-year-dropdown', 'index': MATCH}, 'value')],
-    [State({'type': 'pie-year-dropdown', 'index': MATCH}, 'id')],
+    [State({'type': 'pie-year-dropdown', 'index': MATCH}, 'id'),
+     State({'type': 'visualization-state-store', 'index': MATCH}, 'data')], # Ler filtros do store
     prevent_initial_call=True
 )
-def update_pie_chart(selected_year, dropdown_id):
-    if not selected_year:
+def update_pie_chart(selected_year, dropdown_id, store_data):
+    if not selected_year or not dropdown_id:
         raise PreventUpdate
     
+    indicador_id = dropdown_id['index']
+    store_data = store_data or {'selected_var': None, 'selected_filters': {}}
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+
     try:
-        # Extrai o ID do indicador
-        indicador_id = dropdown_id['index']
-        
-        # Carrega os dados do indicador
         df = load_dados_indicador_cache(indicador_id)
         if df is None or df.empty:
-            raise PreventUpdate
-        
-        # Adiciona as descrições da unidade de medida antes do filtro
+            print(f"update_pie_chart: Dados vazios para {indicador_id}")
+            return go.Figure() # Retorna figura vazia se não há dados
+
+        # Aplica filtro de VARIÁVEL PRINCIPAL (se aplicável)
+        if 'CODG_VAR' in df.columns and selected_var:
+            df['CODG_VAR'] = df['CODG_VAR'].astype(str).str.strip()
+            selected_var_str = str(selected_var).strip()
+            df = df[df['CODG_VAR'] == selected_var_str]
+
+        # Aplica FILTROS DINÂMICOS (se houver)
+        if selected_filters:
+            for col_code, selected_value in selected_filters.items():
+                if selected_value is not None and selected_value != 'all' and col_code in df.columns:
+                    df[col_code] = df[col_code].astype(str).str.strip()
+                    selected_value_str = str(selected_value).strip()
+                    df = df[df[col_code] == selected_value_str]
+
+        # Adiciona as descrições da unidade de medida antes do filtro de ano
         if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
             df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
             df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
@@ -2545,7 +1194,7 @@ def update_pie_chart(selected_year, dropdown_id):
             df['DESC_UND_MED'] = 'Unidade não disponível'
         
         # Filtra os dados para o ano selecionado
-        df_ano = df[df['CODG_ANO'] == selected_year]
+        df_ano = df[df['CODG_ANO'] == selected_year].copy() # Usar cópia para evitar SettingWithCopyWarning
         
         # Substitui os códigos das UFs pelos nomes completos
         if 'CODG_UND_FED' in df_ano.columns:
@@ -2557,10 +1206,11 @@ def update_pie_chart(selected_year, dropdown_id):
         df_ano = df_ano.dropna(subset=['VLR_VAR'])
         
         if df_ano.empty:
-            raise PreventUpdate
+            print(f"update_pie_chart: Dados vazios para {indicador_id} após filtros/ano {selected_year}")
+            return go.Figure() # Retorna figura vazia se não há dados após filtros
         
-        # Obtém a unidade de medida
-        unidade_medida = df_ano['DESC_UND_MED'].iloc[0] if 'DESC_UND_MED' in df_ano.columns else 'Unidade não disponível'
+        # Obtém a unidade de medida (do DataFrame filtrado por ano)
+        unidade_medida = df_ano['DESC_UND_MED'].iloc[0] if not df_ano['DESC_UND_MED'].empty else 'Unidade não disponível'
         
         # Cria o gráfico de pizza
         fig_pie = px.pie(
@@ -2608,9 +1258,10 @@ def update_pie_chart(selected_year, dropdown_id):
         
         return fig_pie
     except Exception as e:
-        print(f"Erro ao atualizar gráfico de pizza: {e}")
-        raise PreventUpdate
-
+        print(f"Erro ao atualizar gráfico de pizza para {indicador_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return go.Figure() # Retorna figura vazia em caso de erro
 
 # Obtém a instância do servidor Flask
 server = app.server
