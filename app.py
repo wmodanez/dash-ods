@@ -645,14 +645,24 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     df_pie_data = df_filtered[df_filtered['CODG_ANO'] == anos_unicos_pie[-1]] # Ano mais recente por padrão
                     und_med_pie = df_pie_data['DESC_UND_MED'].iloc[0] if not df_pie_data['DESC_UND_MED'].empty else ''
                     fig_pie = px.pie(df_pie_data, values='VLR_VAR', names='DESC_UND_FED', labels={'DESC_UND_FED': 'UF', 'VLR_VAR': 'Valor'})
-                    fig_pie.update_layout(showlegend=True, legend=dict(title="UF", yanchor="top", y=0.99, xanchor="left", x=1.05, orientation="v"), margin=dict(r=150))
+                    # Atualiza layout da pizza para legenda horizontal
+                    fig_pie.update_layout(
+                        showlegend=True, 
+                        legend=DEFAULT_LAYOUT['legend'].copy(), # Usa a configuração padrão
+                        margin=DEFAULT_LAYOUT['margin'].copy() # Usa a margem padrão
+                    )
+                    # Atualiza traces da pizza (sem alterações aqui)
                     fig_pie.update_traces(hovertemplate=f"<b>%{{label}}</b><br>Valor: %{{value}}<br>%{{percent:.1%}}<br>Unidade: {und_med_pie}<extra></extra>", textinfo="label+value+percent", texttemplate="<b>%{label}</b><br>%{value}<br>%{percent:.1%}", textposition="outside", showlegend=False, hoverinfo="skip")
                     for trace in fig_pie.data:
                         if trace.name == 'Goiás': trace.marker.color = '#229846'
 
                 # Aplica layout padrão aos gráficos de linha e barra
                 layout_updates = DEFAULT_LAYOUT.copy()
-                layout_updates.update({
+                # Remove a atualização específica da legenda aqui, pois já está no DEFAULT_LAYOUT
+                # layout_updates.update({
+                #     'legend': dict(title="Unidade Federativa", yanchor="top", y=0.99, xanchor="left", x=1.05, orientation="v")
+                # })
+                layout_updates.update({ # Mantém atualizações específicas de eixos se houver
                     'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black')), # Configurações base
                     'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), title=None) # Removido showticklabels=False
                 })
@@ -742,12 +752,21 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 # Define o layout padrão
 DEFAULT_LAYOUT = {
     'showlegend': True,
-    'legend': dict(title="Unidade Federativa", yanchor="top", y=0.99, xanchor="left", x=1.05, orientation="v"),
-    'margin': dict(r=150),
+    # Modificado para legenda horizontal abaixo e centralizada
+    'legend': dict(
+        title=None, # Título pode ser definido dinamicamente se necessário
+        orientation="h", 
+        yanchor="top", # Alterado para "top" para posicionar abaixo
+        y=1.2, # Valor positivo para posicionar abaixo do gráfico
+        xanchor="center", 
+        x=0.5
+    ),
+    # Ajusta margens para acomodar a legenda abaixo
+    'margin': dict(l=20, r=20, t=40, b=100), 
     'xaxis': dict(showgrid=False, zeroline=False),
     'yaxis': dict(showgrid=False, zeroline=False),
-    'xaxis_automargin': False,
-    'yaxis_automargin': False
+    'xaxis_automargin': True, # Permite margem automática
+    'yaxis_automargin': True  # Permite margem automática
 }
 
 # Define o layout do aplicativo
@@ -1386,15 +1405,18 @@ def update_pie_chart(selected_year, dropdown_id, store_data):
         # Atualiza o layout do gráfico de pizza
         fig_pie.update_layout(
             showlegend=True,
-            legend=dict(
-                title="Unidade Federativa",
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=1.05,
-                orientation="v"
-            ),
-            margin=dict(r=150)  # Margem à direita para acomodar a legenda
+            legend=DEFAULT_LAYOUT['legend'].copy(), # Usa a configuração padrão
+            margin=DEFAULT_LAYOUT['margin'].copy() # Usa a margem padrão
+            # Remove configuração antiga da legenda
+            # legend=dict(
+            #     title="Unidade Federativa",
+            #     yanchor="top",
+            #     y=0.99,
+            #     xanchor="left",
+            #     x=1.05,
+            #     orientation="v"
+            # ),
+            # margin=dict(r=150)  # Margem à direita para acomodar a legenda
         )
         
         # Atualiza o hover do gráfico de pizza
