@@ -470,38 +470,53 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         df_sugestoes = load_sugestoes_visualizacao()
 
         # --- Definição Dinâmica das Colunas da Tabela --- 
+        # Define as colunas base SEM flex inicial aqui
         base_col_defs = [
-            # Colunas base que sempre aparecem (se existirem nos dados)
             {"field": 'DESC_UND_FED', "headerName": 'Unidade Federativa'},
             {"field": 'CODG_ANO', "headerName": 'Ano'},
-            {"field": 'DESC_VAR', "headerName": 'Variável', "flex": 2}, # Flex maior para Variável
+            {"field": 'DESC_VAR', "headerName": 'Variável'},
         ]
 
-        # Adiciona definições das colunas de descrição dos filtros dinâmicos
+        # Cria definições para colunas de descrição dinâmica
         dynamic_desc_col_defs = []
-        for filter_col_code in dynamic_filter_cols: # Itera sobre filtros identificados
+        dynamic_desc_col_names = set() # Guarda os nomes das colunas de descrição dinâmica
+        for filter_col_code in dynamic_filter_cols:
              desc_col_code = 'DESC_' + filter_col_code[5:]
-             if desc_col_code in df_original_for_table.columns: # Verifica se a coluna existe na tabela final
+             if desc_col_code in df_original_for_table.columns:
                   readable_name = constants.COLUMN_NAMES.get(desc_col_code, desc_col_code.replace('DESC_','').replace('_',' ').title())
                   dynamic_desc_col_defs.append({"field": desc_col_code, "headerName": readable_name})
+                  dynamic_desc_col_names.add(desc_col_code)
 
-        # Junta as colunas base, de descrição dinâmica e as finais
+        # Junta todas as definições base
         final_col_defs = base_col_defs + dynamic_desc_col_defs + [
              {"field": 'VLR_VAR', "headerName": 'Valor'},
              {"field": 'DESC_UND_MED', "headerName": 'Unidade de Medida'}
         ]
 
-        # Aplica propriedades comuns (sortable, filter, etc.) a todas as colunas
+        # Aplica propriedades comuns E flex explícito baseado na coluna
         columnDefs = []
-        present_columns = df_original_for_table.columns # Verifica colunas presentes no DF final da tabela
+        present_columns = df_original_for_table.columns
         for col_def in final_col_defs:
-            if col_def['field'] in present_columns:
-                 base_props = {"sortable": True, "filter": True, "flex": 1, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
-                 # Combina props base com field/headerName específicos
-                 columnDefs.append({**base_props, **col_def})
+            field_name = col_def['field']
+            if field_name in present_columns:
+                 base_props = {"sortable": True, "filter": True, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
+                 
+                 # Define flex baseado na coluna específica (NOVA ESCALA 2)
+                 if field_name == 'DESC_VAR':
+                     flex_value = 3
+                 elif field_name == 'DESC_UND_FED' or field_name == 'DESC_UND_MED':
+                     flex_value = 2
+                 elif field_name == 'CODG_ANO' or field_name == 'VLR_VAR' or field_name in dynamic_desc_col_names:
+                     flex_value = 1                 
+                 else:
+                      flex_value = 1 # Padrão para qualquer outra coluna que possa surgir
+                      
+                 # Combina props base com field/headerName/flex específicos
+                 columnDefs.append({**base_props, "field": field_name, "headerName": col_def['headerName'], "flex": flex_value})
 
-        print(f"[Debug {indicador_id}] ColumnDefs Finais: {columnDefs}") # DEBUG
-        defaultColDef = {"flex": 1, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
+        print(f"[Debug {indicador_id}] ColumnDefs Finais com Flex: {columnDefs}") # DEBUG
+        # defaultColDef agora só precisa de propriedades que não variam por coluna
+        defaultColDef = {"minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
 
         # --- Criação da Visualização (Gráficos + Tabela) --- 
         if indicador_id and not df_sugestoes.empty:
@@ -515,11 +530,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             rowData=df_original_for_table.to_dict('records'),
                             columnDefs=columnDefs,
                             defaultColDef=defaultColDef,
-                            dashGridOptions={ # Adiciona autoSizeStrategy
+                            dashGridOptions={ # REMOVIDO autoSizeStrategy
                                 "pagination": True, 
                                 "paginationPageSize": 10, 
-                                "domLayout": "autoHeight",
-                                "autoSizeStrategy": {'type': 'fitCellContents'} 
+                                "domLayout": "autoHeight"
                             },
                             style={"width": "100%"}
                         )
@@ -648,7 +662,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 fig_line.update_xaxes(showgrid=False, zeroline=False)
                 fig_bar.update_xaxes(showgrid=False, zeroline=False)
 
-                # --- Monta o Layout da Visualização ---
+                # --- Monta o Layout da Visualização (Gráficos + Tabela Detalhada) ---
                 graph_layout = []
                 if 'DESC_UND_FED' in df_filtered.columns: # Layout com Mapa
                      graph_layout.append(dbc.Row([
@@ -683,15 +697,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             rowData=df_original_for_table.to_dict('records'),
                             columnDefs=columnDefs,
                             defaultColDef=defaultColDef,
-                            dashGridOptions={ # Adiciona autoSizeStrategy
+                            dashGridOptions={ # REMOVIDO autoSizeStrategy
                                 "pagination": True, 
                                 "paginationPageSize": 10, 
                                 "paginationPageSizeSelector": [5, 10, 20, 50, 100],
                                 "domLayout": "autoHeight", 
                                 "suppressMovableColumns": True, 
                                 "animateRows": True, 
-                                "suppressColumnVirtualisation": True,
-                                "autoSizeStrategy": {'type': 'fitCellContents'} 
+                                "suppressColumnVirtualisation": True
                             },
                             style={"width": "100%"}
                         ))
@@ -704,11 +717,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             rowData=df_original_for_table.to_dict('records'),
             columnDefs=columnDefs,
             defaultColDef=defaultColDef,
-            dashGridOptions={ # Adiciona autoSizeStrategy
+            dashGridOptions={ # REMOVIDO autoSizeStrategy
                 "pagination": True, 
                 "paginationPageSize": 10, 
-                "domLayout": "autoHeight",
-                "autoSizeStrategy": {'type': 'fitCellContents'}
+                "domLayout": "autoHeight"
             },
             style={"width": "100%"}
         )
