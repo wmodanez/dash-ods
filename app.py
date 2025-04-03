@@ -518,15 +518,15 @@ if meta_inicial:
 
                         filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                         dynamic_filters_div.append(
-                            html.Div([
+                            dbc.Col([ # Wrap in dbc.Col
                                 html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
                                 dcc.Dropdown(
                                     id={'type': 'dynamic-filter-dropdown', 'index': row['ID_INDICADOR'], 'filter_col': filter_col_code},
                                     options=col_options,
                                     value='all', # Valor inicial 'Todos'
-                                    style={'width': '100%', 'marginBottom': '10px'}
+                                    style={'marginBottom': '10px'} # Remove width
                                 )
-                            ])
+                            ], md=6, xs=12) # Add responsiveness: 50% on medium+, 100% on extra-small
                         )
 
                     # Verifica se o indicador tem VARIAVEIS = 1 (dropdown de variável principal)
@@ -572,12 +572,14 @@ if meta_inicial:
                     # A visualização inicial é chamada sem filtros dinâmicos (eles são 'all')
                     initial_visualization = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial_variavel, None)
 
-                    tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")] + \
-                                  variable_dropdown_div + \
-                                  dynamic_filters_div + \
-                                  [html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
-                                            children=initial_visualization
-                                            )]
+                    # Reestrutura a criação de tab_content
+                    tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")]
+                    tab_content.extend(variable_dropdown_div)
+                    if dynamic_filters_div: # Only add row if there are filters
+                        tab_content.append(dbc.Row(dynamic_filters_div))
+                    tab_content.append(html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
+                                                    children=initial_visualization
+                                                    ))
 
                 except Exception as e:
                     print(f"Erro ao processar indicador inicial {row['ID_INDICADOR']}: {e}")
@@ -1455,15 +1457,15 @@ def update_card_content(*args):
 
                                         filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                                         dynamic_filters_div.append(
-                                            html.Div([
+                                            dbc.Col([ # Wrap in dbc.Col
                                                 html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
                                                 dcc.Dropdown(
                                                     id={'type': 'dynamic-filter-dropdown', 'index': row['ID_INDICADOR'], 'filter_col': filter_col_code},
                                                     options=col_options,
                                                     value='all', # Valor inicial 'Todos'
-                                                    style={'width': '100%', 'marginBottom': '10px'}
+                                                    style={'marginBottom': '10px'} # Remove width
                                                 )
-                                            ])
+                                            ], md=6, xs=12) # Add responsiveness: 50% on medium+, 100% on extra-small
                                         )
 
                                     # Verifica se o indicador tem VARIAVEIS = 1 (dropdown de variável principal)
@@ -1509,12 +1511,14 @@ def update_card_content(*args):
                                     # A visualização inicial é chamada sem filtros dinâmicos (eles são 'all')
                                     initial_visualization = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial_variavel, None)
 
-                                    tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")] + \
-                                                  variable_dropdown_div + \
-                                                  dynamic_filters_div + \
-                                                  [html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
-                                                            children=initial_visualization
-                                                            )]
+                                    # Reestrutura a criação de tab_content
+                                    tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")]
+                                    tab_content.extend(variable_dropdown_div)
+                                    if dynamic_filters_div: # Only add row if there are filters
+                                        tab_content.append(dbc.Row(dynamic_filters_div))
+                                    tab_content.append(html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
+                                                                    children=initial_visualization
+                                                                    ))
 
                                 except Exception as e:
                                     print(f"Erro ao processar indicador inicial {row['ID_INDICADOR']}: {e}")
@@ -1661,15 +1665,15 @@ def update_card_content(*args):
 
                                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                                 dynamic_filters_div.append(
-                                    html.Div([
+                                    dbc.Col([ # Wrap in dbc.Col
                                         html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
                                         dcc.Dropdown(
                                             id={'type': 'dynamic-filter-dropdown', 'index': row['ID_INDICADOR'], 'filter_col': filter_col_code},
                                             options=col_options,
                                             value='all',
-                                            style={'width': '100%', 'marginBottom': '10px'}
+                                            style={'marginBottom': '10px'} # Remove width
                                         )
-                                    ])
+                                    ], md=6, xs=12) # Add responsiveness: 50% on medium+, 100% on extra-small
                                 )
 
                             # Verifica se o indicador tem VARIAVEIS = 1
@@ -1713,12 +1717,14 @@ def update_card_content(*args):
                             # A visualização inicial é chamada sem filtros dinâmicos (eles são 'all')
                             initial_visualization = create_visualization(df_dados, row['ID_INDICADOR'], valor_inicial_variavel, None)
 
-                            tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")] + \
-                                          variable_dropdown_div + \
-                                          dynamic_filters_div + \
-                                          [html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
-                                                    children=initial_visualization
-                                                    )]
+                            # Reestrutura a criação de tab_content
+                            tab_content = [html.P(row['DESC_INDICADOR'], className="text-justify p-3")]
+                            tab_content.extend(variable_dropdown_div)
+                            if dynamic_filters_div: # Only add row if there are filters
+                                tab_content.append(dbc.Row(dynamic_filters_div))
+                            tab_content.append(html.Div(id={'type': 'graph-container', 'index': row['ID_INDICADOR']},
+                                                            children=initial_visualization
+                                                            ))
 
                         except Exception as e:
                             print(f"Erro ao processar indicador inicial {row['ID_INDICADOR']}: {e}")
