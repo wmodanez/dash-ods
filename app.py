@@ -1486,7 +1486,7 @@ def toggle_maintenance():
             return jsonify({
                 'success': False,
                 'message': 'Por favor, forneça a senha de manutenção para continuar.',
-                'maintenance_mode': MAINTELANCE_MODE
+                'maintenance_mode': MAINTENANCE_MODE
             }), 400
 
         stored_hash = get_maintenance_password_hash()
@@ -1494,14 +1494,14 @@ def toggle_maintenance():
             return jsonify({
                 'success': False,
                 'message': 'Configuração de senha não encontrada. Por favor, entre em contato com o administrador do sistema.',
-                'maintenance_mode': MAINTELANCE_MODE
+                'maintenance_mode': MAINTENANCE_MODE
             }), 500
 
         if not check_password(data['password'], stored_hash):
             return jsonify({
                 'success': False,
                 'message': 'A senha fornecida está incorreta. Por favor, verifique e tente novamente.',
-                'maintenance_mode': MAINTELANCE_MODE
+                'maintenance_mode': MAINTENANCE_MODE
             }), 401
 
         MAINTENANCE_MODE = not MAINTENANCE_MODE
@@ -1518,7 +1518,7 @@ def toggle_maintenance():
         return jsonify({
             'success': False,
             'message': 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.',
-            'maintenance_mode': MAINTELANCE_MODE,
+            'maintenance_mode': MAINTENANCE_MODE,
             'error': str(e)
         }), 500
 
