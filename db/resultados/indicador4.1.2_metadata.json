@@ -4,12 +4,14 @@
         "CODG_UND_MED": "category",
         "VLR_VAR": "float64",
         "CODG_UND_FED": "category",
+        "DESC_UND_FED": "object",
         "CODG_VAR": "category",
         "CODG_ANO": "object",
-        "COD_GRU_IDADE_NIV_ENS": "category"
+        "COD_GRU_IDADE_NIV_ENS": "category",
+        "DESC_GRU_IDADE_NIV_ENS": "object"
     },
     "total_linhas": 126,
-    "total_colunas": 7,
+    "total_colunas": 9,
     "colunas_numericas": [
         "VLR_VAR"
     ],
@@ -20,5 +22,5 @@
         "CODG_VAR",
         "COD_GRU_IDADE_NIV_ENS"
     ],
-    "data_criacao": "2025-03-18 10:48:20"
+    "data_criacao": "2025-04-02 17:19:48"
 }

@@ -4,12 +4,14 @@
         "CODG_UND_MED": "object",
         "VLR_VAR": "float64",
         "CODG_UND_FED": "category",
+        "DESC_UND_FED": "object",
         "CODG_VAR": "object",
         "CODG_ANO": "object",
-        "CODG_SET_ATIV": "category"
+        "CODG_SET_ATIV": "category",
+        "DESC_SET_ATIV": "object"
     },
     "total_linhas": 504,
-    "total_colunas": 7,
+    "total_colunas": 9,
     "colunas_numericas": [
         "VLR_VAR"
     ],
@@ -18,5 +20,5 @@
         "CODG_UND_FED",
         "CODG_SET_ATIV"
     ],
-    "data_criacao": "2025-03-18 10:48:34"
+    "data_criacao": "2025-04-02 17:19:54"
 }

@@ -4,14 +4,18 @@
         "CODG_UND_MED": "category",
         "VLR_VAR": "float64",
         "CODG_UND_FED": "category",
+        "DESC_UND_FED": "object",
         "CODG_VAR": "category",
         "CODG_ANO": "object",
         "CODG_SEXO": "category",
+        "DESC_SEXO": "object",
         "CODG_IDADE": "category",
-        "CODG_TIPO_DOENCA": "category"
+        "DESC_IDADE": "object",
+        "CODG_TIPO_DOENCA": "category",
+        "DESC_TIPO_DOENCA": "object"
     },
     "total_linhas": 7056,
-    "total_colunas": 9,
+    "total_colunas": 13,
     "colunas_numericas": [
         "VLR_VAR"
     ],
@@ -24,5 +28,5 @@
         "CODG_IDADE",
         "CODG_TIPO_DOENCA"
     ],
-    "data_criacao": "2025-03-18 10:48:05"
+    "data_criacao": "2025-04-02 17:19:36"
 }

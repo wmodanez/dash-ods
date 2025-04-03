@@ -121,28 +121,12 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                     df_variavel = pd.concat([df_variavel, df_temp[['CODG_VAR',
                                                               'DESC_VAR']]])
                     try:
-                        # Lista de todas as colunas que queremos remover
+                        # Lista de colunas descritivas a REMOVER (manter as outras DESC_*)
                         colunas_para_remover = [
-                            'CODG_NIV_TER', 'DESC_NIV_TER', 'DESC_UND_MED',
-                            'DESC_VAR', 'DESC_ANO', 'DESC_UND_FED', 'DESC_IDADE',
-                            'DESC_SEXO', 'DESC_SIT_SEG_ALI_DOM', 'DESC_RACA',
-                            'DESC_TIPO_DOENCA', 'DESC_BIENIO',
-                            'DESC_DEF_GAST_SAUDE', 'DESC_GRU_IDADE_NIV_ENS',
-                            'DESC_SIT_DOM', 'DESC_REGIAO',
-                            'DESC_CLAS_PERC_REND_DOM_PER_CAP', 'DESC_INF_ESC',
-                            'DESC_GRUP_ATIV_TRAB', 'DESC_ATV_TRAB', 'DESC_DEF',
-                            'DESC_GRUP_OCUP_TRAB_PNAD', 'DESC_TIP_MOV',
-                            'DESC_TIP_MEIO_TRANSP', 'DESC_ATV_IND_SET_IND',
-                            'DESC_TIP_COB_TEF_MOV', 'DESC_MES_ANO',
-                            'DESC_TRI_ANO', 'DESC_SEXENIO', 'DESC_TIP_PATR',
-                            'DESC_NIV_GOV', 'DESC_DISP_FINAL', 'DESC_TRIENIO',
-                            'DESC_FAI_PESS_OCUP', 'DESC_FONT_EMIS_GAS_EFEITO_EST',
-                            'DESC_BIOMA', 'DESC_KAPOS', 'DESC_NIV_INSTR',
-                            'DESC_ETAPA_ENS', 'DESC_REND_MENSAL_DOM_PER_CAP',
-                            'DESC_NIV_INST_PUBL', 'DESC_VEL_LIGACAO',
-                            'DESC_REG_HIDR', 'DESC_SET_ATIV', 'DESC_ECO_REL_AGUA',
-                            'DESC_TIP_DIN_ECO_REL_AGUA',
-                            'DESC_TIP_DESB_BRUTO_AJUDA_OFICIAL'
+                            'CODG_NIV_TER', 'DESC_NIV_TER', # Nível territorial
+                            'DESC_UND_MED', 'DESC_VAR',    # Descrições de Unid. Medida e Variável (já tratadas)
+                            'DESC_ANO',                    # Descrição do Ano (usamos CODG_ANO)
+                            # Manter outras DESC_* (DESC_SEXO, DESC_RACA, etc.) para usar nos filtros
                         ]
 
                         # Filtra apenas as colunas que existem no DataFrame
@@ -169,8 +153,11 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                             df_combined = pd.concat([df_combined, df_temp_var],
                                                   ignore_index=True)
                         
-                        # Salva o arquivo parquet
-                        arquivo_parquet = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
+                        # Pré-calcula o nome do arquivo
+                        filename_part = indicador.lower().replace(' ', '')
+                        # Salva o arquivo parquet usando pathlib
+                        # arquivo_parquet = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
+                        arquivo_parquet = Path(__file__).parent / 'db' / 'resultados' / f'{filename_part}.parquet'
                         df_combined.to_parquet(arquivo_parquet)
                         
                         # Salva os metadados
@@ -185,8 +172,9 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                             'data_criacao': time.strftime('%Y-%m-%d %H:%M:%S')
                         }
                         
-                        # Salva os metadados em um arquivo JSON
-                        arquivo_metadados = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}_metadata.json'
+                        # Salva os metadados em um arquivo JSON usando pathlib
+                        # arquivo_metadados = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}_metadata.json'
+                        arquivo_metadados = Path(__file__).parent / 'db' / 'resultados' / f'{filename_part}_metadata.json'
                         with open(arquivo_metadados, 'w', encoding='utf-8') as f:
                             json.dump(metadados, f, ensure_ascii=False, indent=4)
                         
@@ -201,8 +189,9 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                         # Converte os tipos de dados antes de salvar
                         df_temp = converter_tipos_dados(df_temp)
                         
-                        # Salva o arquivo parquet
-                        arquivo_parquet = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}.parquet'
+                        # Pré-calcula o nome do arquivo
+                        filename_part = indicador.lower().replace(' ', '')
+                        arquivo_parquet = Path(__file__).parent / 'db' / 'resultados' / f'{filename_part}.parquet'
                         df_temp.to_parquet(arquivo_parquet)
                         
                         # Salva os metadados
@@ -217,16 +206,15 @@ def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
                             'data_criacao': time.strftime('%Y-%m-%d %H:%M:%S')
                         }
                         
-                        # Salva os metadados em um arquivo JSON
-                        arquivo_metadados = str(Path(__file__).parent) + f'/db/resultados/{indicador.lower().replace(' ', '')}_metadata.json'
+                        # Salva os metadados em um arquivo JSON usando pathlib
+                        arquivo_metadados = Path(__file__).parent / 'db' / 'resultados' / f'{filename_part}_metadata.json'
                         with open(arquivo_metadados, 'w', encoding='utf-8') as f:
                             json.dump(metadados, f, ensure_ascii=False, indent=4)
 
                 except json.decoder.JSONDecodeError as e:
                     print(f'Erro ao processar o arquivo {indicador}.csv: {e}')
 
-                print(f'O arquivo {indicador.lower().replace(' ', '')}.parquet '
-                      f'foi criado.')
+                print(f'O arquivo {filename_part}.parquet foi criado.')
 
                 df_und_med.to_csv(str(Path(__file__).parent) +
                                 f'/db/unidade_medida.csv', sep=';', index=False)

@@ -493,10 +493,30 @@ if meta_inicial:
                     # Identifica colunas de filtro dinâmico
                     filter_cols = identify_filter_columns(df_dados)
                     for filter_col_code in filter_cols:
-                        # Corrigido: Usar df_dados[filter_col_code] para unique()
-                        col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                                      [{'label': str(val), 'value': str(val)} for val in sorted(df_dados[filter_col_code].astype(str).unique())]
-                        filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code) # Usa nome legível ou código
+                        # Determina o nome da coluna de descrição
+                        desc_col_code = 'DESC_' + filter_col_code[5:]
+
+                        # Cria mapeamento codigo->descrição
+                        code_to_desc = {}
+                        if desc_col_code in df_dados.columns:
+                            try:
+                                mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
+                                code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
+                                                         index=mapping_df[filter_col_code].astype(str)).to_dict()
+                            except Exception as map_err:
+                                print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
+
+                        # Gera opções
+                        col_options = [{'label': 'Todos', 'value': 'all'}]
+                        # Pega códigos únicos da coluna original, convertidos para string
+                        unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
+                        for code_val_str in unique_codes:
+                            # Tenta obter a descrição do mapeamento usando o código string
+                            label = code_to_desc.get(code_val_str, code_val_str) # Fallback para o próprio código string
+
+                            col_options.append({'label': str(label), 'value': code_val_str}) # Value é sempre o código string
+
+                        filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                         dynamic_filters_div.append(
                             html.Div([
                                 html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
@@ -1410,10 +1430,30 @@ def update_card_content(*args):
                                     # Identifica colunas de filtro dinâmico
                                     filter_cols = identify_filter_columns(df_dados)
                                     for filter_col_code in filter_cols:
-                                        # Corrigido: Usar df_dados[filter_col_code] para unique()
-                                        col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                                                      [{'label': str(val), 'value': str(val)} for val in sorted(df_dados[filter_col_code].astype(str).unique())]
-                                        filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code) # Usa nome legível ou código
+                                        # Determina o nome da coluna de descrição
+                                        desc_col_code = 'DESC_' + filter_col_code[5:]
+
+                                        # Cria mapeamento codigo->descrição
+                                        code_to_desc = {}
+                                        if desc_col_code in df_dados.columns:
+                                            try:
+                                                mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
+                                                code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
+                                                                         index=mapping_df[filter_col_code].astype(str)).to_dict()
+                                            except Exception as map_err:
+                                                print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
+
+                                        # Gera opções
+                                        col_options = [{'label': 'Todos', 'value': 'all'}]
+                                        # Pega códigos únicos da coluna original, convertidos para string
+                                        unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
+                                        for code_val_str in unique_codes:
+                                            # Tenta obter a descrição do mapeamento usando o código string
+                                            label = code_to_desc.get(code_val_str, code_val_str) # Fallback para o próprio código string
+
+                                            col_options.append({'label': str(label), 'value': code_val_str}) # Value é sempre o código string
+
+                                        filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                                         dynamic_filters_div.append(
                                             html.Div([
                                                 html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
@@ -1596,8 +1636,29 @@ def update_card_content(*args):
                             # Identifica colunas de filtro dinâmico
                             filter_cols = identify_filter_columns(df_dados)
                             for filter_col_code in filter_cols:
-                                col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                                              [{'label': str(val), 'value': str(val)} for val in sorted(df_dados[filter_col_code].astype(str).unique())]
+                                # Determina o nome da coluna de descrição
+                                desc_col_code = 'DESC_' + filter_col_code[5:]
+
+                                # Cria mapeamento codigo->descrição
+                                code_to_desc = {}
+                                if desc_col_code in df_dados.columns:
+                                    try:
+                                        mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
+                                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values, 
+                                                                 index=mapping_df[filter_col_code].astype(str)).to_dict()
+                                    except Exception as map_err:
+                                        print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
+
+                                # Gera opções
+                                col_options = [{'label': 'Todos', 'value': 'all'}]
+                                # Pega códigos únicos da coluna original, convertidos para string
+                                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique()) 
+                                for code_val_str in unique_codes:
+                                    # Tenta obter a descrição do mapeamento usando o código string
+                                    label = code_to_desc.get(code_val_str, code_val_str) # Fallback para o próprio código string
+
+                                    col_options.append({'label': str(label), 'value': code_val_str}) # Value é sempre o código string
+
                                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                                 dynamic_filters_div.append(
                                     html.Div([
