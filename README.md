@@ -3,6 +3,7 @@
 Este é um painel interativo desenvolvido com Dash para visualização dos Objetivos de Desenvolvimento Sustentável (ODS) do Instituto Mauro Borges.
 
 ## 📑 Índice
+
 - [Análise do Projeto](#análise-do-projeto)
 - [Tecnologias](#tecnologias)
 - [Arquitetura](#arquitetura)
@@ -105,7 +106,7 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
 
 ### Estrutura do Projeto
 
-```
+``` None
 painel-ods/
 ├── app/                    # Código fonte da aplicação
 ├── db/                     # Arquivos de dados
@@ -276,16 +277,6 @@ Além da estrutura básica, os indicadores podem conter campos adicionais para d
 
 O sistema utiliza autenticação básica para acesso restrito e página de manutenção.
 
-### Configuração da Senha
-
-1.Abra o arquivo `generate_password.py`
-2.Modifique a variável `current_password` com a senha desejada
-3.Execute o script para gerar o hash:
-
-```bash
-python generate_password.py
-```
-
 ### Modo de Manutenção
 
 Para ativar/desativar o modo de manutenção, faça uma requisição POST para `/toggle-maintenance` com a senha:
@@ -293,19 +284,6 @@ Para ativar/desativar o modo de manutenção, faça uma requisição POST para `
 ```bash
 curl -X POST -H "Content-Type: application/json" -d '{"password":"sua_senha"}' http://localhost:8050/toggle-maintenance
 ```
-
-## 🔌 API Endpoints
-
-### Endpoints Disponíveis
-
-| Método | Endpoint | Descrição |
-|--------|----------|-----------|
-| GET | `/` | Página principal do painel |
-| POST | `/toggle-maintenance` | Ativa/desativa modo de manutenção |
-| GET | `/maintenance` | Página de manutenção |
-| GET | `/limpar-cache` | Limpa o cache do sistema e redireciona para a página inicial |
-| GET | `/assets/<path>` | Serve arquivos estáticos |
-| GET | `/_dash-component-suites/<path>` | Serve arquivos de componentes Dash |
 
 ## 💻 Desenvolvimento
 
@@ -395,7 +373,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ## 👥 Autores
 
 - Instituto Mauro Borges
-- Desenvolvido pela equipe de TI do IMB
+- Desenvolvido pela Gerência de Dados e Estatísticas do IMB
 
 ## 🙏 Agradecimentos
 
