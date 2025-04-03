@@ -474,7 +474,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             # Colunas base que sempre aparecem (se existirem nos dados)
             {"field": 'DESC_UND_FED', "headerName": 'Unidade Federativa'},
             {"field": 'CODG_ANO', "headerName": 'Ano'},
-            {"field": 'DESC_VAR', "headerName": 'Variável'}, # Nome ajustado
+            {"field": 'DESC_VAR', "headerName": 'Variável', "flex": 2}, # Flex maior para Variável
         ]
 
         # Adiciona definições das colunas de descrição dos filtros dinâmicos
@@ -508,13 +508,19 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
             if not sugestoes_indicador.empty:
                 if len(df_filtered) < 2:
+                    # Retorna Alert + Tabela AG Grid (fallback para poucos dados)
                     return html.Div([
                         dbc.Alert("Dados insuficientes para gráficos. Mostrando tabela.", color="info", className="text-center p-3"),
                         dag.AgGrid(
-                            rowData=df_original_for_table.to_dict('records'), # Usa df_original_for_table
-                            columnDefs=columnDefs, # Usa columnDefs atualizado
+                            rowData=df_original_for_table.to_dict('records'),
+                            columnDefs=columnDefs,
                             defaultColDef=defaultColDef,
-                            dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight"},
+                            dashGridOptions={ # Adiciona autoSizeStrategy
+                                "pagination": True, 
+                                "paginationPageSize": 10, 
+                                "domLayout": "autoHeight",
+                                "autoSizeStrategy": {'type': 'fitCellContents'} 
+                            },
                             style={"width": "100%"}
                         )
                     ])
@@ -668,28 +674,42 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                          ], width=12) # Ocupa largura total se não houver mapa
                      ]))
 
-                # Adiciona Tabela Detalhada
+                # Adiciona Tabela Detalhada (usando df_original_for_table e columnDefs atualizado)
                 graph_layout.append(dbc.Row([
                     dbc.Col(dbc.Card([
                         html.H5("Dados Detalhados", className="mt-4", style={'marginLeft': '20px'}),
                         dbc.CardBody(dag.AgGrid(
                             id={'type': 'detail-table', 'index': indicador_id},
                             rowData=df_original_for_table.to_dict('records'),
-                            columnDefs=columnDefs, defaultColDef=defaultColDef,
-                            dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight", "suppressMovableColumns": True, "animateRows": True, "suppressColumnVirtualisation": True},
+                            columnDefs=columnDefs,
+                            defaultColDef=defaultColDef,
+                            dashGridOptions={ # Adiciona autoSizeStrategy
+                                "pagination": True, 
+                                "paginationPageSize": 10, 
+                                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                                "domLayout": "autoHeight", 
+                                "suppressMovableColumns": True, 
+                                "animateRows": True, 
+                                "suppressColumnVirtualisation": True,
+                                "autoSizeStrategy": {'type': 'fitCellContents'} 
+                            },
                             style={"width": "100%"}
                         ))
                     ]))
                 ]))
                 return graph_layout
 
-        # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela
-        # Use df_original_for_table aqui também para incluir descrições
+        # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela (fallback geral)
         return dag.AgGrid(
-            rowData=df_original_for_table.to_dict('records'), # Usa df_original_for_table
-            columnDefs=columnDefs, # Usa columnDefs atualizado
+            rowData=df_original_for_table.to_dict('records'),
+            columnDefs=columnDefs,
             defaultColDef=defaultColDef,
-            dashGridOptions={"pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight"},
+            dashGridOptions={ # Adiciona autoSizeStrategy
+                "pagination": True, 
+                "paginationPageSize": 10, 
+                "domLayout": "autoHeight",
+                "autoSizeStrategy": {'type': 'fitCellContents'}
+            },
             style={"width": "100%"}
         )
     except Exception as e:
