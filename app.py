@@ -673,7 +673,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                              dbc.Row([
                                  dbc.Col([
                                      # Linha/Barra ou Pizza
-                                     html.Div([dcc.Graph(figure=fig_line), dcc.Graph(figure=fig_bar)], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'}),
+                                     html.Div([
+                                         dcc.Graph(figure=fig_line, style={'border': '1px solid #dee2e6', 'marginBottom': '15px'}), 
+                                         dcc.Graph(figure=fig_bar, style={'border': '1px solid #dee2e6'})
+                                     ], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'}),
                                      html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
                                  ], width=12)
                              ], className="mb-4")
@@ -686,7 +689,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                      graph_layout.append(dbc.Row([
                          dbc.Col([
                              # Linha/Barra ou Pizza
-                             html.Div([dcc.Graph(figure=fig_line), dcc.Graph(figure=fig_bar)], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'}),
+                             html.Div([
+                                 dcc.Graph(figure=fig_line, style={'border': '1px solid #dee2e6', 'marginBottom': '15px'}), 
+                                 dcc.Graph(figure=fig_bar, style={'border': '1px solid #dee2e6'})
+                             ], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'}),
                              html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '200px', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
                          ], width=12) # Ocupa largura total se não houver mapa
                      ]))
