@@ -654,7 +654,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 layout_updates = DEFAULT_LAYOUT.copy()
                 layout_updates.update({
                     'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black')), # Configurações base
-                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), showticklabels=False) # Adicionado showticklabels=False
+                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), title=None) # Removido showticklabels=False
                 })
                 if 'CODG_ANO' in df_grouped.columns: # Atualiza ticks do eixo X se CODG_ANO existe
                      layout_updates['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in sorted(df_grouped['CODG_ANO'].unique())]
