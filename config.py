@@ -14,7 +14,10 @@ HOST = os.getenv('HOST', '0.0.0.0')
 MAINTENANCE_PASSWORD = os.getenv('MAINTENANCE_PASSWORD', 'default_password')
 
 # Configurações de performance do Dash
-DASH_CONFIG = {}
+DASH_CONFIG = {
+    'routes_pathname_prefix': '/',
+    'update_title': 'Carregando...',
+}
 
 # Configurações de cache do servidor
 SERVER_CONFIG = {

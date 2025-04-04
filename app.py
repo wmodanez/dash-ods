@@ -16,7 +16,7 @@ from datetime import datetime
 import numpy as np
 from dash.exceptions import PreventUpdate # Mantém import específico
 # Removido o import plotly.io as pio (já importado abaixo)
-from warning_counter import warning_counter, setup_warning_counter, get_warning_summary, reset_warning_counter, set_warning_context, clear_warning_context
+# Removido import do warning_counter
 from config import *
 import secrets
 from dotenv import load_dotenv
@@ -57,9 +57,6 @@ def maintenance_middleware():
 def capitalize_words(text):
     return ' '.join(word.capitalize() for word in text.split())
 
-# Configura o contador de avisos
-setup_warning_counter()
-
 # Inicializa o aplicativo Dash com tema Bootstrap
 app = dash.Dash(
     __name__,
@@ -89,73 +86,9 @@ app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 def serve_static(path):
     return send_from_directory('assets', path)
 
-# Rota para visualizar os avisos do pandas
-@app.server.route('/warnings')
-def view_warnings():
-    summary = get_warning_summary()
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Contador de Avisos do Pandas</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; }}
-            h1 {{ color: #2c3e50; }}
-            pre {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; overflow: auto; }}
-            .actions {{ margin-top: 20px; }}
-            .btn {{ display: inline-block; padding: 10px 15px; background-color: #3498db; color: white;
-                   text-decoration: none; border-radius: 4px; margin-right: 10px; }}
-            .btn:hover {{ background-color: #2980b9; }}
-            .btn-danger {{ background-color: #e74c3c; }}
-            .btn-danger:hover {{ background-color: #c0392b; }}
-            .timestamp {{ color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }}
-            .indicator {{ background-color: #e8f4f8; padding: 10px; margin-bottom: 10px; border-radius: 5px; }}
-            .indicator h3 {{ margin-top: 0; color: #2980b9; }}
-        </style>
-    </head>
-    <body>
-        <h1>Contador de Avisos do Pandas</h1>
-        <div class="timestamp">Dados atualizados em: {time.strftime('%d/%m/%Y %H:%M:%S')}</div>
-        <pre>{summary}</pre>
-        <div class="actions">
-            <a href="/reset-warnings" class="btn btn-danger">Reiniciar Contador</a>
-            <a href="/" class="btn">Voltar para o Painel</a>
-        </div>
-    </body>
-    </html>
-    """
-    return html
 
-# Rota para reiniciar o contador de avisos
-@app.server.route('/reset-warnings')
-def reset_warnings():
-    reset_warning_counter()
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Contador de Avisos Reiniciado</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 20px; text-align: center; }}
-            h1 {{ color: #2c3e50; }}
-            .message {{ background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0; }}
-            .actions {{ margin-top: 20px; }}
-            .btn {{ display: inline-block; padding: 10px 15px; background-color: #3498db; color: white;
-                   text-decoration: none; border-radius: 4px; margin-right: 10px; }}
-            .btn:hover {{ background-color: #2980b9; }}
-        </style>
-    </head>
-    <body>
-        <h1>Contador de Avisos Reiniciado</h1>
-        <div class="message">O contador de avisos foi reiniciado com sucesso!</div>
-        <div class="actions">
-            <a href="/warnings" class="btn">Ver Avisos</a>
-            <a href="/" class="btn">Voltar para o Painel</a>
-        </div>
-    </body>
-    </html>
-    """
-    return html
+
+
 
 CORS(app.server)
 
@@ -182,9 +115,6 @@ indicadores_cache = {}
 
 @lru_cache(maxsize=10000)
 def load_dados_indicador_cache(indicador_id):
-    # Define o contexto para o contador de avisos
-    set_warning_context(indicador_id)
-
     try:
         if indicador_id in indicadores_cache:
             return indicadores_cache[indicador_id]
