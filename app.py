@@ -21,6 +21,7 @@ from config import *
 import secrets
 from dotenv import load_dotenv
 from functools import lru_cache
+from cache_manager import cache_manager, load_dados_indicador_cached, preload_related_indicators
 from flask import session, redirect, send_from_directory, request, jsonify
 import bcrypt
 from generate_password import generate_password_hash, generate_secret_key, update_env_file, check_password
@@ -111,13 +112,10 @@ def log_message():
 def serve_dash_files(path):
     return send_from_directory('_dash-component-suites', path)
 
-indicadores_cache = {}
-
-@lru_cache(maxsize=10000)
-def load_dados_indicador_cache(indicador_id):
+# Função original para carregar dados do indicador (sem cache)
+def _load_dados_indicador_original(indicador_id):
+    """Função original para carregar dados do indicador (sem cache)."""
     try:
-        if indicador_id in indicadores_cache:
-            return indicadores_cache[indicador_id]
         nome_arquivo = indicador_id.lower().replace("indicador ", "")
         arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
         arquivo_metadados = f'db/resultados/indicador{nome_arquivo}_metadata.json'
@@ -148,15 +146,22 @@ def load_dados_indicador_cache(indicador_id):
                             df_load[coluna] = df_load[coluna].astype('category')
                     except Exception as e:
                         pass
-        indicadores_cache[indicador_id] = df_load
         return df_load
     except Exception as e:
         return pd.DataFrame()
 
+# Função com cache de dois níveis
+def load_dados_indicador_cache(indicador_id):
+    """Carrega dados do indicador usando cache de dois níveis (memória e disco)."""
+    return load_dados_indicador_cached(indicador_id, _load_dados_indicador_original)
+
 def limpar_cache_indicadores():
-    global indicadores_cache
-    indicadores_cache.clear()
-    load_dados_indicador_cache.cache_clear()
+    """Limpa o cache de indicadores."""
+    # Limpa o cache de dois níveis
+    cache_manager.clear()
+    # Limpa o cache LRU da função original (se ainda estiver sendo usado em algum lugar)
+    if hasattr(load_dados_indicador_cache, 'cache_clear'):
+        load_dados_indicador_cache.cache_clear()
 
 @app.server.route('/limpar-cache')
 def limpar_cache():
@@ -166,6 +171,65 @@ def limpar_cache():
         return redirect('/')
     except Exception as e:
         return redirect('/')
+
+@app.server.route('/cache-stats')
+def view_cache_stats():
+    """Exibe estatísticas do cache."""
+    stats = cache_manager.get_stats()
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Estatísticas do Cache</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            h1 {{ color: #2c3e50; }}
+            .stats {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+            .stat-item {{ margin-bottom: 10px; }}
+            .stat-label {{ font-weight: bold; }}
+            .hit-rate {{ font-size: 1.2em; color: #27ae60; }}
+            .actions {{ margin-top: 20px; }}
+            .btn {{ display: inline-block; padding: 10px 15px; background-color: #3498db; color: white;
+                   text-decoration: none; border-radius: 4px; margin-right: 10px; }}
+            .btn:hover {{ background-color: #2980b9; }}
+            .btn-danger {{ background-color: #e74c3c; }}
+            .btn-danger:hover {{ background-color: #c0392b; }}
+            .timestamp {{ color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }}
+        </style>
+    </head>
+    <body>
+        <h1>Estatísticas do Cache</h1>
+        <div class="timestamp">Dados atualizados em: {time.strftime('%d/%m/%Y %H:%M:%S')}</div>
+
+        <div class="stats">
+            <div class="stat-item hit-rate">
+                <span class="stat-label">Taxa de acerto:</span> {stats['hit_rate']:.2%}
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Acertos em memória:</span> {stats['memory_hits']}
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Acertos em disco:</span> {stats['disk_hits']}
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Erros:</span> {stats['misses']}
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Pré-carregamentos:</span> {stats['preloads']}
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Tamanho do cache em memória:</span> {stats['memory_cache_size']}/{stats['memory_cache_maxsize']}
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="/limpar-cache" class="btn btn-danger">Limpar Cache</a>
+            <a href="/" class="btn">Voltar para o Painel</a>
+        </div>
+    </body>
+    </html>
+    """
+    return html
 
 app.index_string = '''
 <!DOCTYPE html>
@@ -1028,8 +1092,12 @@ def update_card_content(*args):
             meta_description = meta_selecionada['DESC_META']
 
             # Gera a seção de indicadores para a primeira meta
-            indicadores_primeira_meta = df_indicadores[df_indicadores['ID_META'] == meta_selecionada['ID_META']]
+            meta_id = meta_selecionada['ID_META']
+            indicadores_primeira_meta = df_indicadores[df_indicadores['ID_META'] == meta_id]
             tabs_indicadores = []
+
+            # Inicia o pré-carregamento preditivo dos indicadores desta meta em segundo plano
+            preload_related_indicators(meta_id, df_indicadores, _load_dados_indicador_original)
 
             if not indicadores_primeira_meta.empty:
                 # Variável para armazenar o valor inicial da variável (usado apenas para o primeiro indicador)

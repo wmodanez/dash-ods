@@ -38,11 +38,14 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
   - **Indicadores**: métricas para avaliar o progresso das metas
   - **Variáveis**: diferentes aspectos mensuráveis dos indicadores
 
-#### 3. Sistema de Cache
+#### 3. Sistema de Cache Avançado
 
-- Utiliza `lru_cache` para otimizar o carregamento de dados
-- Implementa cache para objetivos, metas, indicadores e dados específicos
-- Inclui uma rota `/limpar-cache` para atualizar os dados quando necessário
+- Implementa um sistema de cache de dois níveis (memória e disco) para otimização máxima
+- Utiliza cache em memória para acesso ultra-rápido aos dados mais recentes
+- Mantém cache persistente em disco para dados que não mudam com frequência
+- Implementa pré-carregamento preditivo de indicadores relacionados em segundo plano
+- Inclui monitoramento de estatísticas de desempenho do cache
+- Oferece uma rota para limpar o cache quando necessário
 
 #### 4. Visualizações de Dados
 
@@ -85,8 +88,10 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
 
 ### Otimizações Implementadas
 
-- **Uso de LRU Cache**: Melhora o desempenho ao evitar carregar repetidamente os mesmos dados
-- **Lazy Loading**: Carrega apenas os dados necessários quando solicitados
+- **Cache de Dois Níveis**: Combina cache em memória (rápido) e em disco (persistente) para performance máxima
+- **Pré-carregamento Preditivo**: Antecipa as necessidades do usuário carregando dados relacionados em segundo plano
+- **Lazy Loading**: Carrega apenas os dados necessários quando solicitados, com carregamento sob demanda
+- **Monitoramento de Performance**: Acompanha estatísticas de uso do cache para otimização contínua
 - **Configuração Flexível**: Permite ajustar parâmetros via variáveis de ambiente
 - **Tratamento de Erros Robusto**: Garante que o sistema continue funcionando mesmo com dados parciais ou ausentes
 
@@ -139,7 +144,7 @@ painel-ods/
 - Interface responsiva e moderna
 - Sistema de login e autenticação
 - Página de manutenção
-- Sistema de cache para melhor performance
+- Sistema de cache avançado de dois níveis com pré-carregamento preditivo
 - Sugestões automáticas de visualização
 
 ### Visualizações
@@ -185,6 +190,26 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 - Dropdown de ano acima do pizza e mapa
 - Altura dos containers: 800px
 - Padding e bordas consistentes
+
+### Sistema de Cache Avançado
+
+#### Arquitetura de Dois Níveis
+
+- **Nível 1 (Memória)**: Armazena dados recentemente acessados na RAM para acesso ultra-rápido
+- **Nível 2 (Disco)**: Mantém dados persistentes em arquivos serializados para acesso entre sessões
+
+#### Pré-carregamento Preditivo
+
+- Quando um usuário seleciona uma meta, o sistema automaticamente inicia o carregamento de todos os indicadores relacionados em segundo plano
+- Este processo ocorre em uma thread separada, sem bloquear a interface do usuário
+- Os dados pré-carregados são armazenados no cache para acesso instantâneo quando necessário
+
+#### Benefícios
+
+- **Navegação mais rápida**: Redução significativa no tempo de carregamento dos indicadores
+- **Menor carga no servidor**: Evita reprocessamento desnecessário dos mesmos dados
+- **Melhor experiência do usuário**: Transições mais suaves entre indicadores
+- **Persistência entre sessões**: Mantém dados em cache mesmo após reinicialização do servidor
 
 ## 📦 Instalação
 

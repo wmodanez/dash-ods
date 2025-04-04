@@ -176,6 +176,9 @@ venv/
 env/
 .env
 
+#Cache
+cache/
+
 # Logs
 *.log
 
