@@ -91,7 +91,7 @@ O projeto é um painel de visualização de dados relacionado aos Objetivos de D
 - **Cache de Dois Níveis**: Combina cache em memória (rápido) e em disco (persistente) para performance máxima
 - **Pré-carregamento Preditivo**: Antecipa as necessidades do usuário carregando dados relacionados em segundo plano
 - **Lazy Loading**: Carrega apenas os dados necessários quando solicitados, com carregamento sob demanda
-- **Monitoramento de Performance**: Acompanha estatísticas de uso do cache para otimização contínua
+- **Monitoramento de Performance**: Acompanha estatísticas detalhadas de uso do cache através de um relatório de desempenho para otimização contínua
 - **Configuração Flexível**: Permite ajustar parâmetros via variáveis de ambiente
 - **Tratamento de Erros Robusto**: Garante que o sistema continue funcionando mesmo com dados parciais ou ausentes
 
@@ -210,6 +210,19 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 - **Menor carga no servidor**: Evita reprocessamento desnecessário dos mesmos dados
 - **Melhor experiência do usuário**: Transições mais suaves entre indicadores
 - **Persistência entre sessões**: Mantém dados em cache mesmo após reinicialização do servidor
+
+#### Monitoramento de Desempenho
+
+O sistema inclui um relatório de desempenho do cache que fornece as seguintes métricas:
+
+- **Taxa de acerto (Hit Rate)**: Percentual de solicitações atendidas pelo cache
+- **Acertos em memória**: Número de solicitações atendidas pelo cache em memória (nível 1)
+- **Acertos em disco**: Número de solicitações atendidas pelo cache em disco (nível 2)
+- **Erros (Misses)**: Número de solicitações que não encontraram dados no cache
+- **Pré-carregamentos**: Número de indicadores carregados proativamente pelo sistema
+- **Tamanho do cache em memória**: Quantidade atual e máxima de itens no cache em memória
+
+Este relatório permite monitorar a eficiência do sistema de cache e identificar oportunidades de otimização.
 
 ## 📦 Instalação
 
