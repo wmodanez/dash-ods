@@ -11,10 +11,12 @@ import plotly.graph_objects as go
 import json
 import os
 import time
+import warnings
 from datetime import datetime
 import numpy as np
 from dash.exceptions import PreventUpdate # Mantém import específico
 # Removido o import plotly.io as pio (já importado abaixo)
+from warning_counter import warning_counter, setup_warning_counter, get_warning_summary, reset_warning_counter, set_warning_context, clear_warning_context
 from config import *
 import secrets
 from dotenv import load_dotenv
@@ -55,6 +57,9 @@ def maintenance_middleware():
 def capitalize_words(text):
     return ' '.join(word.capitalize() for word in text.split())
 
+# Configura o contador de avisos
+setup_warning_counter()
+
 # Inicializa o aplicativo Dash com tema Bootstrap
 app = dash.Dash(
     __name__,
@@ -84,6 +89,74 @@ app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 def serve_static(path):
     return send_from_directory('assets', path)
 
+# Rota para visualizar os avisos do pandas
+@app.server.route('/warnings')
+def view_warnings():
+    summary = get_warning_summary()
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Contador de Avisos do Pandas</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; }}
+            h1 {{ color: #2c3e50; }}
+            pre {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; overflow: auto; }}
+            .actions {{ margin-top: 20px; }}
+            .btn {{ display: inline-block; padding: 10px 15px; background-color: #3498db; color: white;
+                   text-decoration: none; border-radius: 4px; margin-right: 10px; }}
+            .btn:hover {{ background-color: #2980b9; }}
+            .btn-danger {{ background-color: #e74c3c; }}
+            .btn-danger:hover {{ background-color: #c0392b; }}
+            .timestamp {{ color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }}
+            .indicator {{ background-color: #e8f4f8; padding: 10px; margin-bottom: 10px; border-radius: 5px; }}
+            .indicator h3 {{ margin-top: 0; color: #2980b9; }}
+        </style>
+    </head>
+    <body>
+        <h1>Contador de Avisos do Pandas</h1>
+        <div class="timestamp">Dados atualizados em: {time.strftime('%d/%m/%Y %H:%M:%S')}</div>
+        <pre>{summary}</pre>
+        <div class="actions">
+            <a href="/reset-warnings" class="btn btn-danger">Reiniciar Contador</a>
+            <a href="/" class="btn">Voltar para o Painel</a>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+# Rota para reiniciar o contador de avisos
+@app.server.route('/reset-warnings')
+def reset_warnings():
+    reset_warning_counter()
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Contador de Avisos Reiniciado</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 20px; text-align: center; }}
+            h1 {{ color: #2c3e50; }}
+            .message {{ background-color: #d4edda; color: #155724; padding: 15px; border-radius: 5px; margin: 20px 0; }}
+            .actions {{ margin-top: 20px; }}
+            .btn {{ display: inline-block; padding: 10px 15px; background-color: #3498db; color: white;
+                   text-decoration: none; border-radius: 4px; margin-right: 10px; }}
+            .btn:hover {{ background-color: #2980b9; }}
+        </style>
+    </head>
+    <body>
+        <h1>Contador de Avisos Reiniciado</h1>
+        <div class="message">O contador de avisos foi reiniciado com sucesso!</div>
+        <div class="actions">
+            <a href="/warnings" class="btn">Ver Avisos</a>
+            <a href="/" class="btn">Voltar para o Painel</a>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
 CORS(app.server)
 
 @app.server.route('/log', methods=['POST'])
@@ -109,6 +182,9 @@ indicadores_cache = {}
 
 @lru_cache(maxsize=10000)
 def load_dados_indicador_cache(indicador_id):
+    # Define o contexto para o contador de avisos
+    set_warning_context(indicador_id)
+
     try:
         if indicador_id in indicadores_cache:
             return indicadores_cache[indicador_id]
@@ -325,7 +401,15 @@ if not df.empty and not df_metas.empty:
         pass
 
 # Prepara os indicadores iniciais
-initial_indicadores_section = [] # INICIALIZA AQUI
+# Cria componentes vazios para evitar erros de callback
+initial_tabs_indicadores = dbc.Tabs(id='tabs-indicadores', children=[])
+initial_indicadores_section = [
+    html.H5("Indicadores", className="mt-4 mb-3", style={'display': 'none'}),
+    dbc.Card(dbc.CardBody(initial_tabs_indicadores), className="mt-3", style={'display': 'none'}),
+    # Componente vazio para lazy-load-container
+    html.Div(id={'type': 'lazy-load-container', 'index': 'placeholder'}, style={'display': 'none'})
+]
+
 if meta_inicial:
     indicadores_meta_inicial = df_indicadores[df_indicadores['ID_META'] == meta_inicial['ID_META']]
 
@@ -1023,7 +1107,7 @@ def update_card_content(*args):
 
                 # Cria abas para todos os indicadores da primeira meta
                 for i, row_ind in indicadores_primeira_meta.iterrows():
-                    # Verifica se é o primeiro indicador
+                    # Apenas o primeiro indicador é carregado completamente
                     is_first_indicator = (i == 0)
 
                     if is_first_indicator:
@@ -1097,7 +1181,7 @@ def update_card_content(*args):
 
                                 # Cria a visualização inicial para o primeiro indicador
                                 initial_visualization = create_visualization(df_dados, row_ind['ID_INDICADOR'], valor_inicial_variavel, None)
-                                tab_content = [html.P(row_ind['DESC_INDICADOR'], className="textJustify p-3")]
+                                tab_content = [html.P(row_ind['DESC_INDICADOR'], className="textJustify p-3", style={'marginBottom': '10px'})]
                                 tab_content.extend(variable_dropdown_div)
                                 if dynamic_filters_div:
                                     tab_content.append(dbc.Row(dynamic_filters_div))
@@ -1111,12 +1195,13 @@ def update_card_content(*args):
                     else:
                         # Para os demais indicadores, cria apenas um placeholder que será carregado sob demanda
                         tab_content = [
-                            html.P(row_ind['DESC_INDICADOR'], className="textJustify p-3"),
-                            html.Div(id={'type': 'lazy-load-container', 'index': row_ind['ID_INDICADOR']}, children=[
-                                dbc.Spinner(color="primary", type="grow", children=[
-                                    html.Div("Carregando dados...", style={'textAlign': 'center', 'padding': '50px'})
-                                ])
-                            ])
+                            # Coloca o spinner ao lado do título para economizar espaço
+                            html.Div([
+                                html.P(row_ind['DESC_INDICADOR'], className="textJustify", style={'display': 'inline-block', 'marginRight': '10px'}),
+                                dbc.Spinner(color="primary", size="sm", type="grow", spinner_style={'display': 'inline-block'}, id={'type': 'spinner-indicator', 'index': row_ind['ID_INDICADOR']})
+                            ], className="p-3"),
+                            # Div oculta que será substituída pelo conteúdo quando carregado
+                            html.Div(id={'type': 'lazy-load-container', 'index': row_ind['ID_INDICADOR']}, style={'minHeight': '50px'})
                         ]
 
                     # Adiciona Store para esta aba
@@ -1409,12 +1494,17 @@ def set_first_tab_active(_trigger, tabs, current_active_tab):
     if not tabs or len(tabs) == 0:
         raise PreventUpdate
 
-    # Define a primeira aba como ativa
-    return tabs[0].tab_id
+    try:
+        # Tenta obter o ID da primeira aba
+        return tabs[0].tab_id
+    except (AttributeError, IndexError):
+        # Se não conseguir, não faz nada
+        raise PreventUpdate
 
 # Callback para carregar indicadores sob demanda quando uma aba é clicada
 @app.callback(
-    Output({'type': 'lazy-load-container', 'index': MATCH}, 'children'),
+    [Output({'type': 'lazy-load-container', 'index': MATCH}, 'children'),
+     Output({'type': 'spinner-indicator', 'index': MATCH}, 'style')],
     Input('tabs-indicadores', 'active_tab'),
     State({'type': 'lazy-load-container', 'index': MATCH}, 'id'),
     prevent_initial_call=True
@@ -1426,6 +1516,10 @@ def load_indicator_on_demand(active_tab, container_id):
 
     # Obtém o ID do indicador
     indicador_id = container_id['index']
+
+    # Ignora o placeholder
+    if indicador_id == 'placeholder':
+        raise PreventUpdate
 
     # Verifica se a aba ativa corresponde a este indicador
     if active_tab != f"tab-{indicador_id}":
@@ -1445,7 +1539,7 @@ def load_indicator_on_demand(active_tab, container_id):
     # Busca informações do indicador
     indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
     if indicador_info.empty:
-        return [dbc.Alert(f"Informações não encontradas para o indicador {indicador_id}.", color="danger")]
+        return [dbc.Alert(f"Informações não encontradas para o indicador {indicador_id}.", color="danger")], {'display': 'none'}
 
     # Adiciona a descrição do indicador
     tab_content = [html.P(indicador_info.iloc[0]['DESC_INDICADOR'], className="textJustify p-3")]
@@ -1519,28 +1613,34 @@ def load_indicator_on_demand(active_tab, container_id):
             import traceback
             traceback.print_exc()
             tab_content.append(dbc.Alert(f"Erro ao gerar conteúdo para {indicador_id}.", color="danger"))
+            return tab_content, {'display': 'none'}
     else:
         tab_content.append(dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning"))
+        return tab_content, {'display': 'none'}
 
-    # Retorna apenas os componentes para o contêiner de carregamento
+    # Retorna apenas o conteúdo para o contêiner de carregamento
+    # Não retornamos a descrição do indicador, pois ela já está na aba
+    # Retornamos apenas os filtros, variáveis e visualizações
     dynamic_content = []
+
+    # Adiciona os dropdowns de variáveis se existirem
+    for item in tab_content:
+        if isinstance(item, html.Div) and item.id and isinstance(item.id, dict) and item.id.get('type') == 'var-dropdown-container':
+            dynamic_content.append(item)
+
+    # Adiciona os filtros dinâmicos
     if dynamic_filters_div:
         dynamic_content.append(dbc.Row(dynamic_filters_div))
+
+    # Adiciona a visualização
     dynamic_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
 
-    # Atualiza o store com os dados da variável
-    app.clientside_callback(
-        """
-        function(valor) {
-            return {'selected_var': valor, 'selected_filters': {}};
-        }
-        """,
-        Output({'type': 'visualization-state-store', 'index': indicador_id}, 'data'),
-        [Input({'type': 'var-dropdown', 'index': indicador_id}, 'value')],
-        prevent_initial_call=True
-    )
+    # Nota: Não precisamos criar um novo store ou callback, pois eles já existem na aba
 
-    return dynamic_content
+    # Oculta o spinner quando os dados são carregados
+    spinner_style = {'display': 'none'}
+
+    return dynamic_content, spinner_style
 
 # Callback para atualizar o gráfico de pizza quando o ano é alterado
 @app.callback(
