@@ -215,9 +215,9 @@ O painel oferece quatro tipos diferentes de visualizações para cada indicador:
 
 O sistema inclui um relatório de desempenho do cache que fornece as seguintes métricas:
 
-- **Taxa de acerto (Hit Rate)**: Percentual de solicitações atendidas pelo cache
-- **Acertos em memória**: Número de solicitações atendidas pelo cache em memória (nível 1)
-- **Acertos em disco**: Número de solicitações atendidas pelo cache em disco (nível 2)
+- **Taxa de acesso (Hit Rate)**: Percentual de solicitações atendidas pelo cache
+- **Acessos em memória**: Número de solicitações atendidas pelo cache em memória (nível 1)
+- **Acessos em disco**: Número de solicitações atendidas pelo cache em disco (nível 2)
 - **Erros (Misses)**: Número de solicitações que não encontraram dados no cache
 - **Pré-carregamentos**: Número de indicadores carregados proativamente pelo sistema
 - **Tamanho do cache em memória**: Quantidade atual e máxima de itens no cache em memória
