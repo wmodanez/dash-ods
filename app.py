@@ -978,10 +978,31 @@ def update_card_content(*args):
 
             # Recria a barra de navegação das metas, marcando a ativa
             metas_obj_filtradas = df_metas[df_metas['ID_OBJETIVO'] == objetivo_id]
-            metas_com_indicadores = [
-                meta for _, meta in metas_obj_filtradas.iterrows()
-                if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
-            ]
+            metas_com_indicadores = []
+            for _, meta in metas_obj_filtradas.iterrows():
+                indicadores_meta = df_indicadores[df_indicadores['ID_META'] == meta['ID_META']]
+                if not indicadores_meta.empty:
+                    # Verifica se pelo menos um indicador tem dados
+                    for _, row_ind in indicadores_meta.iterrows():
+                        indicador_id = row_ind['ID_INDICADOR']
+                        nome_arquivo = indicador_id.lower().replace("indicador ", "")
+                        arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
+                        if os.path.exists(arquivo_parquet):
+                            metas_com_indicadores.append(meta)
+                            break
+
+            if not metas_com_indicadores:
+                # Retorna o alerta na seção de indicadores com estilo
+                alert_message = dbc.Alert(
+                    "Não existem metas com indicadores disponíveis para este objetivo.",
+                    color="warning",
+                    className="mt-4",
+                    style={'textAlign': 'center', 'font-weight': 'bold'} # Adiciona estilo aqui
+                )
+                return header, content, [], "", [alert_message] # Limpa descrição da meta, mostra alerta
+
+            # Seleciona a primeira meta e gera a navegação
+            meta_selecionada = metas_com_indicadores[0]
             metas_nav_children = [
                 dbc.NavLink(
                     meta['ID_META'],
@@ -1002,8 +1023,26 @@ def update_card_content(*args):
 
             if not indicadores_meta_selecionada.empty:
                 valor_inicial_variavel_primeira_aba = None
-
-                for i, (_, row_ind) in enumerate(indicadores_meta_selecionada.iterrows()):
+                
+                # Filtra apenas indicadores que realmente possuem dados disponíveis
+                indicadores_com_dados = []
+                for _, row_ind in indicadores_meta_selecionada.iterrows():
+                    indicador_id_atual = row_ind['ID_INDICADOR']
+                    # Verifica se o arquivo do indicador existe
+                    nome_arquivo = indicador_id_atual.lower().replace("indicador ", "")
+                    arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
+                    if os.path.exists(arquivo_parquet):
+                        indicadores_com_dados.append(row_ind)
+                
+                # Se não houver indicadores com dados disponíveis, exibe mensagem
+                if not indicadores_com_dados:
+                    return header, content, metas_nav_children, meta_desc, [
+                        html.H5("Indicadores", className="mt-4 mb-3"),
+                        dbc.Alert("Não há dados disponíveis para os indicadores desta meta.", color="warning", 
+                                 className="textCenter p-3 mt-3")
+                    ]
+                
+                for i, row_ind in enumerate(indicadores_com_dados):
                     indicador_id_atual = row_ind['ID_INDICADOR']
                     is_first_indicator = (i == 0)
 
@@ -1136,10 +1175,18 @@ def update_card_content(*args):
 
             # Encontra metas com indicadores para este objetivo
             metas_obj_filtradas = df_metas[df_metas['ID_OBJETIVO'] == row_obj['ID_OBJETIVO']]
-            metas_com_indicadores = [
-                meta for _, meta in metas_obj_filtradas.iterrows()
-                if not df_indicadores[df_indicadores['ID_META'] == meta['ID_META']].empty
-            ]
+            metas_com_indicadores = []
+            for _, meta in metas_obj_filtradas.iterrows():
+                indicadores_meta = df_indicadores[df_indicadores['ID_META'] == meta['ID_META']]
+                if not indicadores_meta.empty:
+                    # Verifica se pelo menos um indicador tem dados
+                    for _, row_ind in indicadores_meta.iterrows():
+                        indicador_id = row_ind['ID_INDICADOR']
+                        nome_arquivo = indicador_id.lower().replace("indicador ", "")
+                        arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
+                        if os.path.exists(arquivo_parquet):
+                            metas_com_indicadores.append(meta)
+                            break
 
             if not metas_com_indicadores:
                 # Retorna o alerta na seção de indicadores com estilo
@@ -1176,9 +1223,27 @@ def update_card_content(*args):
             if not indicadores_primeira_meta.empty:
                 # Variável para armazenar o valor inicial da variável (usado apenas para o primeiro indicador)
                 valor_inicial_variavel = None
+                
+                # Filtra apenas indicadores que realmente possuem dados disponíveis
+                indicadores_com_dados = []
+                for _, row_ind in indicadores_primeira_meta.iterrows():
+                    indicador_id_atual = row_ind['ID_INDICADOR']
+                    # Verifica se o arquivo do indicador existe
+                    nome_arquivo = indicador_id_atual.lower().replace("indicador ", "")
+                    arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
+                    if os.path.exists(arquivo_parquet):
+                        indicadores_com_dados.append(row_ind)
+                
+                # Se não houver indicadores com dados disponíveis, exibe mensagem
+                if not indicadores_com_dados:
+                    return header, content, metas_nav_children, meta_description, [
+                        html.H5("Indicadores", className="mt-4 mb-3"),
+                        dbc.Alert("Não há dados disponíveis para os indicadores desta meta.", color="warning", 
+                                 className="textCenter p-3 mt-3")
+                    ]
 
                 # Cria abas para todos os indicadores da primeira meta
-                for i, row_ind in indicadores_primeira_meta.iterrows():
+                for i, row_ind in enumerate(indicadores_com_dados):
                     # Apenas o primeiro indicador é carregado completamente
                     is_first_indicator = (i == 0)
 
