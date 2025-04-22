@@ -428,7 +428,7 @@ def identify_filter_columns(df):
     return sorted(filter_cols)
 
 def create_visualization(df, indicador_id=None, selected_var=None, selected_filters=None):
-    """Cria uma visualização (gráfico ou tabela) com os dados do DataFrame, aplicando filtros."""
+    """Cria uma visualização (gráfico de linha, mapa e tabela) com os dados do DataFrame, aplicando filtros."""
     if df is None or df.empty:
         return dbc.Alert("Nenhum dado disponível para este indicador.", color="warning", className="textCenter p-3")
 
@@ -473,7 +473,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if 'CODG_UND_FED' in df_filtered.columns:
             df_filtered['DESC_UND_FED'] = df_filtered['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
             df_filtered = df_filtered.dropna(subset=['DESC_UND_FED'])
-        elif 'DESC_UND_FED' not in df_filtered.columns: # Garante a coluna mesmo que CODG não exista
+        elif 'DESC_UND_FED' not in df_filtered.columns:
              df_filtered['DESC_UND_FED'] = 'N/D'
 
         # Descrição Variável
@@ -481,7 +481,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if 'CODG_VAR' in df_filtered.columns and not df_variavel_loaded.empty:
             df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str)
             df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
-            # Realiza o merge e preenche NaNs imediatamente
             df_filtered = df_filtered.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
             df_filtered['DESC_VAR'] = df_filtered['DESC_VAR'].fillna('N/D')
         elif 'DESC_VAR' not in df_filtered.columns:
@@ -499,37 +498,29 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
         # Descrições para Filtros Dinâmicos
         dynamic_filter_cols = identify_filter_columns(df) # Identifica filtros no DF ORIGINAL
-        processed_desc_cols = set() # Para evitar processar a mesma coluna duas vezes
-
+        processed_desc_cols = set()
         for filter_col_code in dynamic_filter_cols:
             desc_col_code = 'DESC_' + filter_col_code[5:]
             if desc_col_code in processed_desc_cols:
                 continue
-
-            # Garante que a coluna de descrição exista em df_filtered ANTES de copiar
             if desc_col_code not in df_filtered.columns:
                 if desc_col_code in df.columns and filter_col_code in df_filtered.columns and filter_col_code in df.columns:
                     try:
-                        # Tenta merge para buscar descrições do DF original
                         merge_data = df[[filter_col_code, desc_col_code]].drop_duplicates().copy()
-                        # Converte a coluna de código para string em ambos DFs antes do merge
                         df_filtered[filter_col_code] = df_filtered[filter_col_code].astype(str)
                         merge_data[filter_col_code] = merge_data[filter_col_code].astype(str)
-
                         df_filtered = pd.merge(df_filtered, merge_data, on=filter_col_code, how='left')
                         df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
                     except Exception as merge_err:
                         df_filtered[desc_col_code] = 'N/D'
                 else:
-                    # Se não existe nem no original ou falta a chave no filtrado, cria com N/D
                     df_filtered[desc_col_code] = 'N/D'
             else:
-                # Se já existe, apenas garante que não há NaNs
                 df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
-
             processed_desc_cols.add(desc_col_code)
 
-        # Ordena e limpa dados numéricos ANTES de criar df_original_for_table
+        # Ordena e limpa dados numéricos
+        df_filtered['CODG_ANO'] = df_filtered['CODG_ANO'].astype(str)
         df_filtered = df_filtered.sort_values('CODG_ANO')
         df_filtered['VLR_VAR'] = pd.to_numeric(df_filtered['VLR_VAR'], errors='coerce')
         df_filtered = df_filtered.dropna(subset=['VLR_VAR'])
@@ -537,292 +528,177 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if df_filtered.empty:
             return dbc.Alert("Não há dados numéricos válidos para criar a visualização.", color="warning", className="textCenter p-3")
 
-        # Cria a cópia para a tabela AG Grid DEPOIS de adicionar todas as descrições
         df_original_for_table = df_filtered.copy()
 
-        # --- Lógica dos Gráficos (continua igual, usando df_filtered ou df_grouped) ---
-        df_sugestoes = load_sugestoes_visualizacao()
-
-        # --- Definição Dinâmica das Colunas da Tabela ---
-        # Define as colunas base SEM flex inicial aqui
+        # --- Definição Dinâmica das Colunas da Tabela AG Grid ---
         base_col_defs = [
             {"field": 'DESC_UND_FED', "headerName": 'Unidade Federativa'},
             {"field": 'CODG_ANO', "headerName": 'Ano'},
             {"field": 'DESC_VAR', "headerName": 'Variável'},
         ]
-
-        # Cria definições para colunas de descrição dinâmica
         dynamic_desc_col_defs = []
-        dynamic_desc_col_names = set() # Guarda os nomes das colunas de descrição dinâmica
+        dynamic_desc_col_names = set()
         for filter_col_code in dynamic_filter_cols:
              desc_col_code = 'DESC_' + filter_col_code[5:]
              if desc_col_code in df_original_for_table.columns:
                   readable_name = constants.COLUMN_NAMES.get(desc_col_code, desc_col_code.replace('DESC_','').replace('_',' ').title())
                   dynamic_desc_col_defs.append({"field": desc_col_code, "headerName": readable_name})
                   dynamic_desc_col_names.add(desc_col_code)
-
-        # Junta todas as definições base
         final_col_defs = base_col_defs + dynamic_desc_col_defs + [
              {"field": 'VLR_VAR', "headerName": 'Valor'},
              {"field": 'DESC_UND_MED', "headerName": 'Unidade de Medida'}
         ]
-
-        # Aplica propriedades comuns E flex explícito baseado na coluna
         columnDefs = []
         present_columns = df_original_for_table.columns
         for col_def in final_col_defs:
             field_name = col_def['field']
             if field_name in present_columns:
                  base_props = {"sortable": True, "filter": True, "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
-
-                 # Define flex baseado na coluna específica (NOVA ESCALA 2)
-                 if field_name == 'DESC_VAR':
-                     flex_value = 3
-                 elif field_name == 'DESC_UND_FED' or field_name == 'DESC_UND_MED':
-                     flex_value = 2
-                 elif field_name == 'CODG_ANO' or field_name == 'VLR_VAR' or field_name in dynamic_desc_col_names:
-                     flex_value = 1
-                 else:
-                      flex_value = 1 # Padrão para qualquer outra coluna que possa surgir
-
-                 # Combina props base com field/headerName/flex específicos
+                 if field_name == 'DESC_VAR': flex_value = 3
+                 elif field_name == 'DESC_UND_FED' or field_name == 'DESC_UND_MED': flex_value = 2
+                 elif field_name == 'CODG_ANO' or field_name == 'VLR_VAR' or field_name in dynamic_desc_col_names: flex_value = 1
+                 else: flex_value = 1
                  columnDefs.append({**base_props, "field": field_name, "headerName": col_def['headerName'], "flex": flex_value})
-
-        # defaultColDef agora só precisa de propriedades que não variam por coluna
         defaultColDef = {
-            "minWidth": 100,
-            "resizable": True,
-            "wrapText": True,
-            "autoHeight": True,
-            "cellStyle": {"whiteSpace": "normal", 'textAlign': 'left'} # Alinha à esquerda e remove negrito
+            "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True,
+            "cellStyle": {"whiteSpace": "normal", 'textAlign': 'left'}
         }
 
-        # --- Criação da Visualização (Gráficos + Tabela) ---
-        if indicador_id and not df_sugestoes.empty:
-            sugestoes_indicador = df_sugestoes[df_sugestoes['ID_INDICADOR'] == indicador_id]
-            if not sugestoes_indicador.empty:
-                if len(df_filtered) < 2:
-                    # Retorna Alert + Tabela AG Grid (fallback para poucos dados)
-                    return html.Div([
-                        dbc.Alert("Dados insuficientes para gráficos. Mostrando tabela.", color="info", className="textCenter p-3"),
-                        dag.AgGrid(
-                            rowData=df_original_for_table.to_dict('records'),
-                            columnDefs=columnDefs,
-                            defaultColDef=defaultColDef,
-                            dashGridOptions={ # REMOVIDO autoSizeStrategy
-                                "pagination": True,
-                                "paginationPageSize": 10,
-                                "domLayout": "autoHeight"
-                            },
-                            style={"width": "100%"}
-                        )
-                    ])
+        # --- Criação das Figuras dos Gráficos ---
+        fig_line = go.Figure()
+        fig_map = go.Figure()
+        anos_unicos = sorted(df_filtered['CODG_ANO'].unique())
+        ano_default = anos_unicos[-1] if anos_unicos else None
 
-                # Agrupa dados para gráficos de linha/barra (se houver UF)
-                group_cols = ['CODG_ANO', 'DESC_UND_FED'] if 'DESC_UND_FED' in df_filtered.columns else ['CODG_ANO']
-                df_grouped = df_filtered.groupby(group_cols, as_index=False).agg(
-                    VLR_VAR=('VLR_VAR', 'first'), # Ou 'mean', 'sum' dependendo do caso
-                    DESC_UND_MED=('DESC_UND_MED', 'first'),
-                    DESC_VAR=('DESC_VAR', 'first')
-                ).sort_values('CODG_ANO')
+        # Tenta criar o gráfico de linha se houver dados suficientes
+        if len(df_filtered) >= 1: # Precisa de pelo menos 1 ponto para linha
+            group_cols_line = ['CODG_ANO', 'DESC_UND_FED'] if 'DESC_UND_FED' in df_filtered.columns else ['CODG_ANO']
+            df_grouped_line = df_filtered.groupby(group_cols_line, as_index=False).agg(
+                VLR_VAR=('VLR_VAR', 'first'), DESC_UND_MED=('DESC_UND_MED', 'first'), DESC_VAR=('DESC_VAR', 'first')
+            ).sort_values('CODG_ANO')
 
-                # --- Gráfico de Linha ---
+            if not df_grouped_line.empty:
                 config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
-                if 'DESC_UND_FED' in df_grouped.columns:
+                if 'DESC_UND_FED' in df_grouped_line.columns:
                     config_line['color'] = 'DESC_UND_FED'
                     config_line['labels']['color'] = f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>"
-                fig_line = px.line(df_grouped, **config_line)
-                estado_unidade = df_grouped.set_index('DESC_UND_FED')['DESC_UND_MED'].to_dict() if 'DESC_UND_FED' in df_grouped.columns else {}
+                fig_line = px.line(df_grouped_line, **config_line)
                 fig_line.update_traces(
                     line_shape='spline', mode='lines+markers',
                     marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
                     hovertemplate = (
-                        "<b>%{customdata[0]}</b><br>" +
-                        "Ano: %{x}<br>" +
-                        "Valor: %{y}<br>" +
-                        "Unidade: %{customdata[1]}<extra></extra>"
-                    ) if 'DESC_UND_FED' in df_grouped.columns else (
-                        "Ano: %{x}<br>" +
-                        "Valor: %{y}<br>" +
-                        "Unidade: %{customdata[0]}<extra></extra>"
+                        "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<extra></extra>"
+                    ) if 'DESC_UND_FED' in df_grouped_line.columns else (
+                        "Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<extra></extra>"
                     )
                 )
-                # Define customdata
-                if 'DESC_UND_FED' in df_grouped.columns:
-                    fig_line.update_traces(customdata=df_grouped[['DESC_UND_FED', 'DESC_UND_MED']])
+                if 'DESC_UND_FED' in df_grouped_line.columns:
+                    fig_line.update_traces(customdata=df_grouped_line[['DESC_UND_FED', 'DESC_UND_MED']])
                     for trace in fig_line.data:
                         if trace.name == 'Goiás':
-                            trace.line.color = '#229846'
-                            trace.line.width = 6
-                            trace.name = '<b>Goiás</b>'
-                        elif trace.name == 'Maranhão': # Adiciona cor para Maranhão
-                             trace.line.color = '#D2B48C' # Muda para marrom pastel (Tan)
+                            trace.line.color = '#229846'; trace.line.width = 6; trace.name = '<b>Goiás</b>'
+                        elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
                 else:
-                    fig_line.update_traces(customdata=df_grouped[['DESC_UND_MED']])
-
-                fig_line.update_layout(xaxis_tickangle=45, xaxis_tickfont_size=12)
-
-                # --- Gráfico de Barras ---
-                config_bar = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': ""}}
-                if 'DESC_UND_FED' in df_grouped.columns:
-                    config_bar['color'] = 'DESC_UND_FED'
-                    config_bar['labels']['color'] = 'UF'
-                fig_bar = px.bar(df_grouped, **config_bar)
-                fig_bar.update_layout(
-                    xaxis=dict(tickfont_size=12, tickangle=45, ticktext=[f"<b>{x}</b>" for x in df_grouped['CODG_ANO'].unique()], tickvals=df_grouped['CODG_ANO'].unique()),
-                    yaxis=dict(tickfont_size=12, showticklabels=False),
-                    margin=dict(b=100), showlegend=('DESC_UND_FED' in df_grouped.columns)
-                )
-                if 'DESC_UND_FED' in df_grouped.columns:
-                     fig_bar.update_traces(customdata=df_grouped[['DESC_UND_FED', 'DESC_UND_MED']],
-                                           hovertemplate=(
-                                            "<b>%{customdata[0]}</b><br>" +
-                                            "Ano: %{x}<br>" +
-                                            "Valor: %{y}<br>" +
-                                            "Unidade: %{customdata[1]}<extra></extra>")
-                                          )
-                     for trace in fig_bar.data:
-                         if trace.name == 'Goiás':
-                             trace.marker.color = '#229846'
-                             trace.name = '<b>Goiás</b>'
-                         elif trace.name == 'Maranhão': # Adiciona cor para Maranhão
-                              trace.marker.color = '#D2B48C' # Muda para marrom pastel (Tan)
-                else:
-                     fig_bar.update_traces(customdata=df_grouped[['DESC_UND_MED']],
-                                           hovertemplate=(
-                                            "Ano: %{x}<br>" +
-                                            "Valor: %{y}<br>" +
-                                            "Unidade: %{customdata[0]}<extra></extra>")
-                                          )
-
-                # --- Mapa --- (Apenas se houver UF)
-                fig_map = go.Figure()
-                anos_unicos_mapa = sorted(df_filtered['CODG_ANO'].unique())
-                if 'DESC_UND_FED' in df_filtered.columns:
-                    try:
-                        with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
-                        # Usar dados filtrados, não agrupados, para o mapa
-                        df_map_data = df_filtered[df_filtered['CODG_ANO'] == anos_unicos_mapa[-1]] # Ano mais recente por padrão
-                        und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
-                        fig_map = px.choropleth(
-                            df_map_data,
-                            geojson=geojson, locations='DESC_UND_FED', featureidkey='properties.name',
-                            color='VLR_VAR', color_continuous_scale='Greens_r', scope="south america"
-                        )
-                        fig_map.update_geos(visible=False, showcoastlines=True, coastlinecolor="White", showland=True, landcolor="white", showframe=False, center=dict(lat=-12.9598, lon=-53.2729), projection=dict(type='mercator', scale=2.6))
-                        fig_map.update_traces(marker_line_color='white', marker_line_width=1, hovertemplate=f"<b>%{{location}}</b><br>Valor: %{{z}}{' ' + und_med_map if und_med_map else ''}<extra></extra>")
-                        fig_map.update_layout(margin=dict(r=0, l=0, t=0, b=0), coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
-                    except Exception as map_err:
-                         print(f"Erro ao gerar mapa: {map_err}")
-                         fig_map = go.Figure() # Figura vazia em caso de erro
-
-                # --- Gráfico de Pizza --- (Apenas se menos de 5 anos e houver UF)
-                fig_pie = go.Figure()
-                anos_unicos_pie = sorted(df_filtered['CODG_ANO'].unique())
-                mostrar_pizza = len(anos_unicos_pie) < 5 and 'DESC_UND_FED' in df_filtered.columns
-                if mostrar_pizza:
-                    # Usa dados filtrados, não agrupados
-                    df_pie_data = df_filtered[df_filtered['CODG_ANO'] == anos_unicos_pie[-1]] # Ano mais recente por padrão
-                    und_med_pie = df_pie_data['DESC_UND_MED'].iloc[0] if not df_pie_data['DESC_UND_MED'].empty else ''
-                    fig_pie = px.pie(df_pie_data, values='VLR_VAR', names='DESC_UND_FED', labels={'DESC_UND_FED': 'UF', 'VLR_VAR': 'Valor'})
-                    # Atualiza layout da pizza para legenda horizontal
-                    fig_pie.update_layout(
-                        showlegend=True,
-                        legend=DEFAULT_LAYOUT['legend'].copy(), # Usa a configuração padrão
-                        margin=DEFAULT_LAYOUT['margin'].copy() # Usa a margem padrão
-                    )
-                    # Atualiza traces da pizza (sem alterações aqui)
-                    fig_pie.update_traces(hovertemplate=f"<b>%{{label}}</b><br>Valor: %{{value}}<br>%{{percent:.1%}}<br>Unidade: {und_med_pie}<extra></extra>", textinfo="label+value+percent", texttemplate="<b>%{label}</b><br>%{value}<br>%{percent:.1%}", textposition="outside", showlegend=False, hoverinfo="skip")
-                    for trace in fig_pie.data:
-                        if trace.name == 'Goiás': trace.marker.color = '#229846'
-
-                # Aplica layout padrão aos gráficos de linha e barra
-                layout_updates = DEFAULT_LAYOUT.copy()
-                # Remove a atualização específica da legenda aqui, pois já está no DEFAULT_LAYOUT
-                # layout_updates.update({
-                #     'legend': dict(title="Unidade Federativa", yanchor="top", y=0.99, xanchor="left", x=1.05, orientation="v")
-                # })
-                layout_updates.update({ # Mantém atualizações específicas de eixos se houver
-                    'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black')), # Configurações base
-                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), title=None) # Removido showticklabels=False
+                    fig_line.update_traces(customdata=df_grouped_line[['DESC_UND_MED']])
+                layout_updates_line = DEFAULT_LAYOUT.copy()
+                layout_updates_line.update({
+                    'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
+                    'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), title=None)
                 })
-                if 'CODG_ANO' in df_grouped.columns: # Atualiza ticks do eixo X se CODG_ANO existe
-                     layout_updates['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in sorted(df_grouped['CODG_ANO'].unique())]
-                     layout_updates['xaxis']['tickvals'] = sorted(df_grouped['CODG_ANO'].unique())
+                if 'CODG_ANO' in df_grouped_line.columns:
+                    layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in sorted(df_grouped_line['CODG_ANO'].unique())]
+                    layout_updates_line['xaxis']['tickvals'] = sorted(df_grouped_line['CODG_ANO'].unique())
+                fig_line.update_layout(layout_updates_line)
+        else:
+            # Se não houver dados suficientes para o gráfico de linha, retorna alerta + tabela
+             return html.Div([
+                 dbc.Alert("Dados insuficientes para o gráfico de linha. Mostrando tabela.", color="info", className="textCenter p-3"),
+                 dag.AgGrid(
+                     rowData=df_original_for_table.to_dict('records'), columnDefs=columnDefs, defaultColDef=defaultColDef,
+                     dashGridOptions={ "pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight" },
+                     style={"width": "100%"}
+                 )
+             ])
 
-                fig_line.update_layout(layout_updates)
-                fig_bar.update_layout(layout_updates)
-                fig_line.update_xaxes(showgrid=False, zeroline=False)
-                fig_bar.update_xaxes(showgrid=False, zeroline=False)
+        # Criação do Mapa (se houver UF e ano)
+        if 'DESC_UND_FED' in df_filtered.columns and ano_default:
+            df_map_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
+            if not df_map_data.empty:
+                try:
+                    with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
+                    und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
+                    fig_map = px.choropleth(
+                        df_map_data, geojson=geojson, locations='DESC_UND_FED', featureidkey='properties.name',
+                        color='VLR_VAR', color_continuous_scale='Greens_r', scope="south america"
+                    )
+                    fig_map.update_geos(visible=False, showcoastlines=True, coastlinecolor="White", showland=True, landcolor="white", showframe=False, center=dict(lat=-12.9598, lon=-53.2729), projection=dict(type='mercator', scale=2.6))
+                    fig_map.update_traces(marker_line_color='white', marker_line_width=1, hovertemplate=f"<b>%{{location}}</b><br>Valor: %{{z}}{' ' + und_med_map if und_med_map else ''}<extra></extra>")
+                    fig_map.update_layout(margin=dict(r=0, l=0, t=0, b=0), coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
+                except Exception as map_err:
+                     print(f"Erro ao gerar mapa: {map_err}")
+                     # Mantem fig_map vazio
 
-                # --- Monta o Layout da Visualização (Gráficos + Tabela Detalhada) ---
-                graph_layout = []
-                if 'DESC_UND_FED' in df_filtered.columns: # Layout com Mapa
-                     graph_layout.append(dbc.Row([
-                         dbc.Col([
-                             dbc.Row([
-                                 dbc.Col([
-                                     # Linha/Barra ou Pizza
-                                     html.Div([
-                                         dcc.Graph(figure=fig_line, style={'border': '1px solid #dee2e6', 'marginBottom': '15px'}),
-                                         dcc.Graph(figure=fig_bar, style={'border': '1px solid #dee2e6'})
-                                     ], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'}),
-                                     html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '100%', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
-                                 ], width=12)
-                             ], className="mb-4")
-                         ], md=7, xs=12), # Ajustado para responsividade
-                         dbc.Col([
-                             html.Div([html.Label("Ano:", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_mapa], value=anos_unicos_mapa[-1] if anos_unicos_mapa else None, style={'width': '100%', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)], style={'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px', 'marginBottom': '0px'})
-                         ], md=5, xs=12) # Ajustado para responsividade
-                     ]))
-                else: # Layout sem Mapa (apenas linha/barra ou pizza)
-                     graph_layout.append(dbc.Row([
-                         dbc.Col([
-                             # Linha/Barra ou Pizza
-                             html.Div([
-                                 dcc.Graph(figure=fig_line, style={'border': '1px solid #dee2e6', 'marginBottom': '15px'}),
-                                 dcc.Graph(figure=fig_bar, style={'border': '1px solid #dee2e6'})
-                             ], style={'display': 'none' if mostrar_pizza else 'block', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'}),
-                             html.Div([html.Label("Ano", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}), dcc.Dropdown(id={'type': 'pie-year-dropdown', 'index': indicador_id}, options=[{'label': ano, 'value': ano} for ano in anos_unicos_pie], value=anos_unicos_pie[-1] if anos_unicos_pie else None, style={'width': '100%', 'marginBottom': '10px'}), dcc.Graph(id={'type': 'pie-chart', 'index': indicador_id}, figure=fig_pie)], style={'display': 'block' if mostrar_pizza else 'none', 'border': '1px solid #dee2e6', 'borderRadius': '4px', 'padding': '15px'})
-                         ], width=12) # Ocupa largura total se não houver mapa
-                     ]))
+        # --- Monta o Layout da Visualização ---
+        graph_layout = []
 
-                # Adiciona Tabela Detalhada (usando df_original_for_table e columnDefs atualizado)
-                graph_layout.append(dbc.Row([
-                    dbc.Col(dbc.Card([
-                        html.H5("Dados Detalhados", className="mt-4", style={'marginLeft': '20px'}),
-                        dbc.CardBody(dag.AgGrid(
-                            id={'type': 'detail-table', 'index': indicador_id},
-                            rowData=df_original_for_table.to_dict('records'),
-                            columnDefs=columnDefs,
-                            defaultColDef=defaultColDef,
-                            dashGridOptions={ # REMOVIDO autoSizeStrategy
-                                "pagination": True,
-                                "paginationPageSize": 10,
-                                "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                                "domLayout": "autoHeight",
-                                "suppressMovableColumns": True,
-                                "animateRows": True,
-                                "suppressColumnVirtualisation": True
-                            },
-                            style={"width": "100%"}
-                        ))
-                    ]))
-                ]))
-                return graph_layout
+        # Define o conteúdo do gráfico principal (linha) - Removido estilo de borda
+        line_chart_content = dcc.Graph(id={'type': 'line-chart', 'index': indicador_id}, figure=fig_line)
 
-        # Se não encontrar sugestão ou não tiver indicador, mostra apenas a tabela (fallback geral)
-        return dag.AgGrid(
-            rowData=df_original_for_table.to_dict('records'),
-            columnDefs=columnDefs,
-            defaultColDef=defaultColDef,
-            dashGridOptions={ # REMOVIDO autoSizeStrategy
-                "pagination": True,
-                "paginationPageSize": 10,
-                "domLayout": "autoHeight"
-            },
-            style={"width": "100%"}
-        )
+        # Monta o conteúdo da Card de visualização (linha e mapa/apenas linha)
+        visualization_card_content = None
+        if 'DESC_UND_FED' in df_filtered.columns and fig_map.data: # Se tem mapa
+            map_content = html.Div([
+                html.Label("Ano (Mapa):", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}),
+                dcc.Dropdown(
+                    id={'type': 'year-dropdown', 'index': indicador_id},
+                    options=[{'label': ano, 'value': ano} for ano in anos_unicos],
+                    value=ano_default,
+                    clearable=False,
+                    style={'width': '100%', 'marginBottom': '10px'}
+                ),
+                dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)
+            ]) # Removido estilo de borda
+
+            visualization_card_content = dbc.CardBody(
+                dbc.Row([
+                    dbc.Col(line_chart_content, md=7, xs=12, className="mb-4 mb-md-0"),
+                    dbc.Col(map_content, md=5, xs=12)
+                ])
+            )
+        else: # Layout sem Mapa (apenas linha)
+            visualization_card_content = dbc.CardBody(
+                dbc.Row([
+                    dbc.Col(line_chart_content, width=12)
+                ])
+            )
+
+        # Adiciona a Card de Visualização ao layout principal
+        if visualization_card_content:
+            graph_layout.append(dbc.Row([
+                dbc.Col(dbc.Card(visualization_card_content, className="mb-4"), width=12) # Adiciona Card e margem inferior
+            ]))
+
+        # Adiciona Tabela Detalhada sempre
+        graph_layout.append(dbc.Row([
+            dbc.Col(dbc.Card([
+                html.H5("Dados Detalhados", className="mt-4", style={'marginLeft': '20px'}),
+                dbc.CardBody(dag.AgGrid(
+                    id={'type': 'detail-table', 'index': indicador_id},
+                    rowData=df_original_for_table.to_dict('records'),
+                    columnDefs=columnDefs,
+                    defaultColDef=defaultColDef,
+                    dashGridOptions={
+                        "pagination": True, "paginationPageSize": 10,
+                        "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                        "domLayout": "autoHeight", "suppressMovableColumns": True,
+                        "animateRows": True, "suppressColumnVirtualisation": True
+                    },
+                    style={"width": "100%"}
+                ))
+            ]), className="mt-4")
+        ]))
+        return graph_layout
+
     except Exception as e:
         print(f"Erro em create_visualization para {indicador_id}: {e}")
         import traceback
@@ -1639,125 +1515,6 @@ def load_indicator_on_demand(active_tab, container_id):
     spinner_style = {'display': 'none'}
 
     return dynamic_content, spinner_style
-
-# Callback para atualizar o gráfico de pizza quando o ano é alterado
-@app.callback(
-    Output({'type': 'pie-chart', 'index': MATCH}, 'figure'),
-    [Input({'type': 'pie-year-dropdown', 'index': MATCH}, 'value')],
-    [State({'type': 'pie-year-dropdown', 'index': MATCH}, 'id'),
-     State({'type': 'visualization-state-store', 'index': MATCH}, 'data')], # Ler filtros do store
-    prevent_initial_call=True
-)
-def update_pie_chart(selected_year, dropdown_id, store_data):
-    if not selected_year or not dropdown_id:
-        raise PreventUpdate
-
-    indicador_id = dropdown_id['index']
-    store_data = store_data or {'selected_var': None, 'selected_filters': {}}
-    selected_var = store_data.get('selected_var')
-    selected_filters = store_data.get('selected_filters', {})
-
-    try:
-        df = load_dados_indicador_cache(indicador_id)
-        if df is None or df.empty:
-            print(f"update_pie_chart: Dados vazios para {indicador_id}")
-            return go.Figure() # Retorna figura vazia se não há dados
-
-        # Aplica filtro de VARIÁVEL PRINCIPAL (se aplicável)
-        if 'CODG_VAR' in df.columns and selected_var:
-            df['CODG_VAR'] = df['CODG_VAR'].astype(str).str.strip()
-            selected_var_str = str(selected_var).strip()
-            df = df[df['CODG_VAR'] == selected_var_str]
-
-        # Aplica FILTROS DINÂMICOS (se houver)
-        if selected_filters:
-            for col_code, selected_value in selected_filters.items():
-                if selected_value is not None and selected_value != 'all' and col_code in df.columns:
-                    df[col_code] = df[col_code].astype(str).str.strip()
-                    selected_value_str = str(selected_value).strip()
-                    df = df[df[col_code] == selected_value_str]
-
-        # Adiciona as descrições da unidade de medida antes do filtro de ano
-        if 'CODG_UND_MED' in df.columns and not df_unidade_medida.empty:
-            df['CODG_UND_MED'] = df['CODG_UND_MED'].astype(str)
-            df_unidade_medida['CODG_UND_MED'] = df_unidade_medida['CODG_UND_MED'].astype(str)
-            df = df.merge(df_unidade_medida[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df['DESC_UND_MED'] = df['DESC_UND_MED'].fillna('Unidade não disponível')
-        else:
-            df['DESC_UND_MED'] = 'Unidade não disponível'
-
-        # Filtra os dados para o ano selecionado
-        df_ano = df[df['CODG_ANO'] == selected_year].copy() # Usar cópia para evitar SettingWithCopyWarning
-
-        # Substitui os códigos das UFs pelos nomes completos
-        if 'CODG_UND_FED' in df_ano.columns:
-            df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-            df_ano = df_ano.dropna(subset=['DESC_UND_FED'])
-
-        # Converte o campo VLR_VAR para numérico
-        df_ano['VLR_VAR'] = pd.to_numeric(df_ano['VLR_VAR'], errors='coerce')
-        df_ano = df_ano.dropna(subset=['VLR_VAR'])
-
-        if df_ano.empty:
-            print(f"update_pie_chart: Dados vazios para {indicador_id} após filtros/ano {selected_year}")
-            return go.Figure() # Retorna figura vazia se não há dados após filtros
-
-        # Obtém a unidade de medida (do DataFrame filtrado por ano)
-        unidade_medida = df_ano['DESC_UND_MED'].iloc[0] if not df_ano['DESC_UND_MED'].empty else 'Unidade não disponível'
-
-        # Cria o gráfico de pizza
-        fig_pie = px.pie(
-            df_ano,
-            values='VLR_VAR',
-            names='DESC_UND_FED',
-            labels={
-                'DESC_UND_FED': 'Unidade Federativa',
-                'VLR_VAR': 'Valor'
-            }
-        )
-
-        # Atualiza o layout do gráfico de pizza
-        fig_pie.update_layout(
-            showlegend=True,
-            legend=DEFAULT_LAYOUT['legend'].copy(), # Usa a configuração padrão
-            margin=DEFAULT_LAYOUT['margin'].copy() # Usa a margem padrão
-            # Remove configuração antiga da legenda
-            # legend=dict(
-            #     title="Unidade Federativa",
-            #     yanchor="top",
-            #     y=0.99,
-            #     xanchor="left",
-            #     x=1.05,
-            #     orientation="v"
-            # ),
-            # margin=dict(r=150)  # Margem à direita para acomodar a legenda
-        )
-
-        # Atualiza o hover do gráfico de pizza
-        fig_pie.update_traces(
-            hovertemplate="<b>%{label}</b><br>" +
-                        "Valor: %{value}<br>" +
-                        "Percentual: %{percent:.1%}<br>" +
-                        f"Unidade de Medida: {unidade_medida}<extra></extra>",
-            textinfo="label+value+percent",
-            texttemplate="<b>%{label}</b><br>%{value}<br>%{percent:.1%}",
-            textposition="outside",
-            showlegend=False,
-            hoverinfo="skip"
-        )
-
-        # Destaca Goiás no gráfico de pizza
-        for trace in fig_pie.data:
-            if trace.name == 'Goiás':
-                trace.marker = dict(color='#229846')
-                trace.name = '<b>Goiás</b>'
-
-        return fig_pie
-    except Exception as e:
-        print(f"Erro ao atualizar gráfico de pizza para {indicador_id}: {e}")
-        import traceback
-        traceback.print_exc()
-        return go.Figure() # Retorna figura vazia em caso de erro
 
 # Obtém a instância do servidor Flask
 server = app.server
