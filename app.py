@@ -585,6 +585,26 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 except (ValueError, TypeError):
                     grafico_linha_flag = 1 # Volta para o padrão em caso de erro
 
+        # Verifica se deve usar a série temporal ou não
+        serie_temporal_flag = 1  # Padrão é série temporal (para compatibilidade)
+        if indicador_id and not df_indicadores.empty:
+            indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
+            if not indicador_info.empty and 'SERIE_TEMPORAL' in indicador_info.columns:
+                try:
+                    # Tenta converter para numérico, tratando NaN ou erros
+                    serie_temporal_flag = pd.to_numeric(indicador_info['SERIE_TEMPORAL'].iloc[0], errors='coerce')
+                    if pd.isna(serie_temporal_flag):
+                        serie_temporal_flag = 1  # Volta para o padrão em caso de NaN
+                    else:
+                        serie_temporal_flag = int(serie_temporal_flag)
+                except (ValueError, TypeError):
+                    serie_temporal_flag = 1  # Volta para o padrão em caso de erro
+        
+        # Usa a série temporal em conjunto com o tipo de gráfico para definir o gráfico principal
+        min_years_for_line = 5  # Mínimo de anos para exibir gráfico de linha
+        if serie_temporal_flag == 0 or len(anos_unicos) < min_years_for_line:
+            grafico_linha_flag = 0  # Força gráfico de barras se tiver poucos anos ou não for série temporal
+
         # --- Criação do Gráfico Principal (Linha ou Barras) ---
         if grafico_linha_flag == 1:
             # Lógica para criar Gráfico de Linha (código existente movido para cá)
@@ -715,13 +735,33 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             linewidth=1,  # Espessura da linha do eixo
                             linecolor='black',  # Cor preta para linha do eixo
                             tickfont=dict(size=12, color='black'), 
-                            title=None
+                            title=None,
+                            # Estabelece limites para o eixo Y para melhor visualização
+                            range=[0, max(df_bar_data['VLR_VAR']) * 1.1]  # 10% acima do valor máximo
                         ),
                         'showlegend': False,  # Remove a legenda
                         'margin': dict(l=60, r=50, t=50, b=120),  # Margens aumentadas
                         'plot_bgcolor': 'white',  # Fundo branco
                         'paper_bgcolor': 'white'  # Fundo do papel também branco
                     })
+                    
+                    # Ajuste especial para o indicador 1.5.4 - define o limite máximo para 100
+                    # Lista de indicadores conhecidos que devem ter o eixo Y de 0-100%
+                    indicadores_percentuais = [
+                        '1.5.4', '1.5.3', '1.a.1', '1.a.2', '3.7.2', 
+                        '5.5.1', '6.1.1', '7.1.1', '9.c.1'
+                    ]
+                    
+                    # Verifica se é um dos indicadores conhecidos ou se a unidade de medida indica porcentagem
+                    # Isso permite uma melhor comparação visual entre diferentes UFs quando os dados são porcentagens
+                    if (indicador_id and any(ind_id in indicador_id for ind_id in indicadores_percentuais)) or \
+                       (not df_bar_data['DESC_UND_MED'].empty and 
+                        any(unidade in str(df_bar_data['DESC_UND_MED'].iloc[0]).lower() 
+                            for unidade in ['porcentagem', '%', 'percentual', 'proporção'])):
+                        # Define o limite do eixo Y de 0-100 para dados percentuais
+                        layout_updates_bar['yaxis']['range'] = [0, 100]
+                        # Adiciona marcações de grid a cada 25% para facilitar a leitura
+                        layout_updates_bar['yaxis']['dtick'] = 25
                     
                     # Personaliza os textos do eixo X para destacar Goiás em negrito
                     x_labels = df_bar_data['DESC_UND_FED'].tolist()
