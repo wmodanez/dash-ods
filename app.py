@@ -457,7 +457,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         # Aplica FILTROS DINÂMICOS
         if selected_filters:
             for col_code, selected_value in selected_filters.items():
-                if selected_value is not None and selected_value != 'all' and col_code in df_filtered.columns:
+                if selected_value is not None and col_code in df_filtered.columns:
                     df_filtered[col_code] = df_filtered[col_code].astype(str).str.strip()
                     selected_value_str = str(selected_value).strip()
                     df_filtered = df_filtered[df_filtered[col_code] == selected_value_str]
@@ -1070,8 +1070,7 @@ def update_card_content(*args):
                                         except Exception as map_err:
                                             print(f"Erro mapeamento {filter_col_code}: {map_err}")
                                     unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
-                                    col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                                                  [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+                                    col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                     filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
                                     md_width = 7 if idx_filter % 2 == 0 else 5
                                     dynamic_filters_div.append(dbc.Col([
@@ -1079,7 +1078,7 @@ def update_card_content(*args):
                                         dcc.Dropdown(
                                             id={'type': 'dynamic-filter-dropdown', 'index': indicador_id_atual, 'filter_col': filter_col_code},
                                             options=col_options,
-                                            value='all',
+                                            value=unique_codes[0] if unique_codes else None,
                                             style={'marginBottom': '10px', 'width': '100%'}
                                         )
                                     ], md=md_width, xs=12))
@@ -1095,6 +1094,7 @@ def update_card_content(*args):
                                         if not df_variavel_loaded.empty:
                                             df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
                                             if not df_variavel_filtrado.empty:
+                                                # Usar o primeiro valor disponível no dropdown
                                                 valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
                                                 valor_inicial_variavel_primeira_aba = valor_inicial_variavel # Salva para o Store
                                                 variable_dropdown_div = [html.Div([
@@ -1107,7 +1107,7 @@ def update_card_content(*args):
                                                         value=valor_inicial_variavel,
                                                         style={'width': '100%', 'marginBottom': '15px'}
                                                     )
-                                                ])] # Removido ID e style do Div container
+                                                ])]
 
                                 # Cria a visualização inicial
                                 initial_visualization = create_visualization(df_dados, indicador_id_atual, valor_inicial_variavel, None)
@@ -1273,8 +1273,7 @@ def update_card_content(*args):
 
                                     # Gera opções para o dropdown
                                     unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
-                                    col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                                                  [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+                                    col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                     filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
 
                                     # Define larguras alternadas para os filtros
@@ -1286,7 +1285,7 @@ def update_card_content(*args):
                                             dcc.Dropdown(
                                                 id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code},
                                                 options=col_options,
-                                                value='all',
+                                                value=unique_codes[0] if unique_codes else None,
                                                 style={'marginBottom': '10px', 'width': '100%'}
                                             )
                                         ], md=md_width, xs=12)
@@ -1303,6 +1302,7 @@ def update_card_content(*args):
                                         if not df_variavel_loaded.empty:
                                             df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
                                             if not df_variavel_filtrado.empty:
+                                                # Usar o primeiro valor disponível no dropdown
                                                 valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
                                                 variable_dropdown_div = [html.Div([
                                                     html.Label("Selecione uma Variável:",
@@ -1698,8 +1698,7 @@ def load_indicator_on_demand(active_tab, container_id):
                     except Exception as map_err:
                         print(f"Erro mapeamento {filter_col_code}: {map_err}")
                 unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
-                col_options = [{'label': 'Todos', 'value': 'all'}] + \
-                              [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+                col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
 
                 # Define larguras alternadas para os filtros
@@ -1710,7 +1709,7 @@ def load_indicator_on_demand(active_tab, container_id):
                     dcc.Dropdown(
                         id={'type': 'dynamic-filter-dropdown', 'index': indicador_id, 'filter_col': filter_col_code},
                         options=col_options,
-                        value='all',
+                        value=unique_codes[0] if unique_codes else None,
                         style={'marginBottom': '10px', 'width': '100%'}
                     )
                 ], md=md_width, xs=12))
@@ -1725,6 +1724,7 @@ def load_indicator_on_demand(active_tab, container_id):
                     if not df_variavel_loaded.empty:
                         df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
                         if not df_variavel_filtrado.empty:
+                            # Usar o primeiro valor disponível no dropdown
                             valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
                             variable_dropdown_div = [html.Div([
                                 html.Label("Selecione uma Variável:",
