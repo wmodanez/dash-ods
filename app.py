@@ -615,12 +615,17 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             if trace.name == 'Goiás':
                                 trace.line.color = '#229846'; trace.line.width = 6; trace.name = '<b>Goiás</b>'
                             elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
+                            elif trace.name == 'Distrito Federal': trace.line.color = '#636efa'
+                            elif trace.name == 'Mato Grosso': trace.line.color = '#ab63fa'
+                            elif trace.name == 'Mato Grosso do Sul': trace.line.color = '#ffa15a'
+                            elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
+                            elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
                     else:
                         fig_line.update_traces(customdata=df_grouped_line[['DESC_UND_MED']])
                     layout_updates_line = DEFAULT_LAYOUT.copy()
                     layout_updates_line.update({
-                        'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
-                        'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), title=None)
+                        'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
+                        'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None)
                     })
                     if 'CODG_ANO' in df_grouped_line.columns:
                         unique_years_line = sorted(df_grouped_line['CODG_ANO'].unique())
@@ -648,18 +653,88 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
                     und_med_bar = df_bar_data['DESC_UND_MED'].iloc[0] if not df_bar_data['DESC_UND_MED'].empty else ''
                     fig_bar = px.bar(df_bar_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED',
-                                     labels={'DESC_UND_FED': '', 'VLR_VAR': ''},
-                                     title=f'Valores para o ano {ano_default}')
+                                     labels={'DESC_UND_FED': '', 'VLR_VAR': ''})
+                    
+                    # Personaliza o hover de forma similar ao gráfico de linha
                     fig_bar.update_traces(
-                        hovertemplate=f"<b>%{{x}}</b><br>Valor: %{{y}}{' ' + und_med_bar if und_med_bar else ''}<extra></extra>",
-                        marker_line_color='rgb(8,48,107)', marker_line_width=1.5, opacity=0.8
+                        hovertemplate="<b>%{x}</b><br>Valor: %{y}<br>Unidade: %{customdata}<extra></extra>",
+                        customdata=df_bar_data['DESC_UND_MED'],
+                        marker_line_width=1.5
                     )
+                    
+                    for i, bar in enumerate(fig_bar.data):
+                        if bar.name == 'Goiás':
+                            bar.marker.color = '#229846'
+                            bar.name = '<b>Goiás</b>'
+                            bar.marker.line.color = '#0a6b28'  # Verde mais escuro para criar contraste
+                            bar.marker.line.width = 5  # Borda bem mais espessa
+                            bar.marker.opacity = 1.0  # Opacidade total
+                            # Destacar a barra com um contorno preto adicional
+                            fig_bar.add_shape(
+                                type="rect",
+                                xref="x", yref="y",
+                                x0=i-0.4, y0=0,
+                                x1=i+0.4, y1=bar.y[0],
+                                line=dict(color="#0a6b28", width=5),
+                                fillcolor="rgba(0,0,0,0)"
+                            )
+                        elif bar.name == 'Maranhão':
+                            bar.marker.color = '#D2B48C'
+                            bar.marker.opacity = 0.85  # Leve redução na opacidade para as outras barras
+                        elif bar.name == 'Distrito Federal':
+                            bar.marker.color = '#636efa'
+                            bar.marker.opacity = 0.85
+                        elif bar.name == 'Mato Grosso':
+                            bar.marker.color = '#ab63fa'
+                            bar.marker.opacity = 0.85
+                        elif bar.name == 'Mato Grosso do Sul':
+                            bar.marker.color = '#ffa15a'
+                            bar.marker.opacity = 0.85
+                        elif bar.name == 'Rondônia':
+                            bar.marker.color = '#19d3f3'
+                            bar.marker.opacity = 0.85
+                        elif bar.name == 'Tocantins':
+                            bar.marker.color = '#ff6692'
+                            bar.marker.opacity = 0.85
+                    
+                    # Usa o mesmo layout do gráfico de linha
                     layout_updates_bar = DEFAULT_LAYOUT.copy()
                     layout_updates_bar.update({
-                        'xaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
-                        'yaxis': dict(showgrid=False, zeroline=False, tickfont=dict(size=12, color='black'), title=None),
-                        'showlegend': False # Geralmente não precisa de legenda para barras por estado
+                        'xaxis': dict(
+                            showgrid=True,
+                            showline=True,  # Mostrar linha do eixo
+                            linewidth=1,  # Espessura da linha do eixo
+                            linecolor='black',  # Cor preta para linha do eixo
+                            tickfont=dict(size=12, color='black'), 
+                            tickangle=45, 
+                            title=None
+                        ),
+                        'yaxis': dict(
+                            showgrid=True,
+                            showline=True,  # Mostrar linha do eixo
+                            linewidth=1,  # Espessura da linha do eixo
+                            linecolor='black',  # Cor preta para linha do eixo
+                            tickfont=dict(size=12, color='black'), 
+                            title=None
+                        ),
+                        'showlegend': False,  # Remove a legenda
+                        'margin': dict(l=60, r=50, t=50, b=120),  # Margens aumentadas
+                        'plot_bgcolor': 'white',  # Fundo branco
+                        'paper_bgcolor': 'white'  # Fundo do papel também branco
                     })
+                    
+                    # Personaliza os textos do eixo X para destacar Goiás em negrito
+                    x_labels = df_bar_data['DESC_UND_FED'].tolist()
+                    x_ticktext = []
+                    for label in x_labels:
+                        if label == 'Goiás':
+                            x_ticktext.append(f"<b>{label}</b>")
+                        else:
+                            x_ticktext.append(f"{label}")
+                    
+                    layout_updates_bar['xaxis']['ticktext'] = x_ticktext
+                    layout_updates_bar['xaxis']['tickvals'] = list(range(len(x_labels)))
+                    
                     fig_bar.update_layout(layout_updates_bar)
                     main_fig = fig_bar # Atribui à figura principal
                 else:
