@@ -609,10 +609,25 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if grafico_linha_flag == 1:
             # Lógica para criar Gráfico de Linha (código existente movido para cá)
             if len(df_filtered) >= 1:
-                group_cols_line = ['CODG_ANO', 'DESC_UND_FED'] if 'DESC_UND_FED' in df_filtered.columns else ['CODG_ANO']
-                df_grouped_line = df_filtered.groupby(group_cols_line, as_index=False).agg(
-                    VLR_VAR=('VLR_VAR', 'first'), DESC_UND_MED=('DESC_UND_MED', 'first'), DESC_VAR=('DESC_VAR', 'first')
-                ).sort_values('CODG_ANO')
+                # Verifica se temos a coluna de UF para colorir as linhas por estado
+                if 'DESC_UND_FED' in df_filtered.columns:
+                    # Abordagem mais simples: usando o DataFrame original mas ordenando corretamente
+                    df_filtered['CODG_ANO'] = df_filtered['CODG_ANO'].astype(str)
+                    
+                    # Nova abordagem: vamos agrupar pelos campos necessários, mas sem aplicar agregação
+                    # Isso garantirá que temos entradas distintas para cada estado
+                    needed_cols = ['DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED', 'DESC_VAR']
+                    
+                    # Removemos qualquer duplicata nas colunas de agrupamento
+                    df_grouped_line = df_filtered[needed_cols].drop_duplicates(['DESC_UND_FED', 'CODG_ANO'])
+                    
+                    # Ordenamos para garantir que cada estado tenha seus pontos em ordem cronológica
+                    df_grouped_line = df_grouped_line.sort_values(['DESC_UND_FED', 'CODG_ANO'])
+                else:
+                    # Se não houver estados, apenas agrupa por ano
+                    needed_cols = ['CODG_ANO', 'VLR_VAR', 'DESC_UND_MED', 'DESC_VAR'] 
+                    df_grouped_line = df_filtered[needed_cols].drop_duplicates(['CODG_ANO'])
+                    df_grouped_line = df_grouped_line.sort_values('CODG_ANO')
 
                 if not df_grouped_line.empty:
                     config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
@@ -620,20 +635,41 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         config_line['color'] = 'DESC_UND_FED'
                         config_line['labels']['color'] = f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>"
                     fig_line = px.line(df_grouped_line, **config_line)
-                    fig_line.update_traces(
-                        line_shape='spline', mode='lines+markers',
-                        marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
-                        hovertemplate = (
-                            "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<extra></extra>"
-                        ) if 'DESC_UND_FED' in df_grouped_line.columns else (
-                            "Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<extra></extra>"
-                        )
-                    )
+                    
+                    # Ajuste para garantir que cada linha (estado) tenha o hover correto
                     if 'DESC_UND_FED' in df_grouped_line.columns:
-                        fig_line.update_traces(customdata=df_grouped_line[['DESC_UND_FED', 'DESC_UND_MED']])
-                        for trace in fig_line.data:
+                        # Atualiza o hover template para cada linha
+                        for i, trace in enumerate(fig_line.data):
+                            # Obtém os dados específicos para este traço/estado
+                            state_name = trace.name
+                            state_data = df_grouped_line[df_grouped_line['DESC_UND_FED'] == state_name]
+                            
+                            # Definir dados personalizados para cada ponto do traço
+                            custom_data = []
+                            for idx in range(len(trace.x)):
+                                ano = trace.x[idx]
+                                # Encontrar a linha para este estado e ano
+                                row = state_data[state_data['CODG_ANO'] == ano]
+                                if not row.empty:
+                                    unidade = row['DESC_UND_MED'].iloc[0]
+                                    custom_data.append([state_name, unidade])
+                                else:
+                                    custom_data.append([state_name, "N/D"])
+                            
+                            # Atualiza o trace com os dados personalizados e hover correto
+                            trace.customdata = custom_data
+                            trace.hovertemplate = "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<extra></extra>"
+                            
+                            # Configuração do formato da linha e marcadores
+                            trace.line.shape = 'spline'
+                            trace.mode = 'lines+markers'
+                            trace.marker = dict(size=14, symbol='circle', line=dict(width=2, color='white'))
+                            
+                            # Formatação especial para Goiás
                             if trace.name == 'Goiás':
-                                trace.line.color = '#229846'; trace.line.width = 6; trace.name = '<b>Goiás</b>'
+                                trace.line.color = '#229846'
+                                trace.line.width = 6
+                                trace.name = '<b>Goiás</b>'
                             elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
                             elif trace.name == 'Distrito Federal': trace.line.color = '#636efa'
                             elif trace.name == 'Mato Grosso': trace.line.color = '#ab63fa'
@@ -641,7 +677,13 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
                             elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
                     else:
-                        fig_line.update_traces(customdata=df_grouped_line[['DESC_UND_MED']])
+                        # Se não tiver estados, mantém o comportamento atual
+                        fig_line.update_traces(
+                            line_shape='spline', mode='lines+markers',
+                            marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
+                            hovertemplate="Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<extra></extra>",
+                            customdata=df_grouped_line[['DESC_UND_MED']]
+                        )
                     layout_updates_line = DEFAULT_LAYOUT.copy()
                     layout_updates_line.update({
                         'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
