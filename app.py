@@ -586,294 +586,168 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         }
 
         # --- Criação das Figuras dos Gráficos ---
-        main_fig = go.Figure() # Figura principal (pode ser linha ou barra)
-        fig_map = go.Figure()
+        main_fig = go.Figure() # Inicializa a figura principal
+        fig_map = go.Figure()  # Inicializa a figura do mapa
+
+        # Obter anos únicos e ano padrão
         anos_unicos = sorted(df_filtered['CODG_ANO'].unique())
+        num_anos = len(anos_unicos)
         ano_default = anos_unicos[-1] if anos_unicos else None
 
-        # Verifica qual tipo de gráfico principal deve ser criado (Linha ou Barras)
-        grafico_linha_flag = 1 # Padrão é gráfico de linha
+        # Lê as flags do indicador
+        grafico_linha_flag = 1 # Padrão
+        serie_temporal_flag = 1 # Padrão
         if indicador_id and not df_indicadores.empty:
             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
-            if not indicador_info.empty and 'GRAFICO_LINHA' in indicador_info.columns:
-                try:
-                    # Tenta converter para numérico, tratando NaN ou erros
-                    grafico_linha_flag = pd.to_numeric(indicador_info['GRAFICO_LINHA'].iloc[0], errors='coerce')
-                    if pd.isna(grafico_linha_flag):
-                        grafico_linha_flag = 1 # Volta para o padrão em caso de NaN
+            if not indicador_info.empty:
+                if 'GRAFICO_LINHA' in indicador_info.columns:
+                    try:
+                        grafico_linha_val = pd.to_numeric(indicador_info['GRAFICO_LINHA'].iloc[0], errors='coerce')
+                        if not pd.isna(grafico_linha_val): grafico_linha_flag = int(grafico_linha_val)
+                    except (ValueError, TypeError): pass # Mantém padrão
+                if 'SERIE_TEMPORAL' in indicador_info.columns:
+                    try:
+                        serie_temporal_val = pd.to_numeric(indicador_info['SERIE_TEMPORAL'].iloc[0], errors='coerce')
+                        if not pd.isna(serie_temporal_val): serie_temporal_flag = int(serie_temporal_val)
+                    except (ValueError, TypeError): pass # Mantém padrão
+
+        # Define o número mínimo de anos para gráficos temporais
+        min_years_for_temporal = 5
+
+        # --- Criação do Gráfico Principal baseado na nova lógica ---
+        if serie_temporal_flag == 1 and num_anos >= min_years_for_temporal:
+            if grafico_linha_flag == 1:
+                # --- Lógica do Gráfico de Linha ---
+                if len(df_filtered) >= 1:
+                    df_line_data = df_filtered.sort_values(['DESC_UND_FED', 'CODG_ANO']) if 'DESC_UND_FED' in df_filtered.columns else df_filtered.sort_values('CODG_ANO')
+                    if not df_line_data.empty:
+                        config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
+                        if 'DESC_UND_FED' in df_line_data.columns:
+                            config_line['color'] = 'DESC_UND_FED'
+                            config_line['labels']['color'] = f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>"
+                        config_line.pop('hover_data', None)
+                        fig_line = px.line(df_line_data, **config_line)
+                        if 'DESC_UND_FED' in df_line_data.columns:
+                            dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_line_data.columns]
+                            custom_data_cols = ['DESC_UND_FED', 'DESC_UND_MED', 'DESC_VAR'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
+                            base_hovertemplate = "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<br>Variável: %{customdata[2]}"
+                            dynamic_hover_parts = []
+                            for i, col_code in enumerate(dynamic_filter_cols_present):
+                                 desc_col_name = 'DESC_' + col_code[5:]
+                                 readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
+                                 dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{3+i}]}}")
+                            final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
+                            fig_line.update_traces(line_shape='linear', mode='lines+markers', marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')), hovertemplate=final_hovertemplate, customdata=df_line_data[custom_data_cols])
+                            for trace in fig_line.data:
+                                 if trace.name == 'Goiás': trace.line.color = '#229846'; trace.line.width = 6; trace.name = '<b>Goiás</b>'
+                                 elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
+                                 elif trace.name == 'Distrito Federal': trace.line.color = '#636efa'
+                                 elif trace.name == 'Mato Grosso': trace.line.color = '#ab63fa'
+                                 elif trace.name == 'Mato Grosso do Sul': trace.line.color = '#ffa15a'
+                                 elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
+                                 elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
+                        else: # Hover para gráfico sem UF
+                            custom_data_cols = ['DESC_UND_MED', 'DESC_VAR']
+                            base_hovertemplate = "Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<br>Variável: %{customdata[1]}"
+                            final_hovertemplate = base_hovertemplate + "<extra></extra>"
+                            fig_line.update_traces(line_shape='linear', mode='lines+markers', marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')), hovertemplate=final_hovertemplate, customdata=df_line_data[custom_data_cols])
+                        layout_updates_line = DEFAULT_LAYOUT.copy()
+                        layout_updates_line.update({'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45), 'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None)})
+                        if 'CODG_ANO' in df_line_data.columns:
+                            unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
+                            layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
+                            layout_updates_line['xaxis']['tickvals'] = unique_years_line
+                        fig_line.update_layout(layout_updates_line)
+                        main_fig = fig_line
                     else:
-                        grafico_linha_flag = int(grafico_linha_flag)
-                except (ValueError, TypeError):
-                    grafico_linha_flag = 1 # Volta para o padrão em caso de erro
-
-        # Verifica se deve usar a série temporal ou não
-        serie_temporal_flag = 1  # Padrão é série temporal (para compatibilidade)
-        if indicador_id and not df_indicadores.empty:
-            indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
-            if not indicador_info.empty and 'SERIE_TEMPORAL' in indicador_info.columns:
-                try:
-                    # Tenta converter para numérico, tratando NaN ou erros
-                    serie_temporal_flag = pd.to_numeric(indicador_info['SERIE_TEMPORAL'].iloc[0], errors='coerce')
-                    if pd.isna(serie_temporal_flag):
-                        serie_temporal_flag = 1  # Volta para o padrão em caso de NaN
-                    else:
-                        serie_temporal_flag = int(serie_temporal_flag)
-                except (ValueError, TypeError):
-                    serie_temporal_flag = 1  # Volta para o padrão em caso de erro
-        
-        # Usa a série temporal em conjunto com o tipo de gráfico para definir o gráfico principal
-        min_years_for_line = 5  # Mínimo de anos para exibir gráfico de linha
-        if serie_temporal_flag == 0 or len(anos_unicos) < min_years_for_line:
-            grafico_linha_flag = 0  # Força gráfico de barras se tiver poucos anos ou não for série temporal
-
-        # --- Criação do Gráfico Principal (Linha ou Barras) ---
-        if grafico_linha_flag == 1:
-            # Lógica para criar Gráfico de Linha
-            if len(df_filtered) >= 1:
-                # Usar diretamente df_filtered, garantindo a ordenação por ano para a linha
-                df_line_data = df_filtered.sort_values(['DESC_UND_FED', 'CODG_ANO']) if 'DESC_UND_FED' in df_filtered.columns else df_filtered.sort_values('CODG_ANO')
-
-                if not df_line_data.empty:
-                    config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
-                    if 'DESC_UND_FED' in df_line_data.columns:
-                        config_line['color'] = 'DESC_UND_FED'
-                        config_line['labels']['color'] = f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>"
-                        # hover_data será definido no update_traces via customdata
-                    # else: # Sem UF
-                         # hover_data não é necessário aqui
-
-                    # Remover hover_data da configuração inicial do px.line
-                    config_line.pop('hover_data', None)
-                    fig_line = px.line(df_line_data, **config_line)
-
-                    # Ajuste do hover template e customdata
-                    if 'DESC_UND_FED' in df_line_data.columns:
-                        # Define as colunas para customdata
-                        dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_line_data.columns]
+                        return html.Div([dbc.Alert("Dados insuficientes para o gráfico de linha.", color="info", className="textCenter p-3")])
+                else:
+                     return html.Div([dbc.Alert("Dados insuficientes para o gráfico de linha.", color="info", className="textCenter p-3")])
+            else: # grafico_linha_flag == 0
+                # --- Lógica do Gráfico de Barras AGRUPADO POR ANO ---
+                if 'DESC_UND_FED' in df_filtered.columns and 'CODG_ANO' in df_filtered.columns:
+                    df_bar_grouped_data = df_filtered.sort_values(['CODG_ANO', 'DESC_UND_FED'])
+                    if not df_bar_grouped_data.empty:
+                        dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_bar_grouped_data.columns]
                         custom_data_cols = ['DESC_UND_FED', 'DESC_UND_MED', 'DESC_VAR'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
-
-                        # Constrói o template usando customdata
+                        fig_bar_grouped = px.bar(df_bar_grouped_data, x='CODG_ANO', y='VLR_VAR', color='DESC_UND_FED', barmode='group', labels={'CODG_ANO': '', 'VLR_VAR': ''})
                         base_hovertemplate = "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<br>Variável: %{customdata[2]}"
                         dynamic_hover_parts = []
                         for i, col_code in enumerate(dynamic_filter_cols_present):
-                             desc_col_name = 'DESC_' + col_code[5:]
-                             readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
-                             # Índice no customdata começa em 3
-                             dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{3+i}]}}")
-
+                            desc_col_name = 'DESC_' + col_code[5:]
+                            readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
+                            dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{3+i}]}}")
                         final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
+                        fig_bar_grouped.update_traces(hovertemplate=final_hovertemplate, customdata=df_bar_grouped_data[custom_data_cols], marker_line_width=1.5)
+                        for trace in fig_bar_grouped.data:
+                            if trace.name == 'Goiás': trace.marker.color = '#229846'; trace.name = '<b>Goiás</b>'
+                            elif trace.name == 'Maranhão': trace.marker.color = '#D2B48C'
+                            elif trace.name == 'Distrito Federal': trace.marker.color = '#636efa'
+                            elif trace.name == 'Mato Grosso': trace.marker.color = '#ab63fa'
+                            elif trace.name == 'Mato Grosso do Sul': trace.marker.color = '#ffa15a'
+                            elif trace.name == 'Rondônia': trace.marker.color = '#19d3f3'
+                            elif trace.name == 'Tocantins': trace.marker.color = '#ff6692'
+                        layout_updates_bar_grouped = DEFAULT_LAYOUT.copy()
+                        layout_updates_bar_grouped.update({'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None), 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None), 'legend_title_text': f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>", 'barmode': 'group'})
+                        unique_years_bar = sorted(df_bar_grouped_data['CODG_ANO'].unique())
+                        layout_updates_bar_grouped['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar]
+                        layout_updates_bar_grouped['xaxis']['tickvals'] = unique_years_bar
+                        fig_bar_grouped.update_layout(layout_updates_bar_grouped)
+                        main_fig = fig_bar_grouped
+                    else:
+                        return dbc.Alert("Não há dados disponíveis para gerar o gráfico de barras agrupado por ano.", color="warning")
+                else:
+                    missing_info = []
+                    if 'DESC_UND_FED' not in df_filtered.columns: missing_info.append("'Unidade Federativa (DESC_UND_FED)'")
+                    if 'CODG_ANO' not in df_filtered.columns: missing_info.append("'Ano (CODG_ANO)'")
+                    return dbc.Alert(f"Não é possível gerar o gráfico de barras agrupado. Informações ausentes: {', '.join(missing_info)}.", color="warning")
 
-                        fig_line.update_traces(
-                            line_shape='linear',
-                            mode='lines+markers',
-                            marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
-                            hovertemplate=final_hovertemplate,
-                            customdata=df_line_data[custom_data_cols] # Passa os dados corretos para customdata
-                        )
-
-                        # Formatação especial por estado continua, mas aplicada a todos os traços
-                        for trace in fig_line.data:
-                             if trace.name == 'Goiás':
-                                 trace.line.color = '#229846'
-                                 trace.line.width = 6
-                                 trace.name = '<b>Goiás</b>'
-                             elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
-                             elif trace.name == 'Distrito Federal': trace.line.color = '#636efa'
-                             elif trace.name == 'Mato Grosso': trace.line.color = '#ab63fa'
-                             elif trace.name == 'Mato Grosso do Sul': trace.line.color = '#ffa15a'
-                             elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
-                             elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
-
-                    else: # Hover para gráfico sem UF
-                        # Define as colunas para customdata (sem UF)
-                        custom_data_cols = ['DESC_UND_MED', 'DESC_VAR']
-                        base_hovertemplate = "Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<br>Variável: %{customdata[1]}"
-                        final_hovertemplate = base_hovertemplate + "<extra></extra>"
-                        fig_line.update_traces(
-                            line_shape='linear',
-                            mode='lines+markers',
-                            marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
-                            hovertemplate=final_hovertemplate,
-                            customdata=df_line_data[custom_data_cols] # Passa os dados corretos para customdata
-                        )
-
-                    layout_updates_line = DEFAULT_LAYOUT.copy()
-                    layout_updates_line.update({
-                        'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
-                        'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None)
-                    })
-                    if 'CODG_ANO' in df_line_data.columns:
-                        unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
-                        layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
-                        layout_updates_line['xaxis']['tickvals'] = unique_years_line
-                    fig_line.update_layout(layout_updates_line)
-                    main_fig = fig_line # Atribui à figura principal
-            else:
-                # Se não houver dados suficientes para o gráfico de linha, retorna alerta + tabela
-                return html.Div([
-                    dbc.Alert("Dados insuficientes para o gráfico de linha. Mostrando tabela.", color="info", className="textCenter p-3"),
-                    dag.AgGrid(
-                        rowData=df_original_for_table.to_dict('records'), columnDefs=columnDefs, defaultColDef=defaultColDef,
-                        dashGridOptions={ "pagination": True, "paginationPageSize": 10, "domLayout": "autoHeight" },
-                        style={"width": "100%"}
-                    )
-                ])
-        elif grafico_linha_flag == 0:
-            # Lógica para criar Gráfico de Barras
+        else: # serie_temporal_flag == 0 OR num_anos < min_years_for_temporal
+            # --- Lógica do Gráfico de Barras SIMPLES (Último Ano) ---
             if 'DESC_UND_FED' in df_filtered.columns and ano_default:
-                # Usa diretamente os dados filtrados para o ano padrão, sem agrupar
-                df_bar_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
-
-                if not df_bar_data.empty:
-                    # Ordena por valor para melhor visualização (opcional, mas pode fazer sentido)
-                    # ATENÇÃO: Sem agregação, a ordenação pode não ser tão útil se houver múltiplas barras por UF
-                    df_bar_data = df_bar_data.sort_values('VLR_VAR', ascending=False)
-
-                    # Prepara colunas para o hover
-                    dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_bar_data.columns]
-                    hover_data_cols = ['DESC_UND_MED', 'DESC_VAR'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
-                    
-                    # Cria o gráfico de barras - X ainda é UF, mas pode haver múltiplas barras por UF
-                    fig_bar = px.bar(df_bar_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED',
-                                     labels={'DESC_UND_FED': '', 'VLR_VAR': ''},
-                                     hover_data=hover_data_cols) # Adiciona colunas de filtro ao hover
-
-                    # Personaliza o hover para incluir as colunas dinâmicas
-                    base_hovertemplate = "<b>%{x}</b><br>Valor: %{y}<br>Unidade: %{customdata[0]}<br>Variável: %{customdata[1]}"
+                df_bar_simple_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
+                if not df_bar_simple_data.empty:
+                    df_bar_simple_data = df_bar_simple_data.sort_values('VLR_VAR', ascending=False)
+                    dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_bar_simple_data.columns]
+                    custom_data_cols = ['DESC_UND_FED', 'DESC_UND_MED', 'DESC_VAR'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
+                    fig_bar_simple = px.bar(df_bar_simple_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED', labels={'DESC_UND_FED': '', 'VLR_VAR': ''})
+                    base_hovertemplate = "<b>%{x}</b><br>Valor: %{y}<br>Unidade: %{customdata[1]}<br>Variável: %{customdata[2]}"
                     dynamic_hover_parts = []
                     for i, col_code in enumerate(dynamic_filter_cols_present):
                         desc_col_name = 'DESC_' + col_code[5:]
                         readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
-                        dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{2+i}]}}") # Índice começa em 2
-                    
+                        dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{3+i}]}}")
                     final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
+                    fig_bar_simple.update_traces(hovertemplate=final_hovertemplate, customdata=df_bar_simple_data[custom_data_cols], marker_line_width=1.5)
+                    for i, bar in enumerate(fig_bar_simple.data):
+                        trace_name = bar.name
+                        if trace_name == 'Goiás': bar.marker.color = '#229846'; bar.name = '<b>Goiás</b>'; bar.marker.line.color = '#0a6b28'; bar.marker.line.width = 2; bar.marker.opacity = 1.0
+                        elif trace_name == 'Maranhão': bar.marker.color = '#D2B48C'; bar.marker.opacity = 0.85
+                        elif trace_name == 'Distrito Federal': bar.marker.color = '#636efa'; bar.marker.opacity = 0.85
+                        elif trace_name == 'Mato Grosso': bar.marker.color = '#ab63fa'; bar.marker.opacity = 0.85
+                        elif trace_name == 'Mato Grosso do Sul': bar.marker.color = '#ffa15a'; bar.marker.opacity = 0.85
+                        elif trace_name == 'Rondônia': bar.marker.color = '#19d3f3'; bar.marker.opacity = 0.85
+                        elif trace_name == 'Tocantins': bar.marker.color = '#ff6692'; bar.marker.opacity = 0.85
+                    layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
+                    layout_updates_bar_simple.update({'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None), 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None), 'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)})
+                    x_labels = df_bar_simple_data['DESC_UND_FED'].tolist()
+                    x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in x_labels]
+                    layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext
+                    layout_updates_bar_simple['xaxis']['tickvals'] = x_labels
+                    # REMOVIDO: Ajuste do eixo Y para percentuais baseado na lista
+                    # if (indicador_id and any(ind_id in indicador_id for ind_id in constantes...)) ...
 
-                    fig_bar.update_traces(
-                        hovertemplate=final_hovertemplate,
-                        customdata=df_bar_data[hover_data_cols], # Passa os dados corretos para customdata
-                        marker_line_width=1.5
-                    )
-
-                    und_med_bar = df_bar_data['DESC_UND_MED'].iloc[0] if not df_bar_data['DESC_UND_MED'].empty else ''
-                    fig_bar = px.bar(df_bar_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED',
-                                     labels={'DESC_UND_FED': '', 'VLR_VAR': ''})
-                    
-                    # Personaliza o hover de forma similar ao gráfico de linha
-                    fig_bar.update_traces(
-                        hovertemplate="<b>%{x}</b><br>Valor: %{y}<br>Unidade: %{customdata}<extra></extra>",
-                        customdata=df_bar_data['DESC_UND_MED'],
-                        marker_line_width=1.5
-                    )
-                    
-                    for i, bar in enumerate(fig_bar.data):
-                        if bar.name == 'Goiás':
-                            bar.marker.color = '#229846'
-                            bar.name = '<b>Goiás</b>'
-                            bar.marker.line.color = '#0a6b28'  # Verde mais escuro para criar contraste
-                            bar.marker.line.width = 5  # Borda bem mais espessa
-                            bar.marker.opacity = 1.0  # Opacidade total
-                            # Destacar a barra com um contorno preto adicional
-                            fig_bar.add_shape(
-                                type="rect",
-                                xref="x", yref="y",
-                                x0=i-0.4, y0=0,
-                                x1=i+0.4, y1=bar.y[0],
-                                line=dict(color="#0a6b28", width=5),
-                                fillcolor="rgba(0,0,0,0)"
-                            )
-                        elif bar.name == 'Maranhão':
-                            bar.marker.color = '#D2B48C'
-                            bar.marker.opacity = 0.85  # Leve redução na opacidade para as outras barras
-                        elif bar.name == 'Distrito Federal':
-                            bar.marker.color = '#636efa'
-                            bar.marker.opacity = 0.85
-                        elif bar.name == 'Mato Grosso':
-                            bar.marker.color = '#ab63fa'
-                            bar.marker.opacity = 0.85
-                        elif bar.name == 'Mato Grosso do Sul':
-                            bar.marker.color = '#ffa15a'
-                            bar.marker.opacity = 0.85
-                        elif bar.name == 'Rondônia':
-                            bar.marker.color = '#19d3f3'
-                            bar.marker.opacity = 0.85
-                        elif bar.name == 'Tocantins':
-                            bar.marker.color = '#ff6692'
-                            bar.marker.opacity = 0.85
-                    
-                    # Usa o mesmo layout do gráfico de linha
-                    layout_updates_bar = DEFAULT_LAYOUT.copy()
-                    layout_updates_bar.update({
-                        'xaxis': dict(
-                            showgrid=True,
-                            showline=True,  # Mostrar linha do eixo
-                            linewidth=1,  # Espessura da linha do eixo
-                            linecolor='black',  # Cor preta para linha do eixo
-                            tickfont=dict(size=12, color='black'), 
-                            tickangle=45, 
-                            title=None
-                        ),
-                        'yaxis': dict(
-                            showgrid=True,
-                            showline=True,  # Mostrar linha do eixo
-                            linewidth=1,  # Espessura da linha do eixo
-                            linecolor='black',  # Cor preta para linha do eixo
-                            tickfont=dict(size=12, color='black'), 
-                            title=None,
-                            # Estabelece limites para o eixo Y para melhor visualização
-                            range=[0, max(df_bar_data['VLR_VAR']) * 1.1]  # 10% acima do valor máximo
-                        ),
-                        'showlegend': False,  # Remove a legenda
-                        'margin': dict(l=60, r=50, t=50, b=120),  # Margens aumentadas
-                        'plot_bgcolor': 'white',  # Fundo branco
-                        'paper_bgcolor': 'white'  # Fundo do papel também branco
-                    })
-                    
-                    # Ajuste especial para o indicador 1.5.4 - define o limite máximo para 100
-                    # Lista de indicadores conhecidos que devem ter o eixo Y de 0-100%
-                    indicadores_percentuais = [
-                        '1.5.4', '1.5.3', '1.a.1', '1.a.2', '3.7.2', 
-                        '5.5.1', '6.1.1', '7.1.1', '9.c.1'
-                    ]
-                    
-                    # Verifica se é um dos indicadores conhecidos ou se a unidade de medida indica porcentagem
-                    # Isso permite uma melhor comparação visual entre diferentes UFs quando os dados são porcentagens
-                    if (indicador_id and any(ind_id in indicador_id for ind_id in indicadores_percentuais)) or \
-                       (not df_bar_data['DESC_UND_MED'].empty and 
-                        any(unidade in str(df_bar_data['DESC_UND_MED'].iloc[0]).lower() 
-                            for unidade in ['porcentagem', '%', 'percentual', 'proporção'])):
-                        # Define o limite do eixo Y de 0-100 para dados percentuais
-                        layout_updates_bar['yaxis']['range'] = [0, 100]
-                        # Adiciona marcações de grid a cada 25% para facilitar a leitura
-                        layout_updates_bar['yaxis']['dtick'] = 25
-                    
-                    # Personaliza os textos do eixo X para destacar Goiás em negrito
-                    x_labels = df_bar_data['DESC_UND_FED'].tolist()
-                    x_ticktext = []
-                    for label in x_labels:
-                        if label == 'Goiás':
-                            x_ticktext.append(f"<b>{label}</b>")
-                        else:
-                            x_ticktext.append(f"{label}")
-                    
-                    layout_updates_bar['xaxis']['ticktext'] = x_ticktext
-                    layout_updates_bar['xaxis']['tickvals'] = list(range(len(x_labels)))
-                    
-                    fig_bar.update_layout(layout_updates_bar)
-                    main_fig = fig_bar # Atribui à figura principal
+                    fig_bar_simple.update_layout(layout_updates_bar_simple)
+                    main_fig = fig_bar_simple
                 else:
-                    # Retorna alerta se não houver dados para o ano default do gráfico de barras
-                    return dbc.Alert(f"Não há dados disponíveis para o ano {ano_default} para gerar o gráfico de barras.", color="warning")
+                     return dbc.Alert(f"Não há dados disponíveis para o ano {ano_default} para gerar o gráfico de barras simples.", color="warning")
             else:
-                # Retorna alerta se a coluna UF ou ano default não estiverem disponíveis para o gráfico de barras
                 missing_info = []
                 if 'DESC_UND_FED' not in df_filtered.columns: missing_info.append("'Unidade Federativa (DESC_UND_FED)'")
                 if not ano_default: missing_info.append("'Ano padrão'")
-                return dbc.Alert(f"Não é possível gerar o gráfico de barras. Informações ausentes: {', '.join(missing_info)}.", color="warning")
-        else:
-            # Caso flag seja inválido (não deve ocorrer devido ao tratamento acima, mas por segurança)
-            return dbc.Alert("Configuração de tipo de gráfico inválida.", color="danger")
+                return dbc.Alert(f"Não é possível gerar o gráfico de barras simples. Informações ausentes: {', '.join(missing_info)}.", color="warning")
 
-        # Criação do Mapa (se houver UF e ano) - Lógica existente mantida
+        # Criação do Mapa (se houver UF e ano) - Lógica mantida
         if 'DESC_UND_FED' in df_filtered.columns and ano_default:
             df_map_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
             if not df_map_data.empty:
@@ -885,9 +759,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         'DESC_UND_MED': 'first',
                         'DESC_VAR': 'first'
                     })
-                    
+
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
                     und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
+                    # ATRIBUIÇÃO à fig_map (que já foi inicializada)
                     fig_map = px.choropleth(
                         df_map_data, geojson=geojson, locations='DESC_UND_FED', featureidkey='properties.name',
                         color='VLR_VAR', color_continuous_scale='Greens_r', scope="south america"
@@ -897,17 +772,17 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     fig_map.update_layout(margin=dict(r=0, l=0, t=0, b=0), coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
                 except Exception as map_err:
                      print(f"Erro ao gerar mapa: {map_err}")
-                     # Mantem fig_map vazio
+                     # fig_map continua sendo a figura vazia inicializada anteriormente
 
         # --- Monta o Layout da Visualização ---
         graph_layout = []
-
-        # Define o conteúdo do gráfico principal (linha OU barra) - Removido estilo de borda
         main_chart_content = dcc.Graph(id={'type': 'main-chart', 'index': indicador_id}, figure=main_fig)
-
-        # Monta o conteúdo da Card de visualização
         visualization_card_content = None
-        if 'DESC_UND_FED' in df_filtered.columns and fig_map.data: # Se tem mapa (independente do gráfico principal)
+
+        # Verifica se o mapa foi criado com sucesso (se tem dados)
+        map_created_successfully = bool(fig_map.data)
+
+        if 'DESC_UND_FED' in df_filtered.columns and map_created_successfully:
             map_content = html.Div([
                 html.Label("Ano (Mapa):", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}),
                 dcc.Dropdown(
@@ -918,25 +793,24 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     style={'width': '100%', 'marginBottom': '10px'}
                 ),
                 dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)
-            ]) # Removido estilo de borda
-
+            ])
             visualization_card_content = dbc.CardBody(
                 dbc.Row([
-                    dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0"), # Usa main_chart_content
+                    dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0"),
                     dbc.Col(map_content, md=5, xs=12)
                 ])
             )
         else: # Layout sem Mapa (sem dados de UF ou erro na criação do mapa)
             visualization_card_content = dbc.CardBody(
                 dbc.Row([
-                    dbc.Col(main_chart_content, width=12) # Usa main_chart_content
+                    dbc.Col(main_chart_content, width=12)
                 ])
             )
 
         # Adiciona a Card de Visualização ao layout principal
         if visualization_card_content:
             graph_layout.append(dbc.Row([
-                dbc.Col(dbc.Card(visualization_card_content, className="mb-4"), width=12) # Adiciona Card e margem inferior
+                dbc.Col(dbc.Card(visualization_card_content, className="mb-4"), width=12)
             ]))
 
         # Adiciona Tabela Detalhada sempre
