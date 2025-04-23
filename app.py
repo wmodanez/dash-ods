@@ -466,9 +466,13 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if selected_filters:
             for col_code, selected_value in selected_filters.items():
                 if selected_value is not None and col_code in df_filtered.columns:
-                    df_filtered[col_code] = df_filtered[col_code].astype(str).str.strip()
+                    # Convert selected value to string for comparison
                     selected_value_str = str(selected_value).strip()
-                    df_filtered = df_filtered[df_filtered[col_code] == selected_value_str]
+                    # Compare using string representation of the column, without changing its type
+                    # Convert column to string *before* filling NA and stripping
+                    df_filtered = df_filtered[
+                        df_filtered[col_code].astype(str).fillna('').str.strip() == selected_value_str
+                    ]
                     if df_filtered.empty:
                         filter_name = constants.COLUMN_NAMES.get(col_code, col_code)
                         return dbc.Alert(f"Nenhum dado encontrado para o filtro '{filter_name}' = '{selected_value_str}'.", color="warning")
@@ -517,24 +521,24 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         dynamic_filter_cols = identify_filter_columns(df) # Identifica filtros no DF ORIGINAL
         processed_desc_cols = set()
         for filter_col_code in dynamic_filter_cols:
-            desc_col_code = 'DESC_' + filter_col_code[5:]
-            if desc_col_code in processed_desc_cols:
-                continue
-            if desc_col_code not in df_filtered.columns:
-                if desc_col_code in df.columns and filter_col_code in df_filtered.columns and filter_col_code in df.columns:
-                    try:
-                        merge_data = df[[filter_col_code, desc_col_code]].drop_duplicates().copy()
-                        df_filtered[filter_col_code] = df_filtered[filter_col_code].astype(str)
-                        merge_data[filter_col_code] = merge_data[filter_col_code].astype(str)
-                        df_filtered = pd.merge(df_filtered, merge_data, on=filter_col_code, how='left')
-                        df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
-                    except Exception as merge_err:
-                        df_filtered[desc_col_code] = 'N/D'
-                else:
-                    df_filtered[desc_col_code] = 'N/D'
-            else:
-                df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
-            processed_desc_cols.add(desc_col_code)
+             desc_col_code = 'DESC_' + filter_col_code[5:]
+             if desc_col_code in processed_desc_cols:
+                 continue
+             if desc_col_code not in df_filtered.columns:
+                 if desc_col_code in df.columns and filter_col_code in df_filtered.columns and filter_col_code in df.columns:
+                     try:
+                         merge_data = df[[filter_col_code, desc_col_code]].drop_duplicates().copy()
+                         df_filtered[filter_col_code] = df_filtered[filter_col_code].astype(str)
+                         merge_data[filter_col_code] = merge_data[filter_col_code].astype(str)
+                         df_filtered = pd.merge(df_filtered, merge_data, on=filter_col_code, how='left')
+                         df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
+                     except Exception as merge_err:
+                         df_filtered[desc_col_code] = 'N/D'
+                 else:
+                     df_filtered[desc_col_code] = 'N/D'
+             else:
+                 df_filtered[desc_col_code] = df_filtered[desc_col_code].fillna('N/D')
+             processed_desc_cols.add(desc_col_code)
 
         # Ordena e limpa dados numéricos
         df_filtered['CODG_ANO'] = df_filtered['CODG_ANO'].astype(str)
@@ -624,107 +628,82 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
         # --- Criação do Gráfico Principal (Linha ou Barras) ---
         if grafico_linha_flag == 1:
-            # Lógica para criar Gráfico de Linha (código existente movido para cá)
+            # Lógica para criar Gráfico de Linha
             if len(df_filtered) >= 1:
-                # Verifica se temos a coluna de UF para colorir as linhas por estado
-                if 'DESC_UND_FED' in df_filtered.columns:
-                    # Abordagem mais simples: usando o DataFrame original mas ordenando corretamente
-                    df_filtered['CODG_ANO'] = df_filtered['CODG_ANO'].astype(str)
-                    
-                    # Nova abordagem: vamos agrupar pelos campos necessários, mas sem aplicar agregação
-                    # Isso garantirá que temos entradas distintas para cada estado
-                    needed_cols = ['DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED', 'DESC_VAR']
-                    
-                    # Determinamos a função de agregação com base no valor de PERMITE_SOMA
-                    agg_func = 'sum' if permite_soma == 1 else 'mean'
-                    
-                    # Agrupamos por UF e ANO, e aplicamos a função de agregação apropriada
-                    df_grouped_line = df_filtered.groupby(['DESC_UND_FED', 'CODG_ANO'], as_index=False).agg({
-                        'VLR_VAR': agg_func,
-                        'DESC_UND_MED': 'first',
-                        'DESC_VAR': 'first'
-                    })
-                    
-                    # Ordenamos para garantir que cada estado tenha seus pontos em ordem cronológica
-                    df_grouped_line = df_grouped_line.sort_values(['DESC_UND_FED', 'CODG_ANO'])
-                else:
-                    # Se não houver estados, apenas agrupa por ano
-                    needed_cols = ['CODG_ANO', 'VLR_VAR', 'DESC_UND_MED', 'DESC_VAR'] 
-                    
-                    # Determinamos a função de agregação com base no valor de PERMITE_SOMA
-                    agg_func = 'sum' if permite_soma == 1 else 'mean'
-                    
-                    # Agrupamos apenas por ANO e aplicamos a função de agregação apropriada
-                    df_grouped_line = df_filtered.groupby(['CODG_ANO'], as_index=False).agg({
-                        'VLR_VAR': agg_func,
-                        'DESC_UND_MED': 'first',
-                        'DESC_VAR': 'first'
-                    })
-                    
-                    df_grouped_line = df_grouped_line.sort_values('CODG_ANO')
+                # Usar diretamente df_filtered, garantindo a ordenação por ano para a linha
+                df_line_data = df_filtered.sort_values(['DESC_UND_FED', 'CODG_ANO']) if 'DESC_UND_FED' in df_filtered.columns else df_filtered.sort_values('CODG_ANO')
 
-                if not df_grouped_line.empty:
+                if not df_line_data.empty:
                     config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
-                    if 'DESC_UND_FED' in df_grouped_line.columns:
+                    if 'DESC_UND_FED' in df_line_data.columns:
                         config_line['color'] = 'DESC_UND_FED'
                         config_line['labels']['color'] = f"<b>{constants.COLUMN_NAMES.get('DESC_UND_FED', 'UF')}</b>"
-                    fig_line = px.line(df_grouped_line, **config_line)
-                    
-                    # Ajuste para garantir que cada linha (estado) tenha o hover correto
-                    if 'DESC_UND_FED' in df_grouped_line.columns:
-                        # Atualiza o hover template para cada linha
-                        for i, trace in enumerate(fig_line.data):
-                            # Obtém os dados específicos para este traço/estado
-                            state_name = trace.name
-                            state_data = df_grouped_line[df_grouped_line['DESC_UND_FED'] == state_name]
-                            
-                            # Definir dados personalizados para cada ponto do traço
-                            custom_data = []
-                            for idx in range(len(trace.x)):
-                                ano = trace.x[idx]
-                                # Encontrar a linha para este estado e ano
-                                row = state_data[state_data['CODG_ANO'] == ano]
-                                if not row.empty:
-                                    unidade = row['DESC_UND_MED'].iloc[0]
-                                    custom_data.append([state_name, unidade])
-                                else:
-                                    custom_data.append([state_name, "N/D"])
-                            
-                            # Atualiza o trace com os dados personalizados e hover correto
-                            trace.customdata = custom_data
-                            trace.hovertemplate = "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<extra></extra>"
-                            
-                            # Configuração do formato da linha e marcadores
-                            trace.line.shape = 'spline'
-                            trace.mode = 'lines+markers'
-                            trace.marker = dict(size=14, symbol='circle', line=dict(width=2, color='white'))
-                            
-                            # Formatação especial para Goiás
-                            if trace.name == 'Goiás':
-                                trace.line.color = '#229846'
-                                trace.line.width = 6
-                                trace.name = '<b>Goiás</b>'
-                            elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
-                            elif trace.name == 'Distrito Federal': trace.line.color = '#636efa'
-                            elif trace.name == 'Mato Grosso': trace.line.color = '#ab63fa'
-                            elif trace.name == 'Mato Grosso do Sul': trace.line.color = '#ffa15a'
-                            elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
-                            elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
-                    else:
-                        # Se não tiver estados, mantém o comportamento atual
+                        # hover_data será definido no update_traces via customdata
+                    # else: # Sem UF
+                         # hover_data não é necessário aqui
+
+                    # Remover hover_data da configuração inicial do px.line
+                    config_line.pop('hover_data', None)
+                    fig_line = px.line(df_line_data, **config_line)
+
+                    # Ajuste do hover template e customdata
+                    if 'DESC_UND_FED' in df_line_data.columns:
+                        # Define as colunas para customdata
+                        dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_line_data.columns]
+                        custom_data_cols = ['DESC_UND_FED', 'DESC_UND_MED', 'DESC_VAR'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
+
+                        # Constrói o template usando customdata
+                        base_hovertemplate = "<b>%{customdata[0]}</b><br>Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[1]}<br>Variável: %{customdata[2]}"
+                        dynamic_hover_parts = []
+                        for i, col_code in enumerate(dynamic_filter_cols_present):
+                             desc_col_name = 'DESC_' + col_code[5:]
+                             readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
+                             # Índice no customdata começa em 3
+                             dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{3+i}]}}")
+
+                        final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
+
                         fig_line.update_traces(
-                            line_shape='spline', mode='lines+markers',
+                            line_shape='linear',
+                            mode='lines+markers',
                             marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
-                            hovertemplate="Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<extra></extra>",
-                            customdata=df_grouped_line[['DESC_UND_MED']]
+                            hovertemplate=final_hovertemplate,
+                            customdata=df_line_data[custom_data_cols] # Passa os dados corretos para customdata
                         )
+
+                        # Formatação especial por estado continua, mas aplicada a todos os traços
+                        for trace in fig_line.data:
+                             if trace.name == 'Goiás':
+                                 trace.line.color = '#229846'
+                                 trace.line.width = 6
+                                 trace.name = '<b>Goiás</b>'
+                             elif trace.name == 'Maranhão': trace.line.color = '#D2B48C'
+                             elif trace.name == 'Distrito Federal': trace.line.color = '#636efa'
+                             elif trace.name == 'Mato Grosso': trace.line.color = '#ab63fa'
+                             elif trace.name == 'Mato Grosso do Sul': trace.line.color = '#ffa15a'
+                             elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
+                             elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
+
+                    else: # Hover para gráfico sem UF
+                        # Define as colunas para customdata (sem UF)
+                        custom_data_cols = ['DESC_UND_MED', 'DESC_VAR']
+                        base_hovertemplate = "Ano: %{x}<br>Valor: %{y}<br>Unidade: %{customdata[0]}<br>Variável: %{customdata[1]}"
+                        final_hovertemplate = base_hovertemplate + "<extra></extra>"
+                        fig_line.update_traces(
+                            line_shape='linear',
+                            mode='lines+markers',
+                            marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
+                            hovertemplate=final_hovertemplate,
+                            customdata=df_line_data[custom_data_cols] # Passa os dados corretos para customdata
+                        )
+
                     layout_updates_line = DEFAULT_LAYOUT.copy()
                     layout_updates_line.update({
                         'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
                         'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None)
                     })
-                    if 'CODG_ANO' in df_grouped_line.columns:
-                        unique_years_line = sorted(df_grouped_line['CODG_ANO'].unique())
+                    if 'CODG_ANO' in df_line_data.columns:
+                        unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
                         layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
                         layout_updates_line['xaxis']['tickvals'] = unique_years_line
                     fig_line.update_layout(layout_updates_line)
@@ -742,18 +721,38 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         elif grafico_linha_flag == 0:
             # Lógica para criar Gráfico de Barras
             if 'DESC_UND_FED' in df_filtered.columns and ano_default:
+                # Usa diretamente os dados filtrados para o ano padrão, sem agrupar
                 df_bar_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
+
                 if not df_bar_data.empty:
-                    # Aplica agregação com base no valor de PERMITE_SOMA
-                    agg_func = 'sum' if permite_soma == 1 else 'mean'
-                    df_bar_data = df_bar_data.groupby('DESC_UND_FED', as_index=False).agg({
-                        'VLR_VAR': agg_func,
-                        'DESC_UND_MED': 'first',
-                        'DESC_VAR': 'first'
-                    })
-                    
-                    # Ordena por valor para melhor visualização (opcional)
+                    # Ordena por valor para melhor visualização (opcional, mas pode fazer sentido)
+                    # ATENÇÃO: Sem agregação, a ordenação pode não ser tão útil se houver múltiplas barras por UF
                     df_bar_data = df_bar_data.sort_values('VLR_VAR', ascending=False)
+
+                    # Prepara colunas para o hover
+                    dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_bar_data.columns]
+                    hover_data_cols = ['DESC_UND_MED', 'DESC_VAR'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
+                    
+                    # Cria o gráfico de barras - X ainda é UF, mas pode haver múltiplas barras por UF
+                    fig_bar = px.bar(df_bar_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED',
+                                     labels={'DESC_UND_FED': '', 'VLR_VAR': ''},
+                                     hover_data=hover_data_cols) # Adiciona colunas de filtro ao hover
+
+                    # Personaliza o hover para incluir as colunas dinâmicas
+                    base_hovertemplate = "<b>%{x}</b><br>Valor: %{y}<br>Unidade: %{customdata[0]}<br>Variável: %{customdata[1]}"
+                    dynamic_hover_parts = []
+                    for i, col_code in enumerate(dynamic_filter_cols_present):
+                        desc_col_name = 'DESC_' + col_code[5:]
+                        readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
+                        dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{2+i}]}}") # Índice começa em 2
+                    
+                    final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
+
+                    fig_bar.update_traces(
+                        hovertemplate=final_hovertemplate,
+                        customdata=df_bar_data[hover_data_cols], # Passa os dados corretos para customdata
+                        marker_line_width=1.5
+                    )
 
                     und_med_bar = df_bar_data['DESC_UND_MED'].iloc[0] if not df_bar_data['DESC_UND_MED'].empty else ''
                     fig_bar = px.bar(df_bar_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED',
@@ -1149,9 +1148,10 @@ def update_card_content(*args):
                             try:
                                 # Identifica filtros dinâmicos
                                 filter_cols = identify_filter_columns(df_dados)
+                                initial_dynamic_filters = {} # Dicionário para guardar filtros iniciais
 
                                 # Prepara os filtros dinâmicos
-                                for idx_filter, filter_col_code in enumerate(filter_cols):
+                                for idx, filter_col_code in enumerate(filter_cols):
                                     desc_col_code = 'DESC_' + filter_col_code[5:]
                                     code_to_desc = {}
                                     if desc_col_code in df_dados.columns:
@@ -1164,13 +1164,18 @@ def update_card_content(*args):
                                     unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
                                     col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                     filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-                                    md_width = 7 if idx_filter % 2 == 0 else 5
+                                    md_width = 7 if idx % 2 == 0 else 5
+                                    # Define o valor inicial e armazena
+                                    initial_value = unique_codes[0] if unique_codes else None
+                                    if initial_value is not None:
+                                         initial_dynamic_filters[filter_col_code] = initial_value
+
                                     dynamic_filters_div.append(dbc.Col([
                                         html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
                                         dcc.Dropdown(
                                             id={'type': 'dynamic-filter-dropdown', 'index': indicador_id_atual, 'filter_col': filter_col_code},
                                             options=col_options,
-                                            value=unique_codes[0] if unique_codes else None,
+                                            value=initial_value, # Usa o valor inicial definido
                                             style={'marginBottom': '10px', 'width': '100%'}
                                         )
                                     ], md=md_width, xs=12))
@@ -1201,8 +1206,10 @@ def update_card_content(*args):
                                                     )
                                                 ])]
 
-                                # Cria a visualização inicial
-                                initial_visualization = create_visualization(df_dados, indicador_id_atual, valor_inicial_variavel, None)
+                                # Cria a visualização inicial PASSANDO OS FILTROS INICIAIS
+                                initial_visualization = create_visualization(
+                                    df_dados, indicador_id_atual, valor_inicial_variavel, initial_dynamic_filters
+                                )
                                 tab_content = [html.P(row_ind['DESC_INDICADOR'], className="textJustify p-3", style={'marginBottom': '10px'})]
                                 tab_content.extend(variable_dropdown_div)
                                 if dynamic_filters_div:
@@ -1226,9 +1233,13 @@ def update_card_content(*args):
                     # Adiciona Store para CADA aba (carregada ou não)
                     # Para a primeira aba, usa o valor_inicial_variavel encontrado
                     # Para as outras, o valor inicial da variável será None até serem carregadas
+                    # --- MODIFICADO: Inclui initial_dynamic_filters no Store ---
+                    initial_filters_for_store = {}
+                    if is_first_indicator:
+                         initial_filters_for_store = initial_dynamic_filters # Usa os filtros coletados
                     store_data = {
                         'selected_var': valor_inicial_variavel_primeira_aba if is_first_indicator else None,
-                        'selected_filters': {}
+                        'selected_filters': initial_filters_for_store # Usa o dict de filtros iniciais
                     }
                     tab_content.append(dcc.Store(id={'type': 'visualization-state-store', 'index': indicador_id_atual}, data=store_data))
 
@@ -1315,7 +1326,8 @@ def update_card_content(*args):
             if not indicadores_primeira_meta.empty:
                 # Variável para armazenar o valor inicial da variável (usado apenas para o primeiro indicador)
                 valor_inicial_variavel = None
-                
+                initial_dynamic_filters = {} # Dicionário para guardar filtros iniciais para clique em objetivo
+
                 # Filtra apenas indicadores que realmente possuem dados disponíveis
                 indicadores_com_dados = []
                 for _, row_ind in indicadores_primeira_meta.iterrows():
@@ -1325,12 +1337,12 @@ def update_card_content(*args):
                     arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
                     if os.path.exists(arquivo_parquet):
                         indicadores_com_dados.append(row_ind)
-                
+
                 # Se não houver indicadores com dados disponíveis, exibe mensagem
                 if not indicadores_com_dados:
                     return header, content, metas_nav_children, meta_description, [
                         html.H5("Indicadores", className="mt-4 mb-3"),
-                        dbc.Alert("Não há dados disponíveis para os indicadores desta meta.", color="warning", 
+                        dbc.Alert("Não há dados disponíveis para os indicadores desta meta.", color="warning",
                                  className="textCenter p-3 mt-3")
                     ]
 
@@ -1345,11 +1357,13 @@ def update_card_content(*args):
                         tab_content = []
                         dynamic_filters_div = []
                         valor_inicial_variavel = None
+                        initial_dynamic_filters = {} # Reseta para este indicador
 
                         if df_dados is not None and not df_dados.empty:
                             try:
                                 # Identifica filtros dinâmicos
                                 filter_cols = identify_filter_columns(df_dados)
+                                initial_dynamic_filters = {} # Dicionário para filtros iniciais
 
                                 # Prepara os filtros dinâmicos
                                 for idx, filter_col_code in enumerate(filter_cols):
@@ -1361,15 +1375,17 @@ def update_card_content(*args):
                                             code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
                                                                      index=mapping_df[filter_col_code].astype(str)).to_dict()
                                         except Exception as map_err:
-                                            print(f"Erro ao criar mapeamento para {filter_col_code} -> {desc_col_code}: {map_err}")
-
-                                    # Gera opções para o dropdown
+                                            print(f"Erro mapeamento {filter_col_code}: {map_err}")
                                     unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
                                     col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                     filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
 
                                     # Define larguras alternadas para os filtros
                                     md_width = 7 if idx % 2 == 0 else 5
+                                    # Define o valor inicial e armazena
+                                    initial_value = unique_codes[0] if unique_codes else None
+                                    if initial_value is not None:
+                                         initial_dynamic_filters[filter_col_code] = initial_value
 
                                     dynamic_filters_div.append(
                                         dbc.Col([
@@ -1377,7 +1393,7 @@ def update_card_content(*args):
                                             dcc.Dropdown(
                                                 id={'type': 'dynamic-filter-dropdown', 'index': row_ind['ID_INDICADOR'], 'filter_col': filter_col_code},
                                                 options=col_options,
-                                                value=unique_codes[0] if unique_codes else None,
+                                                value=initial_value, # Usa o valor inicial definido
                                                 style={'marginBottom': '10px', 'width': '100%'}
                                             )
                                         ], md=md_width, xs=12)
@@ -1408,8 +1424,10 @@ def update_card_content(*args):
                                                     )
                                                 ])]
 
-                                # Cria a visualização inicial para o primeiro indicador
-                                initial_visualization = create_visualization(df_dados, row_ind['ID_INDICADOR'], valor_inicial_variavel, None)
+                                # Cria a visualização inicial PASSANDO OS FILTROS INICIAIS
+                                initial_visualization = create_visualization(
+                                    df_dados, row_ind['ID_INDICADOR'], valor_inicial_variavel, initial_dynamic_filters
+                                )
                                 tab_content = [html.P(row_ind['DESC_INDICADOR'], className="textJustify p-3", style={'marginBottom': '10px'})]
                                 tab_content.extend(variable_dropdown_div)
                                 if dynamic_filters_div:
@@ -1435,7 +1453,8 @@ def update_card_content(*args):
 
                     # Adiciona Store para esta aba
                     tab_content.append(dcc.Store(id={'type': 'visualization-state-store', 'index': row_ind['ID_INDICADOR']},
-                                                data={'selected_var': valor_inicial_variavel if is_first_indicator else None, 'selected_filters': {}}))
+                                                data={'selected_var': valor_inicial_variavel if is_first_indicator else None,
+                                                      'selected_filters': initial_dynamic_filters})) # Usa o dict de filtros iniciais
 
                     # Adiciona a aba ao conjunto de abas
                     tabs_indicadores.append(dbc.Tab(tab_content,
@@ -1464,8 +1483,6 @@ def update_card_content(*args):
         traceback.print_exc()
         # Retorna um estado seguro em caso de erro inesperado
         return initial_header, initial_content, [], "Ocorreu um erro.", []
-
-# Callback para carregar os dados de cada indicador (REMOVIDO, pois update_visualization_from_store faz isso)
 
 # Callback para atualizar o mapa coroplético quando o ano é alterado
 @app.callback(
@@ -1835,6 +1852,7 @@ def load_indicator_on_demand(active_tab, container_id):
         try:
             # Identifica filtros dinâmicos
             filter_cols = identify_filter_columns(df_dados)
+            initial_dynamic_filters = {} # Dicionário para filtros iniciais
 
             # Prepara os filtros dinâmicos
             for idx, filter_col_code in enumerate(filter_cols):
@@ -1853,13 +1871,17 @@ def load_indicator_on_demand(active_tab, container_id):
 
                 # Define larguras alternadas para os filtros
                 md_width = 7 if idx % 2 == 0 else 5
+                # Define o valor inicial e armazena
+                initial_value = unique_codes[0] if unique_codes else None
+                if initial_value is not None:
+                     initial_dynamic_filters[filter_col_code] = initial_value
 
                 dynamic_filters_div.append(dbc.Col([
                     html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
                     dcc.Dropdown(
                         id={'type': 'dynamic-filter-dropdown', 'index': indicador_id, 'filter_col': filter_col_code},
                         options=col_options,
-                        value=unique_codes[0] if unique_codes else None,
+                        value=initial_value, # Usa o valor inicial definido
                         style={'marginBottom': '10px', 'width': '100%'}
                     )
                 ], md=md_width, xs=12))
@@ -1888,8 +1910,10 @@ def load_indicator_on_demand(active_tab, container_id):
                                 )
                             ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': indicador_id})]
 
-            # Cria a visualização inicial
-            initial_visualization = create_visualization(df_dados, indicador_id, valor_inicial_variavel, None)
+            # Cria a visualização inicial PASSANDO OS FILTROS INICIAIS
+            initial_visualization = create_visualization(
+                df_dados, indicador_id, valor_inicial_variavel, initial_dynamic_filters
+            )
             tab_content.extend(variable_dropdown_div)
             if dynamic_filters_div:
                 tab_content.append(dbc.Row(dynamic_filters_div))
