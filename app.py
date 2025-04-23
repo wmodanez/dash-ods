@@ -621,6 +621,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 if len(df_filtered) >= 1:
                     df_line_data = df_filtered.sort_values(['DESC_UND_FED', 'CODG_ANO']) if 'DESC_UND_FED' in df_filtered.columns else df_filtered.sort_values('CODG_ANO')
                     if not df_line_data.empty:
+                        # Formata valor para tooltip
+                        df_line_data['VLR_VAR_FORMATADO'] = df_line_data['VLR_VAR'].apply(lambda x: f"{x:_.0f}".replace('_', '.'))
                         config_line = {'x': 'CODG_ANO', 'y': 'VLR_VAR', 'labels': {'CODG_ANO': "", 'VLR_VAR': ""}}
                         if 'DESC_UND_FED' in df_line_data.columns:
                             config_line['color'] = 'DESC_UND_FED'
@@ -628,16 +630,16 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         config_line.pop('hover_data', None)
                         fig_line = px.line(df_line_data, **config_line)
                         if 'DESC_UND_FED' in df_line_data.columns:
-                            # Modificado: customdata agora só tem unidade (índice 0)
-                            custom_data_cols = ['DESC_UND_MED']
-                            # Modificado: Usa %{fullData.name} para estado, formata %{y}, ajusta índice customdata
-                            final_hovertemplate = "<b>%{fullData.name}</b><br>Ano: %{x}<br>Valor: %{y:.0f}<br>Unidade: %{customdata[0]}<extra></extra>"
+                            # Modificado: customdata inclui valor formatado (índice 2)
+                            custom_data_cols = ['DESC_UND_MED', 'VLR_VAR_FORMATADO']
+                            # Modificado: Usa %{fullData.name} para estado, pega valor formatado do customdata
+                            final_hovertemplate = "<b>%{fullData.name}</b><br>Ano: %{x}<br>Valor: %{customdata[1]}<br>Unidade: %{customdata[0]}<extra></extra>"
                             fig_line.update_traces(
                                 line_shape='linear',
                                 mode='lines+markers',
                                 marker=dict(size=14, symbol='circle', line=dict(width=2, color='white')),
                                 hovertemplate=final_hovertemplate,
-                                customdata=df_line_data[custom_data_cols] # Apenas unidade
+                                customdata=df_line_data[custom_data_cols]
                             )
                             for trace in fig_line.data:
                                 if trace.name == 'Goiás': trace.line.color = '#229846'; trace.line.width = 6; trace.name = '<b>Goiás</b>'
@@ -648,9 +650,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 elif trace.name == 'Rondônia': trace.line.color = '#19d3f3'
                                 elif trace.name == 'Tocantins': trace.line.color = '#ff6692'
                         else: # Hover para gráfico sem UF
-                            custom_data_cols = ['DESC_UND_MED']
-                            # Modificado: Formata %{y}
-                            final_hovertemplate = "Ano: %{x}<br>Valor: %{y:.0f}<br>Unidade: %{customdata[0]}<extra></extra>"
+                             # Modificado: customdata inclui valor formatado (índice 1)
+                            custom_data_cols = ['DESC_UND_MED', 'VLR_VAR_FORMATADO']
+                            # Modificado: Pega valor formatado do customdata
+                            final_hovertemplate = "Ano: %{x}<br>Valor: %{customdata[1]}<br>Unidade: %{customdata[0]}<extra></extra>"
                             fig_line.update_traces(
                                 line_shape='linear',
                                 mode='lines+markers',
@@ -659,8 +662,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 customdata=df_line_data[custom_data_cols]
                             )
                         layout_updates_line = DEFAULT_LAYOUT.copy()
-                        # Modificado: Usa tickformat '.0f'
-                        layout_updates_line.update({'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45), 'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, tickformat='.0f')})
+                        # Modificado: Usa tickformat 'd' e type 'linear'
+                        layout_updates_line.update({
+                            'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
+                            'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
+                        })
                         if 'CODG_ANO' in df_line_data.columns:
                             unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
                             layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
@@ -676,17 +682,19 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 if 'DESC_UND_FED' in df_filtered.columns and 'CODG_ANO' in df_filtered.columns:
                     df_bar_grouped_data = df_filtered.sort_values(['CODG_ANO', 'DESC_UND_FED'])
                     if not df_bar_grouped_data.empty:
+                        # Formata valor para tooltip
+                        df_bar_grouped_data['VLR_VAR_FORMATADO'] = df_bar_grouped_data['VLR_VAR'].apply(lambda x: f"{x:_.0f}".replace('_', '.'))
                         dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_bar_grouped_data.columns]
-                        # Modificado: customdata começa com unidade (índice 0)
-                        custom_data_cols = ['DESC_UND_MED'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
+                        # Modificado: customdata inclui valor formatado (índice 1)
+                        custom_data_cols = ['DESC_UND_MED', 'VLR_VAR_FORMATADO'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
                         fig_bar_grouped = px.bar(df_bar_grouped_data, x='CODG_ANO', y='VLR_VAR', color='DESC_UND_FED', barmode='group', labels={'CODG_ANO': '', 'VLR_VAR': ''})
-                        # Modificado: Usa %{fullData.name} para estado, formata %{y}, ajusta índices customdata
-                        base_hovertemplate = "<b>%{fullData.name}</b><br>Ano: %{x}<br>Valor: %{y:.0f}<br>Unidade: %{customdata[0]}"
+                        # Modificado: Pega valor formatado do customdata, ajusta índices
+                        base_hovertemplate = "<b>%{fullData.name}</b><br>Ano: %{x}<br>Valor: %{customdata[1]}<br>Unidade: %{customdata[0]}"
                         dynamic_hover_parts = []
                         for i, col_code in enumerate(dynamic_filter_cols_present):
                             desc_col_name = 'DESC_' + col_code[5:]
                             readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
-                            dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{1+i}]}}") # Índice começa em 1
+                            dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{2+i}]}}") # Índice começa em 2
                         final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
                         fig_bar_grouped.update_traces(hovertemplate=final_hovertemplate, customdata=df_bar_grouped_data[custom_data_cols], marker_line_width=1.5)
                         for trace in fig_bar_grouped.data:
@@ -698,8 +706,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             elif trace.name == 'Rondônia': trace.marker.color = '#19d3f3'
                             elif trace.name == 'Tocantins': trace.marker.color = '#ff6692'
                         layout_updates_bar_grouped = DEFAULT_LAYOUT.copy()
-                        # Modificado: Usa tickformat '.0f'
-                        layout_updates_bar_grouped.update({'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None), 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, tickformat='.0f'), 'barmode': 'group'})
+                        # Modificado: Usa tickformat 'd' e type 'linear'
+                        layout_updates_bar_grouped.update({
+                            'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                            'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
+                            'barmode': 'group'
+                        })
                         unique_years_bar = sorted(df_bar_grouped_data['CODG_ANO'].unique())
                         layout_updates_bar_grouped['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar]
                         layout_updates_bar_grouped['xaxis']['tickvals'] = unique_years_bar
@@ -717,17 +729,19 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             if 'DESC_UND_FED' in df_filtered.columns and ano_default:
                 df_bar_simple_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
                 if not df_bar_simple_data.empty:
-                    df_bar_simple_data = df_bar_simple_data.sort_values('VLR_VAR', ascending=False)
+                    # Formata valor para tooltip
+                    df_bar_simple_data['VLR_VAR_FORMATADO'] = df_bar_simple_data['VLR_VAR'].apply(lambda x: f"{x:_.0f}".replace('_', '.'))
                     dynamic_filter_cols_present = [col for col in dynamic_filter_cols if 'DESC_' + col[5:] in df_bar_simple_data.columns]
-                    custom_data_cols = ['DESC_UND_MED'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
+                    # Modificado: customdata inclui valor formatado (índice 1)
+                    custom_data_cols = ['DESC_UND_MED', 'VLR_VAR_FORMATADO'] + ['DESC_' + col[5:] for col in dynamic_filter_cols_present]
                     fig_bar_simple = px.bar(df_bar_simple_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED', labels={'DESC_UND_FED': '', 'VLR_VAR': ''})
-                     # Modificado: Formata %{y}, ajusta índices customdata
-                    base_hovertemplate = "<b>%{x}</b><br>Valor: %{y:.0f}<br>Unidade: %{customdata[0]}"
+                    # Modificado: Pega valor formatado do customdata, ajusta índices
+                    base_hovertemplate = "<b>%{x}</b><br>Valor: %{customdata[1]}<br>Unidade: %{customdata[0]}"
                     dynamic_hover_parts = []
                     for i, col_code in enumerate(dynamic_filter_cols_present):
                         desc_col_name = 'DESC_' + col_code[5:]
                         readable_name = constants.COLUMN_NAMES.get(col_code, col_code)
-                        dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{1+i}]}}") # Índice começa em 1
+                        dynamic_hover_parts.append(f"<br>{readable_name}: %{{customdata[{2+i}]}}") # Índice começa em 2
                     final_hovertemplate = base_hovertemplate + "".join(dynamic_hover_parts) + "<extra></extra>"
                     fig_bar_simple.update_traces(hovertemplate=final_hovertemplate, customdata=df_bar_simple_data[custom_data_cols], marker_line_width=1.5)
                     for i, bar in enumerate(fig_bar_simple.data):
@@ -740,8 +754,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         elif trace_name == 'Rondônia': bar.marker.color = '#19d3f3'; bar.marker.opacity = 0.85
                         elif trace_name == 'Tocantins': bar.marker.color = '#ff6692'; bar.marker.opacity = 0.85
                     layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
-                    # Modificado: Usa tickformat '.0f'
-                    layout_updates_bar_simple.update({'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None), 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, tickformat='.0f'), 'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)})
+                    # Modificado: Usa tickformat 'd' e type 'linear'
+                    layout_updates_bar_simple.update({
+                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
+                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
+                    })
                     x_labels = df_bar_simple_data['DESC_UND_FED'].tolist()
                     x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in x_labels]
                     layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext
