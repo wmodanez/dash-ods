@@ -346,7 +346,7 @@ def load_unidade_medida():
 
 @lru_cache(maxsize=1)
 def load_variavel():
-    cols = ['CODG_VAR', 'DESC_VAR']
+    cols = ['CODG_VAR', 'DESC_VAR', 'PERMITE_SOMA']
     try:
         try:
             df_var = pd.read_csv('db/variavel.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';')
@@ -354,13 +354,21 @@ def load_variavel():
             df_var = pd.read_csv('db/variavel.csv', low_memory=False, encoding='utf-8', dtype=str, sep=',')
         if len(df_var.columns) == 1 and ',' in df_var.columns[0]:
             df_var = pd.DataFrame([x.split(',') for x in df_var[df_var.columns[0]]])
-            if len(df_var.columns) >= 2:
-                df_var = df_var.iloc[:, [0, 1]]
+            if len(df_var.columns) >= 3:
+                df_var = df_var.iloc[:, [0, 1, 2]]
                 df_var.columns = cols
-        if not all(col in df_var.columns for col in cols):
+            elif len(df_var.columns) >= 2:
+                df_var = df_var.iloc[:, [0, 1]]
+                df_var.columns = cols[:2]
+                df_var['PERMITE_SOMA'] = '0'  # Valor padrão se não encontrar a coluna
+        if not all(col in df_var.columns for col in cols[:2]):
             return pd.DataFrame(columns=cols)
-        for col in cols:
+        if 'PERMITE_SOMA' not in df_var.columns:
+            df_var['PERMITE_SOMA'] = '0'  # Valor padrão se não encontrar a coluna
+        for col in cols[:2]:  # Apenas para CODG_VAR e DESC_VAR (strings)
             df_var[col] = df_var[col].str.strip().str.strip('"')
+        # Converte PERMITE_SOMA para inteiro
+        df_var['PERMITE_SOMA'] = pd.to_numeric(df_var['PERMITE_SOMA'], errors='coerce').fillna(0).astype(int)
         return df_var
     except Exception as e:
         return pd.DataFrame(columns=cols)
@@ -476,11 +484,20 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         elif 'DESC_UND_FED' not in df_filtered.columns:
              df_filtered['DESC_UND_FED'] = 'N/D'
 
-        # Descrição Variável
+        # Descrição Variável e obtenção do PERMITE_SOMA
         df_variavel_loaded = load_variavel()
+        permite_soma = 0  # Valor padrão: não permite soma
         if 'CODG_VAR' in df_filtered.columns and not df_variavel_loaded.empty:
             df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str)
             df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
+            
+            # Verificar o valor de PERMITE_SOMA para a variável selecionada
+            if selected_var:
+                selected_var_info = df_variavel_loaded[df_variavel_loaded['CODG_VAR'] == str(selected_var)]
+                if not selected_var_info.empty and 'PERMITE_SOMA' in selected_var_info.columns:
+                    permite_soma = selected_var_info['PERMITE_SOMA'].iloc[0]
+            
+            # Merge para obter as descrições das variáveis
             df_filtered = df_filtered.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
             df_filtered['DESC_VAR'] = df_filtered['DESC_VAR'].fillna('N/D')
         elif 'DESC_VAR' not in df_filtered.columns:
@@ -618,15 +635,32 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     # Isso garantirá que temos entradas distintas para cada estado
                     needed_cols = ['DESC_UND_FED', 'CODG_ANO', 'VLR_VAR', 'DESC_UND_MED', 'DESC_VAR']
                     
-                    # Removemos qualquer duplicata nas colunas de agrupamento
-                    df_grouped_line = df_filtered[needed_cols].drop_duplicates(['DESC_UND_FED', 'CODG_ANO'])
+                    # Determinamos a função de agregação com base no valor de PERMITE_SOMA
+                    agg_func = 'sum' if permite_soma == 1 else 'mean'
+                    
+                    # Agrupamos por UF e ANO, e aplicamos a função de agregação apropriada
+                    df_grouped_line = df_filtered.groupby(['DESC_UND_FED', 'CODG_ANO'], as_index=False).agg({
+                        'VLR_VAR': agg_func,
+                        'DESC_UND_MED': 'first',
+                        'DESC_VAR': 'first'
+                    })
                     
                     # Ordenamos para garantir que cada estado tenha seus pontos em ordem cronológica
                     df_grouped_line = df_grouped_line.sort_values(['DESC_UND_FED', 'CODG_ANO'])
                 else:
                     # Se não houver estados, apenas agrupa por ano
                     needed_cols = ['CODG_ANO', 'VLR_VAR', 'DESC_UND_MED', 'DESC_VAR'] 
-                    df_grouped_line = df_filtered[needed_cols].drop_duplicates(['CODG_ANO'])
+                    
+                    # Determinamos a função de agregação com base no valor de PERMITE_SOMA
+                    agg_func = 'sum' if permite_soma == 1 else 'mean'
+                    
+                    # Agrupamos apenas por ANO e aplicamos a função de agregação apropriada
+                    df_grouped_line = df_filtered.groupby(['CODG_ANO'], as_index=False).agg({
+                        'VLR_VAR': agg_func,
+                        'DESC_UND_MED': 'first',
+                        'DESC_VAR': 'first'
+                    })
+                    
                     df_grouped_line = df_grouped_line.sort_values('CODG_ANO')
 
                 if not df_grouped_line.empty:
@@ -710,6 +744,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             if 'DESC_UND_FED' in df_filtered.columns and ano_default:
                 df_bar_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
                 if not df_bar_data.empty:
+                    # Aplica agregação com base no valor de PERMITE_SOMA
+                    agg_func = 'sum' if permite_soma == 1 else 'mean'
+                    df_bar_data = df_bar_data.groupby('DESC_UND_FED', as_index=False).agg({
+                        'VLR_VAR': agg_func,
+                        'DESC_UND_MED': 'first',
+                        'DESC_VAR': 'first'
+                    })
+                    
                     # Ordena por valor para melhor visualização (opcional)
                     df_bar_data = df_bar_data.sort_values('VLR_VAR', ascending=False)
 
@@ -837,6 +879,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             df_map_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
             if not df_map_data.empty:
                 try:
+                    # Aplica agregação com base no valor de PERMITE_SOMA
+                    agg_func = 'sum' if permite_soma == 1 else 'mean'
+                    df_map_data = df_map_data.groupby('DESC_UND_FED', as_index=False).agg({
+                        'VLR_VAR': agg_func,
+                        'DESC_UND_MED': 'first',
+                        'DESC_VAR': 'first'
+                    })
+                    
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
                     und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
                     fig_map = px.choropleth(
@@ -1437,7 +1487,21 @@ def update_map(selected_years, store_data_list, current_figures):
     
     try:
         # Determinar qual entrada disparou o callback
-        triggered_prop_id = json.loads(triggered_id_str.split('.')[0])
+        triggered_prop_id = None
+        try:
+            # Tenta fazer o parse do JSON
+            triggered_prop_id = json.loads(triggered_id_str.split('.')[0])
+        except json.JSONDecodeError:
+            # Se falhar, usa abordagem alternativa mais segura
+            triggered_id = ctx.triggered_id
+            if triggered_id is not None:
+                if isinstance(triggered_id, dict):
+                    triggered_prop_id = triggered_id
+        
+        # Se ainda não conseguimos o ID, não podemos continuar
+        if triggered_prop_id is None:
+            print(f"Não foi possível determinar o ID do gatilho: {triggered_id_str}")
+            return output_list
         
         # Determine o índice do indicador que foi atualizado
         target_index = triggered_prop_id.get('index')
@@ -1489,6 +1553,15 @@ def update_map(selected_years, store_data_list, current_figures):
             print(f"update_map: Dados não encontrados para {indicador_id}, prevenindo update do mapa.")
             return output_list
             
+        # Determina se a variável permite soma
+        permite_soma = 0  # Valor padrão: não permite soma
+        if selected_var:
+            df_variavel_loaded = load_variavel()
+            if not df_variavel_loaded.empty:
+                selected_var_info = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str) == str(selected_var)]
+                if not selected_var_info.empty and 'PERMITE_SOMA' in selected_var_info.columns:
+                    permite_soma = selected_var_info['PERMITE_SOMA'].iloc[0]
+            
         # Filtra os dados com base na variável selecionada
         if 'CODG_VAR' in df_map.columns and selected_var:
             df_map['CODG_VAR'] = df_map['CODG_VAR'].astype(str).str.strip()
@@ -1514,6 +1587,15 @@ def update_map(selected_years, store_data_list, current_figures):
         if df_ano.empty:
             print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year}, prevenindo update.")
             return output_list
+            
+        # Aplica agregação com base no valor de PERMITE_SOMA, se necessário
+        if 'DESC_UND_FED' in df_ano.columns and len(df_ano) > len(df_ano['DESC_UND_FED'].unique()):
+            agg_func = 'sum' if permite_soma == 1 else 'mean'
+            df_ano = df_ano.groupby('DESC_UND_FED', as_index=False).agg({
+                'VLR_VAR': agg_func,
+                'DESC_UND_MED': 'first',
+                'DESC_VAR': 'first'
+            })
 
         # Carrega o GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
