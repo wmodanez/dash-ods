@@ -1420,10 +1420,11 @@ def update_card_content(*args):
 # Callback para atualizar o mapa coroplético quando o ano é alterado
 @app.callback(
     Output({'type': 'choropleth-map', 'index': ALL}, 'figure'),
-    [Input({'type': 'year-dropdown', 'index': ALL}, 'value')],
+    [Input({'type': 'year-dropdown', 'index': ALL}, 'value'),
+     Input({'type': 'visualization-state-store', 'index': ALL}, 'data')],
     [State({'type': 'choropleth-map', 'index': ALL}, 'figure')]
 )
-def update_map(selected_years, current_figures):
+def update_map(selected_years, store_data_list, current_figures):
     ctx = callback_context
     if not ctx.triggered or not ctx.outputs_list:
         raise PreventUpdate
@@ -1431,28 +1432,76 @@ def update_map(selected_years, current_figures):
     triggered_id_str = ctx.triggered[0]['prop_id']
     if not triggered_id_str:
         raise PreventUpdate
-
-    indicador_id = "Desconhecido" # Inicializa com valor padrão
+    
+    output_list = [no_update] * len(ctx.outputs_list)
+    
     try:
-        # Parse o ID do dropdown que acionou o callback
-        # Usar rsplit para remover apenas o sufixo .value
-        triggered_prop_id = json.loads(triggered_id_str.rsplit('.', 1)[0])
-        indicador_id = triggered_prop_id['index']
-        selected_year = ctx.triggered[0]['value']
-
+        # Determinar qual entrada disparou o callback
+        triggered_prop_id = json.loads(triggered_id_str.split('.')[0])
+        
+        # Determine o índice do indicador que foi atualizado
+        target_index = triggered_prop_id.get('index')
+        if not target_index:
+            return output_list
+        
+        # Encontrar o index correspondente à figura do mapa que precisa ser atualizada
+        target_output_index = -1
+        for i, output_spec in enumerate(ctx.outputs_list):
+            if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == target_index:
+                target_output_index = i
+                break
+                
+        if target_output_index == -1:
+            return output_list
+            
+        # Determinar o ano selecionado para este indicador
+        selected_year = None
+        if triggered_prop_id.get('type') == 'year-dropdown':
+            # Se o gatilho foi o dropdown de ano
+            selected_year = ctx.triggered[0]['value']
+        else:
+            # Se o gatilho foi o store, precisamos pegar o ano atual do dropdown
+            for i, year_value in enumerate(selected_years):
+                year_id = ctx.inputs_list[0][i]['id']  # Pega o ID do i-ésimo dropdown de ano
+                if isinstance(year_id, dict) and year_id.get('index') == target_index:
+                    selected_year = year_value
+                    break
+        
+        if not selected_year:
+            return output_list
+            
+        # Encontrar o store correspondente para este indicador
+        selected_var = None
+        selected_filters = {}
+        
+        for i, store in enumerate(store_data_list):
+            store_id = ctx.inputs_list[1][i]['id']  # Pega o ID do i-ésimo store
+            if isinstance(store_id, dict) and store_id.get('index') == target_index:
+                if store:  # Verifica se o store existe
+                    selected_var = store.get('selected_var')
+                    selected_filters = store.get('selected_filters', {})
+                break
+                
         # Carrega os dados do indicador
+        indicador_id = target_index
         df_map = load_dados_indicador_cache(indicador_id)
         if df_map is None or df_map.empty:
-             # Prevenir atualização se dados não carregarem para este indicador
-             print(f"update_map: Dados não encontrados para {indicador_id}, prevenindo update do mapa.")
-             # Encontra o índice do mapa correspondente para retornar no_update específico
-             target_output_index = -1
-             for i, output_spec in enumerate(ctx.outputs_list):
-                 if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
-                     target_output_index = i
-                     break
-             output_list = [no_update] * len(ctx.outputs_list)
-             return output_list # Retorna lista com no_update para todos
+            print(f"update_map: Dados não encontrados para {indicador_id}, prevenindo update do mapa.")
+            return output_list
+            
+        # Filtra os dados com base na variável selecionada
+        if 'CODG_VAR' in df_map.columns and selected_var:
+            df_map['CODG_VAR'] = df_map['CODG_VAR'].astype(str).str.strip()
+            selected_var_str = str(selected_var).strip()
+            df_map = df_map[df_map['CODG_VAR'] == selected_var_str]
+            
+        # Aplica filtros dinâmicos
+        if selected_filters:
+            for col_code, selected_value in selected_filters.items():
+                if selected_value is not None and col_code in df_map.columns:
+                    df_map[col_code] = df_map[col_code].astype(str).str.strip()
+                    selected_value_str = str(selected_value).strip()
+                    df_map = df_map[df_map[col_code] == selected_value_str]
 
         # Filtra os dados para o ano selecionado e cria uma cópia explícita
         df_ano = df_map[df_map['CODG_ANO'] == selected_year].copy()
@@ -1463,16 +1512,8 @@ def update_map(selected_years, current_figures):
             df_ano = df_ano.dropna(subset=['DESC_UND_FED'])
 
         if df_ano.empty:
-             # Se não houver dados para o ano/UF específico, retorna no_update para este mapa
-             print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year}, prevenindo update.")
-             target_output_index = -1
-             for i, output_spec in enumerate(ctx.outputs_list):
-                 if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
-                     target_output_index = i
-                     break
-             output_list = [no_update] * len(ctx.outputs_list)
-             # Não precisa atualizar se não há dados
-             return output_list
+            print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year}, prevenindo update.")
+            return output_list
 
         # Carrega o GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
@@ -1503,10 +1544,7 @@ def update_map(selected_years, current_figures):
             landcolor="white",
             showframe=False,
             center=dict(lat=-12.9598, lon=-53.2729),
-            projection=dict(
-                type='mercator',
-                scale=2.6
-            )
+            projection=dict(type='mercator', scale=2.6)
         )
 
         # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
@@ -1526,27 +1564,15 @@ def update_map(selected_years, current_figures):
             )
         )
 
-        # Prepara a lista de saída
-        output_list = [no_update] * len(ctx.outputs_list)
-
-        # Encontra o índice do output correspondente ao dropdown acionado
-        target_output_index = -1
-        for i, output_spec in enumerate(ctx.outputs_list):
-            # Verifica se 'id' é um dict e contém 'index'
-            if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == indicador_id:
-                target_output_index = i
-                break
-
-        # Se encontrou o índice correspondente, atualiza a figura
-        if target_output_index != -1:
-            output_list[target_output_index] = fig_map
-
+        # Atualizar o output correspondente
+        output_list[target_output_index] = fig_map
         return output_list
 
     except Exception as e:
-        print(f"Erro ao atualizar mapa para indicador {indicador_id}: {e}")
-        # Retorna no_update para todas as saídas em caso de erro
-        return [no_update] * len(ctx.outputs_list)
+        print(f"Erro ao atualizar mapa: {e}")
+        import traceback
+        traceback.print_exc()
+        return output_list
 
 # Callback para controlar a visibilidade do label baseado na existência de variáveis
 @app.callback(
@@ -1618,7 +1644,6 @@ def update_store_from_filters(filter_values, filter_ids, current_data):
     Output({'type': 'graph-container', 'index': MATCH}, 'children'),
     Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
     State({'type': 'visualization-state-store', 'index': MATCH}, 'id'),
-    # prevent_initial_call=True # Comentado intencionalmente
 )
 def update_visualization_from_store(store_data, store_id):
     if store_id is None:
@@ -1634,6 +1659,7 @@ def update_visualization_from_store(store_data, store_id):
         if df is None or df.empty:
             return dbc.Alert(f"Dados não encontrados para o indicador {indicador_id} ao atualizar visualização.", color="warning")
 
+        # Atualiza a visualização principal
         return create_visualization(df, indicador_id, selected_var, selected_filters)
 
     except Exception as e:
