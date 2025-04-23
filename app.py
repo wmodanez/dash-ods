@@ -780,46 +780,78 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     return dbc.Alert(f"Não é possível gerar o gráfico de barras agrupado. Informações ausentes: {', '.join(missing_info)}.", color="warning")
 
         else: # serie_temporal_flag == 0 OR num_anos < min_years_for_temporal
-            # --- Lógica do Gráfico de Barras SIMPLES (Último Ano) ---
+            # --- Lógica do Gráfico de Barras SIMPLES (Último Ano) (Refatorado com go.Figure) ---
+            main_fig = go.Figure()
             if 'DESC_UND_FED' in df_filtered.columns and ano_default:
                 df_bar_simple_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
                 if not df_bar_simple_data.empty:
                     df_bar_simple_data = df_bar_simple_data.sort_values('VLR_VAR', ascending=False)
-                    custom_data_cols = ['DESC_UND_MED', 'VLR_VAR'] # Inclui VLR_VAR para tooltip
-                    fig_bar_simple = px.bar(df_bar_simple_data, x='DESC_UND_FED', y='VLR_VAR', color='DESC_UND_FED', labels={'DESC_UND_FED': '', 'VLR_VAR': ''})
-                    final_hovertemplate = "<b>%{x}</b><br>Valor: %{customdata[1]}<br>Unidade: %{customdata[0]}<extra></extra>"
-                    # Adiciona texto e ajusta tooltip/customdata
-                    fig_bar_simple.update_traces(
-                        texttemplate='%{y}',
-                        textposition='outside',
-                        hovertemplate=final_hovertemplate,
-                        customdata=df_bar_simple_data[custom_data_cols],
-                        marker_line_width=1.5
-                    )
-                    # Estilização das barras
-                    for i, bar in enumerate(fig_bar_simple.data):
-                        trace_name = bar.name
-                        if trace_name == 'Goiás': bar.marker.color = '#229846'; bar.name = '<b>Goiás</b>'; bar.marker.line.color = '#0a6b28'; bar.marker.line.width = 2; bar.marker.opacity = 1.0
-                        elif trace_name == 'Maranhão': bar.marker.color = '#D2B48C'; bar.marker.opacity = 0.85
-                        elif trace_name == 'Distrito Federal': bar.marker.color = '#636efa'; bar.marker.opacity = 0.85
-                        elif trace_name == 'Mato Grosso': bar.marker.color = '#ab63fa'; bar.marker.opacity = 0.85
-                        elif trace_name == 'Mato Grosso do Sul': bar.marker.color = '#ffa15a'; bar.marker.opacity = 0.85
-                        elif trace_name == 'Rondônia': bar.marker.color = '#19d3f3'; bar.marker.opacity = 0.85
-                        elif trace_name == 'Tocantins': bar.marker.color = '#ff6692'; bar.marker.opacity = 0.85
+                    color_map = { # Reutiliza color map
+                        'Goiás': '#229846',
+                        'Maranhão': '#D2B48C',
+                        'Distrito Federal': '#636efa',
+                        'Mato Grosso': '#ab63fa',
+                        'Mato Grosso do Sul': '#ffa15a',
+                        'Rondônia': '#19d3f3',
+                        'Tocantins': '#ff6692'
+                    }
+                    all_ufs = df_bar_simple_data['DESC_UND_FED'].unique()
+                    for uf in all_ufs:
+                        df_state = df_bar_simple_data[df_bar_simple_data['DESC_UND_FED'] == uf]
+                        if df_state.empty: continue # Pula se não houver dados para o estado
+                        # Customdata com [Unidade, Valor]
+                        customdata_state = np.column_stack((
+                            df_state['DESC_UND_MED'].values,
+                            df_state['VLR_VAR'].values
+                        ))
+                        text_values = df_state['VLR_VAR'].values
+                        trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
+                        bar_color = color_map.get(uf)
+                        opacity = 1.0 if uf == 'Goiás' else 0.85
+                        line_color = '#0a6b28' if uf == 'Goiás' else None
+                        line_width = 2 if uf == 'Goiás' else 1.5
+
+                        main_fig.add_trace(go.Bar(
+                            x=[uf], # Nome do estado no eixo X
+                            y=df_state['VLR_VAR'],
+                            name=trace_name, # Nome para estilo e legenda (se visível)
+                            customdata=customdata_state,
+                            text=text_values,
+                            texttemplate='%{text}', # Exibe valor bruto
+                            textposition='outside',
+                            marker_color=bar_color,
+                            marker_opacity=opacity,
+                            marker_line_width=line_width,
+                            marker_line_color=line_color,
+                            # Usa %{x} para nome do estado, customdata para Unidade/Valor
+                            hovertemplate=(
+                                "<b>%{x}</b><br>" # UF do eixo X
+                                "Valor: %{customdata[1]}<br>" # Valor de VLR_VAR
+                                "Unidade: %{customdata[0]}<extra></extra>" # Unidade
+                            )
+                        ))
 
                     layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
                     layout_updates_bar_simple.update({
-                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=all_ufs), # Ordena pelo DataFrame
                         'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
                         'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
                     })
                     x_labels = df_bar_simple_data['DESC_UND_FED'].tolist()
                     x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in x_labels]
                     layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext
-                    layout_updates_bar_simple['xaxis']['tickvals'] = x_labels
-                    fig_bar_simple.update_layout(layout_updates_bar_simple)
-                    main_fig = fig_bar_simple # Atribui ao main_fig
-                # ... (alerts) ...
+                    layout_updates_bar_simple['xaxis']['tickvals'] = x_labels # Usa os nomes das UFs como tickvals
+                    main_fig.update_layout(layout_updates_bar_simple)
+                    # main_fig já está sendo usado
+
+                else:
+                     return dbc.Alert(f"Não há dados disponíveis para o ano {ano_default} para gerar o gráfico de barras simples.", color="warning")
+            else:
+                missing_info = []
+                if 'DESC_UND_FED' not in df_filtered.columns: missing_info.append("'Unidade Federativa (DESC_UND_FED)'")
+                if not ano_default: missing_info.append("'Ano padrão'")
+                return dbc.Alert(f"Não é possível gerar o gráfico de barras simples. Informações ausentes: {', '.join(missing_info)}.", color="warning")
+        # --- Fim da Lógica dos Gráficos ---
 
         # Criação do Mapa (se houver UF e ano) - Lógica mantida
         if 'DESC_UND_FED' in df_filtered.columns and ano_default:
