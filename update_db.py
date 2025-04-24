@@ -5,6 +5,7 @@ import time
 
 import pandas as pd
 import requests
+import numpy as np
 
 from constants import LIST_INDICADORES, LIST_COLUNAS
 
@@ -89,6 +90,15 @@ def converter_tipos_dados(df):
     # Converter colunas numéricas
     for col in colunas_numericas:
         if col in df.columns:
+            # Modificado: Limpeza antes da conversão numérica
+            # 1. Converte para string para manipulação segura
+            df[col] = df[col].astype(str)
+            # 2. Substitui códigos especiais SIDRA por NaN
+            codes_to_nan = ["...", "-", "X"]
+            df[col] = df[col].replace(codes_to_nan, np.nan)
+            # 3. Remove separador de milhares (.)
+            df[col] = df[col].str.replace('.', '', regex=False)
+            # 4. Tenta converter para numérico (agora deve funcionar para números limpos)
             df[col] = pd.to_numeric(df[col], errors='coerce')
     
     # Converter CODG_ANO para string

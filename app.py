@@ -118,36 +118,20 @@ def _load_dados_indicador_original(indicador_id):
     try:
         nome_arquivo = indicador_id.lower().replace("indicador ", "")
         arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
-        arquivo_metadados = f'db/resultados/indicador{nome_arquivo}_metadata.json'
         if not os.path.exists(arquivo_parquet):
+            print(f"Aviso: Arquivo parquet não encontrado para {indicador_id}: {arquivo_parquet}")
             return pd.DataFrame()
-        try:
-            with open(arquivo_metadados, 'r', encoding='utf-8') as f:
-                metadados = json.load(f)
-        except Exception as e:
-            metadados = None
         try:
             df_load = pd.read_parquet(arquivo_parquet)
             if df_load.empty:
+                print(f"Aviso: Arquivo parquet vazio para {indicador_id}: {arquivo_parquet}")
                 return pd.DataFrame()
         except Exception as e:
+            print(f"Erro ao ler arquivo parquet para {indicador_id}: {e}")
             return pd.DataFrame()
-        if metadados:
-            for coluna, tipo in metadados['colunas'].items():
-                if coluna in df_load.columns:
-                    try:
-                        if coluna == 'CODG_ANO':
-                            df_load[coluna] = df_load[coluna].astype(str)
-                        elif 'Int64' in tipo:
-                            df_load[coluna] = pd.to_numeric(df_load[coluna], errors='coerce').astype('Int64')
-                        elif 'float' in tipo:
-                            df_load[coluna] = pd.to_numeric(df_load[coluna], errors='coerce')
-                        elif 'category' in tipo:
-                            df_load[coluna] = df_load[coluna].astype('category')
-                    except Exception as e:
-                        pass
         return df_load
     except Exception as e:
+        print(f"Erro geral em _load_dados_indicador_original para {indicador_id}: {e}")
         return pd.DataFrame()
 
 # Função com cache de dois níveis
