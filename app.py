@@ -344,15 +344,6 @@ def load_variavel():
             elif len(df_var.columns) >= 2:
                 df_var = df_var.iloc[:, [0, 1]]
                 df_var.columns = cols[:2]
-                df_var['PERMITE_SOMA'] = '0'  # Valor padrão se não encontrar a coluna
-        if not all(col in df_var.columns for col in cols[:2]):
-            return pd.DataFrame(columns=cols)
-        if 'PERMITE_SOMA' not in df_var.columns:
-            df_var['PERMITE_SOMA'] = '0'  # Valor padrão se não encontrar a coluna
-        for col in cols[:2]:  # Apenas para CODG_VAR e DESC_VAR (strings)
-            df_var[col] = df_var[col].str.strip().str.strip('"')
-        # Converte PERMITE_SOMA para inteiro
-        df_var['PERMITE_SOMA'] = pd.to_numeric(df_var['PERMITE_SOMA'], errors='coerce').fillna(0).astype(int)
         return df_var
     except Exception as e:
         return pd.DataFrame(columns=cols)
@@ -472,15 +463,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         elif 'DESC_UND_FED' not in df_filtered.columns:
              df_filtered['DESC_UND_FED'] = 'N/D'
 
-        # Descrição Variável - Removida obtenção de PERMITE_SOMA
         df_variavel_loaded = load_variavel()
-        # Removida inicialização de permite_soma = 0
         if 'CODG_VAR' in df_filtered.columns and not df_variavel_loaded.empty:
             df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str)
             df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
-            
-            # Removida verificação de PERMITE_SOMA aqui
-            
+                        
             # Merge para obter as descrições das variáveis
             df_filtered = df_filtered.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')
             df_filtered['DESC_VAR'] = df_filtered['DESC_VAR'].fillna('N/D')
@@ -836,15 +823,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if 'DESC_UND_FED' in df_filtered.columns and ano_default:
             df_map_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
             if not df_map_data.empty:
-                try:
-                    # Aplica agregação com base no valor de PERMITE_SOMA
-                    agg_func = 'sum' if permite_soma == 1 else 'mean'
-                    df_map_data = df_map_data.groupby('DESC_UND_FED', as_index=False).agg({
-                        'VLR_VAR': agg_func,
-                        'DESC_UND_MED': 'first',
-                        'DESC_VAR': 'first'
-                    })
-                    
+                try:                   
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
                     und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
                     # ATRIBUIÇÃO à fig_map (que já foi inicializada)
