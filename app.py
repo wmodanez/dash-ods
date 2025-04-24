@@ -669,10 +669,17 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                     "Unidade: %{customdata[1]}<extra></extra>"
                                 )
                             ))
+
+                        # Adicionado: Calcular max Y para ajustar eixo
+                        max_y_line = df_line_data['VLR_VAR'].max()
+                        y_range_line = [0, max_y_line * 1.15]
+
                         layout_updates_line = DEFAULT_LAYOUT.copy()
                         layout_updates_line.update({
+                            # Modificado: Adiciona range ao yaxis
                             'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
-                            'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
+                            'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line)
+                            # 'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
                         })
                         unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
                         layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
@@ -707,11 +714,18 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                  "Unidade: %{customdata[0]}<extra></extra>"
                              )
                          ))
+
+                         # Adicionado: Calcular max Y para ajustar eixo
+                         max_y_line_no_uf = df_line_data['VLR_VAR'].max()
+                         y_range_line_no_uf = [0, max_y_line_no_uf * 1.15]
+
                          layout_updates_line = DEFAULT_LAYOUT.copy()
                          layout_updates_line.update({
                              'showlegend': False,
+                             # Modificado: Adiciona range ao yaxis
                              'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
-                             'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
+                             'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line_no_uf)
+                             # 'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
                          })
                          unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
                          layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
@@ -766,11 +780,17 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 )
                             ))
 
+                        # Adicionado: Calcular max Y para ajustar eixo
+                        max_y_grouped = df_bar_grouped_data['VLR_VAR'].max()
+                        y_range_grouped = [0, max_y_grouped * 1.15]
+
                         layout_updates_bar_grouped = DEFAULT_LAYOUT.copy()
                         layout_updates_bar_grouped.update({
                             'barmode': 'group',
+                            # Modificado: Adiciona range ao yaxis
                             'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
-                            'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
+                            'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_grouped)
+                            # 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
                         })
                         unique_years_bar = sorted(df_bar_grouped_data['CODG_ANO'].unique())
                         layout_updates_bar_grouped['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar]
@@ -835,11 +855,19 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             )
                         ))
 
+                    # Adicionado: Calcular o valor máximo para ajustar o eixo Y
+                    max_y_value = df_bar_simple_data['VLR_VAR'].max()
+                    y_axis_range = [0, max_y_value * 1.15] # 15% de espaço extra
+
                     layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
                     layout_updates_bar_simple.update({
                         'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=all_ufs), # Ordena pelo DataFrame
-                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
-                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
+                        # Modificado: Define o range do eixo Y e reverte a margem
+                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_axis_range),
+                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120) # Revertido t para 50
+                        # 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
+                        # 'showlegend': False, 'margin': dict(l=60, r=50, t=70, b=120) # Aumentado t de 50 para 70
+                        # 'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
                     })
                     x_labels = df_bar_simple_data['DESC_UND_FED'].tolist()
                     x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in x_labels]
