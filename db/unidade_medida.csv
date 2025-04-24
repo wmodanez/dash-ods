@@ -1,10 +1,14 @@
 CODG_UND_MED;DESC_UND_MED
+2;%
+26;Quilômetros quadrados
+45;Pessoas
+50;Índice
 1020;Unidades
 1572;Mil pessoas
 1618;Reais por metro cúbico
 1670;Taxa
 1706;Óbitos
-1726;%
+1726;Proporção (%)
 1728;Reais (2010)
 1732;Casos por 100 mil
 1736;Óbitos por 100 mil habitantes
@@ -15,7 +19,3 @@ CODG_UND_MED;DESC_UND_MED
 1756;Nascidos vivos por 1.000 mulheres
 1767;Dólares por metro cúbico
 1769;Reais por hora
-2;%
-26;Quilômetros quadrados
-45;Pessoas
-50;Índice

@@ -330,7 +330,7 @@ def load_unidade_medida():
 
 @lru_cache(maxsize=1)
 def load_variavel():
-    cols = ['CODG_VAR', 'DESC_VAR', 'PERMITE_SOMA']
+    cols = ['CODG_VAR', 'DESC_VAR']
     try:
         try:
             df_var = pd.read_csv('db/variavel.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';')
@@ -472,18 +472,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         elif 'DESC_UND_FED' not in df_filtered.columns:
              df_filtered['DESC_UND_FED'] = 'N/D'
 
-        # Descrição Variável e obtenção do PERMITE_SOMA
+        # Descrição Variável - Removida obtenção de PERMITE_SOMA
         df_variavel_loaded = load_variavel()
-        permite_soma = 0  # Valor padrão: não permite soma
+        # Removida inicialização de permite_soma = 0
         if 'CODG_VAR' in df_filtered.columns and not df_variavel_loaded.empty:
             df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str)
             df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
             
-            # Verificar o valor de PERMITE_SOMA para a variável selecionada
-            if selected_var:
-                selected_var_info = df_variavel_loaded[df_variavel_loaded['CODG_VAR'] == str(selected_var)]
-                if not selected_var_info.empty and 'PERMITE_SOMA' in selected_var_info.columns:
-                    permite_soma = selected_var_info['PERMITE_SOMA'].iloc[0]
+            # Removida verificação de PERMITE_SOMA aqui
             
             # Merge para obter as descrições das variáveis
             df_filtered = df_filtered.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], on='CODG_VAR', how='left')

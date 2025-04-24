@@ -14,11 +14,6 @@ LIST_INDICADORES = {
             'Indicador 1.5.4': '/t/6673/n3/11,21,17,51,52,53,50/v/all/p/last%205/d/v9600%201'
         }
     },
-    'Objetivo 2': {
-        'Meta 2.1': {
-            'Indicador 2.1.2': '/t/6665/v/all/p/all/c12404/all/d/v800%201,v2133%201,v9591%201,v9592%201,v9593%201,v9594%201'
-        }
-    },
     'Objetivo 3': {
         'Meta 3.1': {
             'Indicador 3.1.1': '/t/6694/n3/11,21,17,51,52,53,50/v/all/p/last%205/d/v9730%201',

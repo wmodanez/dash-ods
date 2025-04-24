@@ -1,89 +1,89 @@
-CODG_VAR;DESC_VAR;PERMITE_SOMA
-93;População residente;0
-353;Percentual de crianças com menos de 5 anos de idade que tinham registro civil de nascimento;0
-373;Coeficiente de variação - Percentual de crianças com menos de 5 anos de idade que tinham registro civil de nascimento;0
-603;Número de municípios;1
-4721;Taxa de conclusão de nível de ensino;0
-4775;Pessoas de 5 anos de idade que frequentam a escola;1
-4796;Percentual de pessoas de 5 anos de idade que frequentam a escola;0
-8828;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos;0
-8840;Percentual de pessoas de 15 a 24 anos não ocupadas, não estudantes e que não estão em treinamento para um trabalho;0
-8883;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência;0
-9135;Percentual de moradores em domicílios nos quais se utiliza combustível limpo na preparação de alimentos;0
-9312;Valor adicionado da indústria de transformação em proporção do PIB;0
-9313;Valor adicionado da indústria de transformação per capita;0
-9314;Emprego na indústria em proporção do emprego total;0
-9315;Proporção do valor adicionado nas indústrias de média e alta intensidade tecnológica no valor adicionado total;0
-9431;Número de nascimentos assistidos por pessoal de saúde qualificado (TPNASCASSI);1
-9432;Número total de nascidos vivos de mulheres de 15 a 49 anos;1
-9433;Número de nascidos vivos de mães adolescentes;1
-9435;Número de óbitos de mulheres residentes por causas e condições consideradas de morte materna;1
-9436;Número de nascidos vivos de mães residentes;1
-9461;Número de óbitos de residentes com menos de cinco anos de idade;1
-9462;Número de óbitos de residentes até 27 dias de vida completos;1
-9471;Percentual de tempo gasto em trabalho doméstico não remunerado e cuidados;0
-9484;Percentual da população que utiliza serviços de água potável gerenciados de forma segura;0
-9502;Número de vítimas de homicídios intencionais por 100 mil habitantes;0
-9600;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;0
-9601;Índice de paridade de frequência à escola das pessoas de 5 anos de idade, por sexo (mulher/homem);0
-9603;Índice de paridade de frequência à escola das pessoas de 5 anos de idade, por situação do domicílio (rural/urbano);0
-9605;Número de escolas dos anos iniciais do ensino fundamental;1
-9606;Número de escolas dos anos finais do ensino fundamental;1
-9607;Número de escolas de ensino médio;1
-9610;Proporção de docentes com formação adequada;0
-9613;Número de casos novos de hepatite B;1
-9617;Proporção da população abaixo da linha de pobreza internacional;0
-9619;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;0
-9724;Número de assentos na Câmara dos Deputados;1
-9725;Número de assentos ocupados por mulheres na Câmara dos Deputados;1
-9726;Proporção de assentos ocupados por mulheres na Câmara dos Deputados;0
-9727;Número de assentos na Câmara de Vereadores;1
-9728;Número de assentos ocupados por mulheres na Câmara de Vereadores;1
-9729;Proporção de assentos ocupados por mulheres na Câmara de Vereadores;0
-9730;Razão de morte materna;0
-9731;Taxa de mortalidade em menores de 5 anos;0
-9732;Taxa de mortalidade neonatal;0
-9733;Incidência de tuberculose por 100 mil habitantes;0
-9734;Taxa de mortalidade por lesões de trânsito;0
-9737;Taxa de mortalidade atribuída a fontes de água inadequadas, saneamento inadequado e falta de higiene;0
-9948;Proporção da população abaixo da linha de pobreza nacional;0
-10004;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade;0
-10107;Proporção da população que utiliza serviços de esgotamento sanitário geridos de forma segura, Incluindo instalações para lavar as mãos com água e sabão;0
-10137;Percentual de moradores em domicílios com energia elétrica;0
-10564;Eficiência do uso de água, em moeda local;0
-10819;Existência do conselho estadual de política urbana, desenvolvimento urbano, da cidade ou similar;0
-10821;Municípios sem conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses;1
-10822;Municípios com conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses;1
-10823;Proporção de municípios com conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses;0
-11084;Proporção de escolas dos anos finais do ensino fundamental;0
-11085;Proporção de escolas dos anos iniciais do ensino fundamental;0
-11086;Proporção de escolas do ensino médio;0
-11392;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses;1
-11393;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite inferior;1
-11394;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite superior;1
-11396;Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses;0
-11397;Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite inferior;0
-11398;Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite superior;0
-11399;Coeficiente de variação - Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses;0
-11598;Proporção de nascimentos assistidos por profissional de saúde qualificado;0
-11687;Número de nascidos vivos de mães adolescentes por 1000 mulheres;0
-11704;Taxa de mortalidade por suicídio (População com 5 anos ou mais);0
-11705;Número de óbitos por suicídio na população com 5 anos ou mais;1
-11725;Óbitos atribuídos a fontes de água inseguras, saneamento inseguro e falta de higiene;1
-11726;Taxa de mortalidade atribuída a intoxicação não intencional;0
-11727;Óbitos por intoxicação não intencional;1
-11728;Óbitos por lesões de trânsito;1
-11754;Probabilidade de morrer atribuída a doenças cardiovasculares, câncer, diabetes ou doenças respiratórias crônicas entre os 30 a 69 anos;0
-12360;Prevalência do consumo atual de tabaco na população de 15 anos ou mais, considerando um intervalo de confiança de 95% - limite inferior;0
-12361;Prevalência do consumo atual de tabaco na população de 15 anos ou mais, considerando um intervalo de confiança de 95% - limite superior;0
-12381;Taxa de incidência de hepatite B por 100.000 habitantes;0
-12382;Prevalência do consumo atual de tabaco na população de 15 anos ou mais;0
-12737;Número de casos novos de tuberculose;1
-12746;Índice de paridade de frequência à escola das pessoas de 5 anos de idade, rendimento domiciliar per capita (até 20%/mais de 80%);0
-12763;Taxa de incidência da malária por 1.000 habitantes;0
-12764;Número de casos autóctones de malária;1
-12769;Variação proporcional da extensão dos ecossistemas relacionados à água;0
-12770;Variação da extensão dos ecossistemas relacionados à água;0
-12771;Eficiência do uso de água, em moeda estrangeira;0
-12772;Número de pessoas que necessitam de intervenção contra doenças tropicais negligenciadas (DTN);1
-12948;Número de óbitos atribuídos a doenças cardiovasculares, câncer, diabetes ou doenças respiratórias crônicas na população de 30 a 69 anos;1
+CODG_VAR;DESC_VAR
+93;População residente
+353;Percentual de crianças com menos de 5 anos de idade que tinham registro civil de nascimento
+373;Coeficiente de variação - Percentual de crianças com menos de 5 anos de idade que tinham registro civil de nascimento
+603;Número de municípios
+4721;Taxa de conclusão de nível de ensino
+4775;Pessoas de 5 anos de idade que frequentam a escola
+4796;Percentual de pessoas de 5 anos de idade que frequentam a escola
+8828;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos
+8840;Percentual de pessoas de 15 a 24 anos não ocupadas, não estudantes e que não estão em treinamento para um trabalho
+8883;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência
+9135;Percentual de moradores em domicílios nos quais se utiliza combustível limpo na preparação de alimentos
+9312;Valor adicionado da indústria de transformação em proporção do PIB
+9313;Valor adicionado da indústria de transformação per capita
+9314;Emprego na indústria em proporção do emprego total
+9315;Proporção do valor adicionado nas indústrias de média e alta intensidade tecnológica no valor adicionado total
+9431;Número de nascimentos assistidos por pessoal de saúde qualificado (TPNASCASSI)
+9432;Número total de nascidos vivos de mulheres de 15 a 49 anos
+9433;Número de nascidos vivos de mães adolescentes
+9435;Número de óbitos de mulheres residentes por causas e condições consideradas de morte materna
+9436;Número de nascidos vivos de mães residentes
+9461;Número de óbitos de residentes com menos de cinco anos de idade
+9462;Número de óbitos de residentes até 27 dias de vida completos
+9471;Percentual de tempo gasto em trabalho doméstico não remunerado e cuidados
+9484;Percentual da população que utiliza serviços de água potável gerenciados de forma segura
+9502;Número de vítimas de homicídios intencionais por 100 mil habitantes
+9600;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres
+9601;Índice de paridade de frequência à escola das pessoas de 5 anos de idade, por sexo (mulher/homem)
+9603;Índice de paridade de frequência à escola das pessoas de 5 anos de idade, por situação do domicílio (rural/urbano)
+9605;Número de escolas dos anos iniciais do ensino fundamental
+9606;Número de escolas dos anos finais do ensino fundamental
+9607;Número de escolas de ensino médio
+9610;Proporção de docentes com formação adequada
+9613;Número de casos novos de hepatite B
+9617;Proporção da população abaixo da linha de pobreza internacional
+9619;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes
+9724;Número de assentos na Câmara dos Deputados
+9725;Número de assentos ocupados por mulheres na Câmara dos Deputados
+9726;Proporção de assentos ocupados por mulheres na Câmara dos Deputados
+9727;Número de assentos na Câmara de Vereadores
+9728;Número de assentos ocupados por mulheres na Câmara de Vereadores
+9729;Proporção de assentos ocupados por mulheres na Câmara de Vereadores
+9730;Razão de morte materna
+9731;Taxa de mortalidade em menores de 5 anos
+9732;Taxa de mortalidade neonatal
+9733;Incidência de tuberculose por 100 mil habitantes
+9734;Taxa de mortalidade por lesões de trânsito
+9737;Taxa de mortalidade atribuída a fontes de água inadequadas, saneamento inadequado e falta de higiene
+9948;Proporção da população abaixo da linha de pobreza nacional
+10004;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade
+10107;Proporção da população que utiliza serviços de esgotamento sanitário geridos de forma segura, Incluindo instalações para lavar as mãos com água e sabão
+10137;Percentual de moradores em domicílios com energia elétrica
+10564;Eficiência do uso de água, em moeda local
+10819;Existência do conselho estadual de política urbana, desenvolvimento urbano, da cidade ou similar
+10821;Municípios sem conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses
+10822;Municípios com conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses
+10823;Proporção de municípios com conselho municipal de política urbana, desenvolvimento urbano, da cidade ou similar, paritário e que tenha feito pelo menos uma reunião nos últimos 12 meses
+11084;Proporção de escolas dos anos finais do ensino fundamental
+11085;Proporção de escolas dos anos iniciais do ensino fundamental
+11086;Proporção de escolas do ensino médio
+11392;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses
+11393;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite inferior
+11394;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite superior
+11396;Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses
+11397;Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite inferior
+11398;Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite superior
+11399;Coeficiente de variação - Percentual de pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses
+11598;Proporção de nascimentos assistidos por profissional de saúde qualificado
+11687;Número de nascidos vivos de mães adolescentes por 1000 mulheres
+11704;Taxa de mortalidade por suicídio (População com 5 anos ou mais)
+11705;Número de óbitos por suicídio na população com 5 anos ou mais
+11725;Óbitos atribuídos a fontes de água inseguras, saneamento inseguro e falta de higiene
+11726;Taxa de mortalidade atribuída a intoxicação não intencional
+11727;Óbitos por intoxicação não intencional
+11728;Óbitos por lesões de trânsito
+11754;Probabilidade de morrer atribuída a doenças cardiovasculares, câncer, diabetes ou doenças respiratórias crônicas entre os 30 a 69 anos
+12360;Prevalência do consumo atual de tabaco na população de 15 anos ou mais, considerando um intervalo de confiança de 95% - limite inferior
+12361;Prevalência do consumo atual de tabaco na população de 15 anos ou mais, considerando um intervalo de confiança de 95% - limite superior
+12381;Taxa de incidência de hepatite B por 100.000 habitantes
+12382;Prevalência do consumo atual de tabaco na população de 15 anos ou mais
+12737;Número de casos novos de tuberculose
+12746;Índice de paridade de frequência à escola das pessoas de 5 anos de idade, rendimento domiciliar per capita (até 20%/mais de 80%)
+12763;Taxa de incidência da malária por 1.000 habitantes
+12764;Número de casos autóctones de malária
+12769;Variação proporcional da extensão dos ecossistemas relacionados à água
+12770;Variação da extensão dos ecossistemas relacionados à água
+12771;Eficiência do uso de água, em moeda estrangeira
+12772;Número de pessoas que necessitam de intervenção contra doenças tropicais negligenciadas (DTN)
+12948;Número de óbitos atribuídos a doenças cardiovasculares, câncer, diabetes ou doenças respiratórias crônicas na população de 30 a 69 anos
