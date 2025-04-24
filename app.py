@@ -889,7 +889,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         map_created_successfully = bool(fig_map.data)
 
         if 'DESC_UND_FED' in df_filtered.columns and map_created_successfully:
-            map_content = html.Div([
+            # Modificado: Envolve o mapa e o dropdown em um Div container
+            map_content = html.Div(id={'type': 'map-container', 'index': indicador_id}, children=[
                 html.Label("Ano (Mapa):", style={'fontWeight': 'bold','marginBottom': '5px','display': 'block'}),
                 dcc.Dropdown(
                     id={'type': 'year-dropdown', 'index': indicador_id},
@@ -1464,148 +1465,133 @@ def update_card_content(*args):
         # Retorna um estado seguro em caso de erro inesperado
         return initial_header, initial_content, [], "Ocorreu um erro.", []
 
-# Callback para atualizar o mapa coroplético quando o ano é alterado
+# Callback para atualizar o mapa coroplético quando o ano ou filtros mudam
 @app.callback(
-    Output({'type': 'choropleth-map', 'index': ALL}, 'figure'),
-    [Input({'type': 'year-dropdown', 'index': ALL}, 'value'),
-     Input({'type': 'visualization-state-store', 'index': ALL}, 'data')],
-    [State({'type': 'choropleth-map', 'index': ALL}, 'figure')]
+    # Modificado: Output para atualizar o container do mapa
+    Output({'type': 'map-container', 'index': MATCH}, 'children'),
+    Input({'type': 'year-dropdown', 'index': MATCH}, 'value'),
+    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    # Adiciona State para pegar o ano original e opções, caso precise recriar o dropdown no erro
+    State({'type': 'year-dropdown', 'index': MATCH}, 'options'),
+    State({'type': 'year-dropdown', 'index': MATCH}, 'value'), # Valor atual para manter no erro
+    prevent_initial_call=True
 )
-def update_map(selected_years, store_data_list, current_figures):
+def update_map(selected_year, store_data, year_options, current_year_value):
     ctx = callback_context
-    if not ctx.triggered or not ctx.outputs_list:
+    if not ctx.triggered or not selected_year:
         raise PreventUpdate
 
-    triggered_id_str = ctx.triggered[0]['prop_id']
-    if not triggered_id_str:
-        raise PreventUpdate
-    
-    output_list = [no_update] * len(ctx.outputs_list)
-    
-    try:
-        # Determinar qual entrada disparou o callback
-        triggered_prop_id = None
+    # Encontra o ID do indicador que disparou
+    triggered_id = ctx.triggered_id
+    if not isinstance(triggered_id, dict) or 'index' not in triggered_id:
+        # Tenta obter do prop_id se o ID não for um dict (menos comum)
+        prop_id = ctx.triggered[0]['prop_id']
         try:
-            # Tenta fazer o parse do JSON
-            triggered_prop_id = json.loads(triggered_id_str.split('.')[0])
-        except json.JSONDecodeError:
-            # Se falhar, usa abordagem alternativa mais segura
-            triggered_id = ctx.triggered_id
-            if triggered_id is not None:
-                if isinstance(triggered_id, dict):
-                    triggered_prop_id = triggered_id
-        
-        # Se ainda não conseguimos o ID, não podemos continuar
-        if triggered_prop_id is None:
-            print(f"Não foi possível determinar o ID do gatilho: {triggered_id_str}")
-            return output_list
-        
-        # Determine o índice do indicador que foi atualizado
-        target_index = triggered_prop_id.get('index')
-        if not target_index:
-            return output_list
-        
-        # Encontrar o index correspondente à figura do mapa que precisa ser atualizada
-        target_output_index = -1
-        for i, output_spec in enumerate(ctx.outputs_list):
-            if isinstance(output_spec['id'], dict) and output_spec['id'].get('index') == target_index:
-                target_output_index = i
-                break
-                
-        if target_output_index == -1:
-            return output_list
-            
-        # Determinar o ano selecionado para este indicador
-        selected_year = None
-        if triggered_prop_id.get('type') == 'year-dropdown':
-            # Se o gatilho foi o dropdown de ano
-            selected_year = ctx.triggered[0]['value']
-        else:
-            # Se o gatilho foi o store, precisamos pegar o ano atual do dropdown
-            for i, year_value in enumerate(selected_years):
-                year_id = ctx.inputs_list[0][i]['id']  # Pega o ID do i-ésimo dropdown de ano
-                if isinstance(year_id, dict) and year_id.get('index') == target_index:
-                    selected_year = year_value
-                    break
-        
-        if not selected_year:
-            return output_list
-            
-        # Encontrar o store correspondente para este indicador
-        selected_var = None
-        selected_filters = {}
-        
-        for i, store in enumerate(store_data_list):
-            store_id = ctx.inputs_list[1][i]['id']  # Pega o ID do i-ésimo store
-            if isinstance(store_id, dict) and store_id.get('index') == target_index:
-                if store:  # Verifica se o store existe
-                    selected_var = store.get('selected_var')
-                    selected_filters = store.get('selected_filters', {})
-                break
-                
-        # Carrega os dados do indicador
-        indicador_id = target_index
-        df_map = load_dados_indicador_cache(indicador_id)
-        if df_map is None or df_map.empty:
-            print(f"update_map: Dados não encontrados para {indicador_id}, prevenindo update do mapa.")
-            return output_list
-            
-        # Determina se a variável permite soma
-        permite_soma = 0  # Valor padrão: não permite soma
-        if selected_var:
-            df_variavel_loaded = load_variavel()
-            if not df_variavel_loaded.empty:
-                selected_var_info = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str) == str(selected_var)]
-                if not selected_var_info.empty and 'PERMITE_SOMA' in selected_var_info.columns:
-                    permite_soma = selected_var_info['PERMITE_SOMA'].iloc[0]
-            
-        # Filtra os dados com base na variável selecionada
-        if 'CODG_VAR' in df_map.columns and selected_var:
-            df_map['CODG_VAR'] = df_map['CODG_VAR'].astype(str).str.strip()
-            selected_var_str = str(selected_var).strip()
-            df_map = df_map[df_map['CODG_VAR'] == selected_var_str]
-            
-        # Aplica filtros dinâmicos
-        if selected_filters:
-            for col_code, selected_value in selected_filters.items():
-                if selected_value is not None and col_code in df_map.columns:
-                    df_map[col_code] = df_map[col_code].astype(str).str.strip()
-                    selected_value_str = str(selected_value).strip()
-                    df_map = df_map[df_map[col_code] == selected_value_str]
+            trigger_info = json.loads(prop_id.split('.')[0])
+            if isinstance(trigger_info, dict) and 'index' in trigger_info:
+                target_index = trigger_info['index']
+            else:
+                raise PreventUpdate
+        except Exception:
+             raise PreventUpdate
+    else:
+        target_index = triggered_id['index']
 
-        # Filtra os dados para o ano selecionado e cria uma cópia explícita
-        df_ano = df_map[df_map['CODG_ANO'] == selected_year].copy()
+    if not target_index:
+        raise PreventUpdate
 
-        # Substitui os códigos das UFs pelos nomes completos
-        if 'CODG_UND_FED' in df_ano.columns:
-            df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-            df_ano = df_ano.dropna(subset=['DESC_UND_FED'])
+    # Recria o dropdown e o label para retornar em caso de erro
+    dropdown_component = [
+        html.Label("Ano (Mapa):", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+        dcc.Dropdown(
+            id={'type': 'year-dropdown', 'index': target_index},
+            options=year_options,
+            value=current_year_value, # Mantem o ano selecionado
+            clearable=False,
+            style={'width': '100%', 'marginBottom': '10px'}
+        )
+    ]
 
-        if df_ano.empty:
-            print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year}, prevenindo update.")
-            return output_list
-            
-        # Aplica agregação com base no valor de PERMITE_SOMA, se necessário
-        if 'DESC_UND_FED' in df_ano.columns and len(df_ano) > len(df_ano['DESC_UND_FED'].unique()):
-            agg_func = 'sum' if permite_soma == 1 else 'mean'
-            df_ano = df_ano.groupby('DESC_UND_FED', as_index=False).agg({
-                'VLR_VAR': agg_func,
-                'DESC_UND_MED': 'first',
-                'DESC_VAR': 'first'
-            })
+    # Encontrar o store correspondente
+    selected_var = None
+    selected_filters = {}
+    if store_data:
+        selected_var = store_data.get('selected_var')
+        selected_filters = store_data.get('selected_filters', {})
 
-        # Carrega o GeoJSON
+    # Carrega os dados do indicador
+    indicador_id = target_index
+    df_map = load_dados_indicador_cache(indicador_id)
+    if df_map is None or df_map.empty:
+        print(f"update_map: Dados não encontrados para {indicador_id}.")
+        # Retorna dropdown + alerta
+        return dropdown_component + [dbc.Alert("Dados não disponíveis para este indicador.", color="warning")]
+
+    # CÓPIA do DataFrame para aplicar filtros
+    df_filtered_map = df_map.copy()
+
+    # Aplica filtro de VARIÁVEL PRINCIPAL
+    if 'CODG_VAR' in df_filtered_map.columns and selected_var:
+        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
+        selected_var_str = str(selected_var).strip()
+        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
+
+    # Aplica FILTROS DINÂMICOS
+    if selected_filters:
+        for col_code, selected_value in selected_filters.items():
+            if selected_value is not None and col_code in df_filtered_map.columns:
+                df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
+                selected_value_str = str(selected_value).strip()
+                df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
+
+    # Filtra pelo ANO selecionado
+    df_ano = df_filtered_map[df_filtered_map['CODG_ANO'] == selected_year]
+
+    # Adiciona DESC_UND_FED se existir CODG_UND_FED
+    if 'CODG_UND_FED' in df_ano.columns and 'DESC_UND_FED' not in df_ano.columns:
+        df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        df_ano = df_ano.dropna(subset=['DESC_UND_FED']) # Remove linhas onde o mapeamento falhou
+    elif 'DESC_UND_FED' not in df_ano.columns:
+         # Se não tem nem CODG nem DESC, não pode fazer mapa
+         return dropdown_component + [dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")]
+
+    if df_ano.empty:
+        print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year} após filtros.")
+        # Retorna dropdown + alerta
+        return dropdown_component + [dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")]
+
+    # --- REMOVIDA A AGREGAÇÃO --- 
+
+    # VERIFICA UNICIDADE por Estado
+    if 'DESC_UND_FED' in df_ano.columns:
+        counts_per_uf = df_ano['DESC_UND_FED'].value_counts()
+        if (counts_per_uf > 1).any():
+            # Existem UFs com mais de uma linha
+            print(f"update_map: Múltiplos valores por UF para {indicador_id} no ano {selected_year}. Mapa não pode ser gerado.")
+            alert_message = (
+                "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
+                "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
+            )
+            # Retorna dropdown + alerta
+            return dropdown_component + [dbc.Alert(alert_message, color="danger")]
+        # Se chegou aqui, cada UF tem no máximo 1 linha
+    else:
+        # Deveria ter sido pego antes, mas por segurança
+        return dropdown_component + [dbc.Alert("Erro inesperado: Coluna de UF não encontrada.", color="danger")]
+
+    # --- Se passou na verificação de unicidade, cria o mapa --- 
+    try:
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
             geojson = json.load(f)
 
-        # Pega a unidade de medida (de forma segura)
+        # Pega unidade de medida (de forma segura)
         und_med_map = ''
         if 'DESC_UND_MED' in df_ano.columns and not df_ano['DESC_UND_MED'].empty:
-            und_med_map = df_ano['DESC_UND_MED'].iloc[0]
+            first_valid_und_med = df_ano['DESC_UND_MED'].dropna().iloc[0] if not df_ano['DESC_UND_MED'].dropna().empty else ''
+            und_med_map = first_valid_und_med
 
-        # Cria o novo mapa
         fig_map = px.choropleth(
-            df_ano,
+            df_ano, # Usa df_ano diretamente (sem agregação)
             geojson=geojson,
             locations='DESC_UND_FED',
             featureidkey='properties.name',
@@ -1614,44 +1600,32 @@ def update_map(selected_years, store_data_list, current_figures):
             scope="south america"
         )
 
-        # Ajusta o layout do mapa
         fig_map.update_geos(
-            visible=False,
-            showcoastlines=True,
-            coastlinecolor="White",
-            showland=True,
-            landcolor="white",
-            showframe=False,
+            visible=False, showcoastlines=True, coastlinecolor="White",
+            showland=True, landcolor="white", showframe=False,
             center=dict(lat=-12.9598, lon=-53.2729),
             projection=dict(type='mercator', scale=2.6)
         )
 
-        # Atualiza o layout do mapa e adiciona linhas de divisão brancas e mais grossas
         fig_map.update_traces(
-            marker_line_color='white',
-            marker_line_width=1,
-            hovertemplate="<b>%{location}</b><br>" +
-                        f"Valor: %{{z}}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+            marker_line_color='white', marker_line_width=1,
+            hovertemplate="<b>%{location}</b><br>Valor: %{z}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
         )
 
-        # Atualiza o layout do mapa
         fig_map.update_layout(
             margin=dict(r=0, l=0, t=0, b=0),
-            coloraxis_colorbar=dict(
-                title=None,
-                tickfont=dict(size=12, color='black')
-            )
+            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
         )
 
-        # Atualizar o output correspondente
-        output_list[target_output_index] = fig_map
-        return output_list
+        # Retorna dropdown + gráfico
+        return dropdown_component + [dcc.Graph(figure=fig_map, id={'type': 'choropleth-map', 'index': target_index})] 
 
     except Exception as e:
-        print(f"Erro ao atualizar mapa: {e}")
+        print(f"Erro ao gerar mapa para {indicador_id} mesmo após verificação de unicidade: {e}")
         import traceback
         traceback.print_exc()
-        return output_list
+        # Retorna dropdown + alerta de erro genérico
+        return dropdown_component + [dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")]
 
 # Callback para controlar a visibilidade do label baseado na existência de variáveis
 @app.callback(
