@@ -1520,8 +1520,9 @@ def update_map(selected_year, store_data, year_options, current_year_value):
     df_map = load_dados_indicador_cache(indicador_id)
     if df_map is None or df_map.empty:
         print(f"update_map: Dados não encontrados para {indicador_id}.")
-        # Retorna dropdown + alerta
-        return dropdown_component + [dbc.Alert("Dados não disponíveis para este indicador.", color="warning")]
+        # Modificado: Retorna APENAS o alerta
+        return dbc.Alert("Dados não disponíveis para este indicador.", color="warning")
+        # return dropdown_component + [dbc.Alert("Dados não disponíveis para este indicador.", color="warning")]
 
     # CÓPIA do DataFrame para aplicar filtros
     df_filtered_map = df_map.copy()
@@ -1549,12 +1550,15 @@ def update_map(selected_year, store_data, year_options, current_year_value):
         df_ano = df_ano.dropna(subset=['DESC_UND_FED']) # Remove linhas onde o mapeamento falhou
     elif 'DESC_UND_FED' not in df_ano.columns:
          # Se não tem nem CODG nem DESC, não pode fazer mapa
-         return dropdown_component + [dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")]
+          # Modificado: Retorna APENAS o alerta
+         return dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")
+         # return dropdown_component + [dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")]
 
     if df_ano.empty:
         print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year} após filtros.")
-        # Retorna dropdown + alerta
-        return dropdown_component + [dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")]
+        # Modificado: Retorna APENAS o alerta
+        return dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")
+        # return dropdown_component + [dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")]
 
     # --- REMOVIDA A AGREGAÇÃO --- 
 
@@ -1568,8 +1572,9 @@ def update_map(selected_year, store_data, year_options, current_year_value):
                 "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
                 "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
             )
-            # Retorna dropdown + alerta
-            return dropdown_component + [dbc.Alert(alert_message, color="danger")]
+            # Modificado: Retorna APENAS o alerta
+            return dbc.Alert(alert_message, color="danger")
+            # return dropdown_component + [dbc.Alert(alert_message, color="danger")]
         # Se chegou aqui, cada UF tem no máximo 1 linha
     else:
         # Deveria ter sido pego antes, mas por segurança
@@ -1620,8 +1625,9 @@ def update_map(selected_year, store_data, year_options, current_year_value):
         print(f"Erro ao gerar mapa para {indicador_id} mesmo após verificação de unicidade: {e}")
         import traceback
         traceback.print_exc()
-        # Retorna dropdown + alerta de erro genérico
-        return dropdown_component + [dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")]
+        # Modificado: Retorna APENAS o alerta
+        return dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")
+        # return dropdown_component + [dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")]
 
 # Callback para controlar a visibilidade do label baseado na existência de variáveis
 @app.callback(
