@@ -546,15 +546,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         df_filtered['CODG_ANO'] = df_filtered['CODG_ANO'].astype(str)
         df_filtered = df_filtered.sort_values('CODG_ANO')
         df_filtered['VLR_VAR'] = pd.to_numeric(df_filtered['VLR_VAR'], errors='coerce')
-        # Adicionado: Preenche NaN com 0 após a conversão numérica no app
         df_filtered['VLR_VAR'] = df_filtered['VLR_VAR'].fillna(0)
-        # Removido: Não dropar linhas com base em VLR_VAR após fillna(0)
-        # df_filtered = df_filtered.dropna(subset=['VLR_VAR'])
 
         if df_filtered.empty:
-            # Modificado: Mensagem caso o DF esteja vazio após filtros (mesmo com fillna(0))
             return dbc.Alert("Não há dados disponíveis para a combinação de filtros selecionada.", color="warning", className="textCenter p-3")
-            # return dbc.Alert("Não há dados numéricos válidos para criar a visualização.", color="warning", className="textCenter p-3")
 
         # --- Definição Dinâmica das Colunas da Tabela AG Grid ---
         base_col_defs = [
@@ -629,13 +624,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     if not df_line_data.empty:
                         for uf in df_line_data['DESC_UND_FED'].unique():
                             df_state = df_line_data[df_line_data['DESC_UND_FED'] == uf]
-                            # Modificado: customdata com np.column_stack [UF, Unidade, Valor]
                             customdata_state = np.column_stack((
                                 np.full(len(df_state), uf),
                                 df_state['DESC_UND_MED'].values,
                                 df_state['VLR_VAR'].values
                             ))
-                            text_values = df_state['VLR_VAR']
+                            text_values = df_state['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
                             trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                             color_map = {
                                 'Goiás': '#229846',
@@ -661,25 +655,21 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 textfont=dict(size=10),
                                 marker=dict(size=10, symbol='circle', line=dict(width=1, color='white')),
                                 line=dict(width=line_width, color=line_color),
-                                # Modificado: Usa customdata[0] para UF, [1] Unidade, [2] Valor
                                 hovertemplate=(
                                     "<b>%{customdata[0]}</b><br>" # UF do customdata
                                     "Ano: %{x}<br>"
-                                    "Valor: %{customdata[2]}<br>"
+                                    "Valor: %{customdata[2]:,.0f}<br>"
                                     "Unidade: %{customdata[1]}<extra></extra>"
                                 )
                             ))
 
-                        # Adicionado: Calcular max Y para ajustar eixo
                         max_y_line = df_line_data['VLR_VAR'].max()
                         y_range_line = [0, max_y_line * 1.15]
 
                         layout_updates_line = DEFAULT_LAYOUT.copy()
                         layout_updates_line.update({
-                            # Modificado: Adiciona range ao yaxis
                             'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
                             'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line)
-                            # 'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
                         })
                         unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
                         layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
@@ -690,12 +680,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 else: # Gráfico de linha sem UF
                     df_line_data = df_filtered.sort_values('CODG_ANO')
                     if not df_line_data.empty:
-                         # Modificado: customdata com np.column_stack [Unidade, Valor]
                          customdata_state = np.column_stack((
                              df_line_data['DESC_UND_MED'].values,
                              df_line_data['VLR_VAR'].values
                          ))
-                         text_values = df_line_data['VLR_VAR']
+                         text_values = df_line_data['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
                          main_fig.add_trace(go.Scatter(
                              x=df_line_data['CODG_ANO'],
                              y=df_line_data['VLR_VAR'],
@@ -707,25 +696,21 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                              textposition='top center',
                              textfont=dict(size=10),
                              marker=dict(size=10, symbol='circle', line=dict(width=1, color='white')),
-                             # Modificado: Usa customdata[0] Unidade, [1] Valor
                              hovertemplate=(
                                  "Ano: %{x}<br>"
-                                 "Valor: %{customdata[1]}<br>"
+                                 "Valor: %{customdata[1]:,.0f}<br>"
                                  "Unidade: %{customdata[0]}<extra></extra>"
                              )
                          ))
 
-                         # Adicionado: Calcular max Y para ajustar eixo
                          max_y_line_no_uf = df_line_data['VLR_VAR'].max()
                          y_range_line_no_uf = [0, max_y_line_no_uf * 1.15]
 
                          layout_updates_line = DEFAULT_LAYOUT.copy()
                          layout_updates_line.update({
                              'showlegend': False,
-                             # Modificado: Adiciona range ao yaxis
                              'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
                              'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line_no_uf)
-                             # 'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
                          })
                          unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
                          layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
@@ -751,13 +736,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         }
                         for uf in df_bar_grouped_data['DESC_UND_FED'].unique():
                             df_state = df_bar_grouped_data[df_bar_grouped_data['DESC_UND_FED'] == uf]
-                             # Modificado: customdata com np.column_stack [UF, Unidade, Valor]
                             customdata_state = np.column_stack((
                                 np.full(len(df_state), uf),
                                 df_state['DESC_UND_MED'].values,
                                 df_state['VLR_VAR'].values
                             ))
-                            text_values = df_state['VLR_VAR']
+                            text_values = df_state['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
                             trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                             bar_color = color_map.get(uf)
 
@@ -771,26 +755,22 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 textposition='outside',
                                 marker_color=bar_color,
                                 marker_line_width=1.5,
-                                # Modificado: Usa customdata[0] para UF, [1] Unidade, [2] Valor
                                 hovertemplate=(
                                     "<b>%{customdata[0]}</b><br>" # UF do customdata
                                     "Ano: %{x}<br>"
-                                    "Valor: %{customdata[2]}<br>"
+                                    "Valor: %{customdata[2]:,.0f}<br>"
                                     "Unidade: %{customdata[1]}<extra></extra>"
                                 )
                             ))
 
-                        # Adicionado: Calcular max Y para ajustar eixo
                         max_y_grouped = df_bar_grouped_data['VLR_VAR'].max()
                         y_range_grouped = [0, max_y_grouped * 1.15]
 
                         layout_updates_bar_grouped = DEFAULT_LAYOUT.copy()
                         layout_updates_bar_grouped.update({
                             'barmode': 'group',
-                            # Modificado: Adiciona range ao yaxis
                             'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
                             'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_grouped)
-                            # 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d')
                         })
                         unique_years_bar = sorted(df_bar_grouped_data['CODG_ANO'].unique())
                         layout_updates_bar_grouped['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar]
@@ -823,12 +803,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     for uf in all_ufs:
                         df_state = df_bar_simple_data[df_bar_simple_data['DESC_UND_FED'] == uf]
                         if df_state.empty: continue # Pula se não houver dados para o estado
-                        # Customdata com [Unidade, Valor]
                         customdata_state = np.column_stack((
                             df_state['DESC_UND_MED'].values,
                             df_state['VLR_VAR'].values
                         ))
-                        text_values = df_state['VLR_VAR'].values
+                        text_values = df_state['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", ".")).values
                         trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                         bar_color = color_map.get(uf)
                         opacity = 1.0 if uf == 'Goiás' else 0.85
@@ -847,35 +826,27 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             marker_opacity=opacity,
                             marker_line_width=line_width,
                             marker_line_color=line_color,
-                            # Usa %{x} para nome do estado, customdata para Unidade/Valor
                             hovertemplate=(
                                 "<b>%{x}</b><br>" # UF do eixo X
-                                "Valor: %{customdata[1]}<br>" # Valor de VLR_VAR
+                                "Valor: %{customdata[1]:,.0f}<br>" # Valor de VLR_VAR
                                 "Unidade: %{customdata[0]}<extra></extra>" # Unidade
                             )
                         ))
 
-                    # Adicionado: Calcular o valor máximo para ajustar o eixo Y
                     max_y_value = df_bar_simple_data['VLR_VAR'].max()
                     y_axis_range = [0, max_y_value * 1.15] # 15% de espaço extra
 
                     layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
                     layout_updates_bar_simple.update({
                         'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=all_ufs), # Ordena pelo DataFrame
-                        # Modificado: Define o range do eixo Y e reverte a margem
                         'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_axis_range),
-                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120) # Revertido t para 50
-                        # 'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
-                        # 'showlegend': False, 'margin': dict(l=60, r=50, t=70, b=120) # Aumentado t de 50 para 70
-                        # 'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
+                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
                     })
                     x_labels = df_bar_simple_data['DESC_UND_FED'].tolist()
                     x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in x_labels]
                     layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext
                     layout_updates_bar_simple['xaxis']['tickvals'] = x_labels # Usa os nomes das UFs como tickvals
                     main_fig.update_layout(layout_updates_bar_simple)
-                    # main_fig já está sendo usado
-
                 else:
                      return dbc.Alert(f"Não há dados disponíveis para o ano {ano_default} para gerar o gráfico de barras simples.", color="warning")
             else:
@@ -892,7 +863,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 try:                   
                     with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
                     und_med_map = df_map_data['DESC_UND_MED'].iloc[0] if not df_map_data['DESC_UND_MED'].empty else ''
-                    # ATRIBUIÇÃO à fig_map (que já foi inicializada)
                     fig_map = px.choropleth(
                         df_map_data, geojson=geojson, locations='DESC_UND_FED', featureidkey='properties.name',
                         color='VLR_VAR', color_continuous_scale='Greens_r', scope="south america"
@@ -902,7 +872,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     fig_map.update_layout(margin=dict(r=0, l=0, t=0, b=0), coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
                 except Exception as map_err:
                      print(f"Erro ao gerar mapa: {map_err}")
-                     # fig_map continua sendo a figura vazia inicializada anteriormente
 
         # --- Monta o Layout da Visualização ---
         graph_layout = []
