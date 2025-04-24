@@ -133,6 +133,8 @@ def converter_tipos_dados(df):
                 df[col] = df[col].replace(codes_to_nan, np.nan)
                 df[col] = df[col].str.replace('.', '', regex=False)
                 df[col] = pd.to_numeric(df[col], errors='coerce')
+                # Adicionado: Preenche NaN com 0 após a conversão
+                df[col] = df[col].fillna(0)
             except Exception as e:
                 logging.error(f"Erro ao converter coluna numérica '{col}': {e}")
                 # Decide se quer parar ou continuar com a coluna como objeto

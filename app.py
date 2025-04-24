@@ -455,6 +455,41 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         if df_filtered.empty:
              return dbc.Alert("Nenhum dado encontrado após aplicar os filtros.", color="warning")
 
+        # Adicionado: Verifica se todos os valores restantes são zero APÓS fillna(0)
+        if not df_filtered.empty and (df_filtered['VLR_VAR'] == 0).all():
+            # Constrói a mensagem explicando os filtros
+            filter_desc = []
+            if selected_var:
+                 df_var_desc = load_variavel()
+                 var_info = df_var_desc[df_var_desc['CODG_VAR'] == str(selected_var)]
+                 var_name = var_info['DESC_VAR'].iloc[0] if not var_info.empty else f"Variável Cód: {selected_var}"
+                 filter_desc.append(f"Variável: '{var_name}'")
+            if selected_filters:
+                 for col_code, value in selected_filters.items():
+                      col_name = constants.COLUMN_NAMES.get(col_code, col_code)
+                      # Tenta obter a descrição do valor se disponível
+                      desc_col_code = 'DESC_' + col_code[5:]
+                      value_desc = str(value)
+                      if desc_col_code in df.columns:
+                          try:
+                              desc_map = df[[col_code, desc_col_code]].drop_duplicates()
+                              desc_map[col_code] = desc_map[col_code].astype(str)
+                              matched_desc = desc_map[desc_map[col_code] == str(value)]
+                              if not matched_desc.empty:
+                                  value_desc = matched_desc[desc_col_code].iloc[0]
+                          except Exception:
+                              pass # Mantém o código se a descrição falhar
+                      filter_desc.append(f"{col_name}: '{value_desc}'")
+            message = (
+                "A combinação selecionada " +
+                ("(" + ", ".join(filter_desc) + ") " if filter_desc else "") +
+                "resultou apenas em valores iguais a zero. "
+                "Não há dados a serem exibidos. Por favor, tente outra combinação de filtros."
+            )
+            return dbc.Alert(message, color="info", className="textCenter p-3")
+
+        df_original_for_table = df_filtered.copy()
+
         # --- Adiciona/Garante Colunas de Descrição ---
         # Descrição UF
         if 'CODG_UND_FED' in df_filtered.columns:
@@ -511,12 +546,15 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         df_filtered['CODG_ANO'] = df_filtered['CODG_ANO'].astype(str)
         df_filtered = df_filtered.sort_values('CODG_ANO')
         df_filtered['VLR_VAR'] = pd.to_numeric(df_filtered['VLR_VAR'], errors='coerce')
-        df_filtered = df_filtered.dropna(subset=['VLR_VAR'])
+        # Adicionado: Preenche NaN com 0 após a conversão numérica no app
+        df_filtered['VLR_VAR'] = df_filtered['VLR_VAR'].fillna(0)
+        # Removido: Não dropar linhas com base em VLR_VAR após fillna(0)
+        # df_filtered = df_filtered.dropna(subset=['VLR_VAR'])
 
         if df_filtered.empty:
-            return dbc.Alert("Não há dados numéricos válidos para criar a visualização.", color="warning", className="textCenter p-3")
-
-        df_original_for_table = df_filtered.copy()
+            # Modificado: Mensagem caso o DF esteja vazio após filtros (mesmo com fillna(0))
+            return dbc.Alert("Não há dados disponíveis para a combinação de filtros selecionada.", color="warning", className="textCenter p-3")
+            # return dbc.Alert("Não há dados numéricos válidos para criar a visualização.", color="warning", className="textCenter p-3")
 
         # --- Definição Dinâmica das Colunas da Tabela AG Grid ---
         base_col_defs = [
@@ -819,7 +857,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 return dbc.Alert(f"Não é possível gerar o gráfico de barras simples. Informações ausentes: {', '.join(missing_info)}.", color="warning")
         # --- Fim da Lógica dos Gráficos ---
 
-        # Criação do Mapa (se houver UF e ano) - Lógica mantida
+        # Criação do Mapa (se houver UF e ano)
         if 'DESC_UND_FED' in df_filtered.columns and ano_default:
             df_map_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
             if not df_map_data.empty:
