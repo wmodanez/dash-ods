@@ -1089,8 +1089,8 @@ def update_card_content(*args):
             indicadores_meta_selecionada = df_indicadores[df_indicadores['ID_META'] == meta_id]
             tabs_indicadores = []
 
-            # Inicia o pré-carregamento preditivo em segundo plano (opcional, mas bom manter)
-            preload_related_indicators(meta_id, df_indicadores, _load_dados_indicador_original)
+            # Comentado para desabilitar pré-carregamento
+            # preload_related_indicators(meta_id, df_indicadores, _load_dados_indicador_original)
 
             if not indicadores_meta_selecionada.empty:
                 valor_inicial_variavel_primeira_aba = None
@@ -1300,8 +1300,8 @@ def update_card_content(*args):
             indicadores_primeira_meta = df_indicadores[df_indicadores['ID_META'] == meta_id]
             tabs_indicadores = []
 
-            # Inicia o pré-carregamento preditivo dos indicadores desta meta em segundo plano
-            preload_related_indicators(meta_id, df_indicadores, _load_dados_indicador_original)
+            # Comentado para desabilitar pré-carregamento
+            # preload_related_indicators(meta_id, df_indicadores, _load_dados_indicador_original)
 
             if not indicadores_primeira_meta.empty:
                 # Variável para armazenar o valor inicial da variável (usado apenas para o primeiro indicador)
