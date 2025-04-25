@@ -1,20 +1,16 @@
 ID_INDICADOR;DESC_INDICADOR;ID_META;STATUS;RBC;VARIAVEIS;SERIE_TEMPORAL;GRAFICO_LINHA;RANKING_ORDEM
-Indicador 1.1.1;Proporção da população vivendo abaixo da linha de pobreza internacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.1;Produzido;1;0;1;1;1
+Indicador 1.1.1;Proporção da população vivendo abaixo da linha de pobreza internacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.1;Produzido;1;0;1;0;1
 Indicador 1.2.1;Proporção da população vivendo abaixo da linha de pobreza nacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.2;Produzido;1;0;1;0;1
-Indicador 1.2.2;Proporção de homens, mulheres e crianças de todas as idades vivendo na pobreza em todas as dimensões de acordo com as definições nacionais;Meta 1.2;Produzido;1;0;1;1;1
-Indicador 1.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 1.5;Produzido;1;0;1;1;1
-Indicador 1.5.2;Perdas econômicas diretas atribuídas a desastres em relação ao Produto Interno Bruto (PIB) global;Meta 1.5;Produzido;1;0;1;1;1
-Indicador 1.5.3;Número de países que adotaram e implementaram estratégias nacionais de redução de risco de desastres em linha com o Quadro de Sendai para a Redução de Risco de Desastres 2015-2030;Meta 1.5;Produzido;1;0;1;1;0
-Indicador 1.5.4;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 1.5;Produzido;1;0;0;1;0
+Indicador 1.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 1.5;Produzido;1;0;1;0;1
 Indicador 3.1.1;Razão de mortalidade materna;Meta 3.1;Produzido;1;1;1;1;1
 Indicador 3.1.2;Proporção de nascimentos assistidos por pessoal de saúde qualificado;Meta 3.1;Produzido;1;1;1;1;0
 Indicador 3.2.1;Taxa de mortalidade em menores de 5 anos;Meta 3.2;Produzido;1;1;1;1;1
 Indicador 3.2.2;Taxa de mortalidade neonatal;Meta 3.2;Produzido;1;1;1;1;1
-Indicador 3.3.2;Incidência de tuberculose por 100.000 habitantes;Meta 3.3;Produzido;1;1;1;1;1
+Indicador 3.3.2;Incidência de tuberculose por 100.000 habitantes;Meta 3.3;Produzido;1;1;1;0;1
 Indicador 3.3.3;Taxa de incidência da malária por 1.000 habitantes;Meta 3.3;Produzido;1;1;1;1;1
-Indicador 3.3.4;Taxa de incidência da hepatite B por 100 mil habitantes;Meta 3.3;Produzido;1;1;1;1;1
+Indicador 3.3.4;Taxa de incidência da hepatite B por 100 mil habitantes;Meta 3.3;Produzido;1;1;1;0;1
 Indicador 3.3.5;Número de pessoas que necessitam de intervenções contra doenças tropicais negligenciadas (DTN);Meta 3.3;Produzido;1;0;0;1;1
-Indicador 3.4.1;Taxa de mortalidade por doenças do aparelho circulatório, tumores malignos, diabetes mellitus e doenças crônicas respiratórias;Meta 3.4;Produzido;1;1;1;1;1
+Indicador 3.4.1;Taxa de mortalidade por doenças do aparelho circulatório, tumores malignos, diabetes mellitus e doenças crônicas respiratórias;Meta 3.4;Produzido;1;1;1;0;1
 Indicador 3.4.2;Taxa de mortalidade por suicídio;Meta 3.4;Produzido;1;1;1;1;1
 Indicador 3.6.1;Taxa de mortalidade por acidentes de trânsito;Meta 3.6;Produzido;1;1;1;1;1
 Indicador 3.7.2;Número de nascidos vivos de mães adolescentes (grupos etários 10-14 e 15-19) por 1.000 mulheres destes grupos etários;Meta 3.7;Produzido;1;1;1;1;1

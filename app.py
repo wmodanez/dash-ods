@@ -1915,34 +1915,50 @@ def update_store_from_variable(selected_var, current_data):
     Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
     State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
     State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'id'), # Adiciona State para obter o ID do Store
     prevent_initial_call=True
 )
-def update_store_from_filters(filter_values, filter_ids, current_data):
+def update_store_from_filters(filter_values, filter_ids, current_data, store_id): # Adiciona store_id
     ctx = callback_context
-    if not ctx.triggered:
+    if not ctx.triggered or not store_id: # Verifica se store_id está presente
         raise PreventUpdate
+
+    indicador_id = store_id.get('index', 'ID_DESCONHECIDO') # Obtem o ID do indicador de forma segura
 
     current_data = current_data or {'selected_var': None, 'selected_filters': {}}
 
     selected_filters = {}
     if filter_ids and filter_values:
-        try:
+        # Garante que ambos são listas antes de verificar o comprimento
+        if isinstance(filter_ids, list) and isinstance(filter_values, list):
             if len(filter_ids) != len(filter_values):
-                logging.warning("Comprimento de filter_ids e filter_values não coincide em update_store_from_filters.")
-                raise PreventUpdate # Evita erro de zip
+                logging.warning(f"({indicador_id}) Comprimento de filter_ids ({len(filter_ids)}) e filter_values ({len(filter_values)}) não coincide.")
+                # Não necessariamente um erro fatal, pode acontecer durante a inicialização.
+                # Poderia tentar parear os que têm ID correspondente? Por enquanto, mantém o comportamento.
+            else:
+                try:
+                    for filter_id, filter_value in zip(filter_ids, filter_values):
+                        # Verificação mais robusta
+                        if isinstance(filter_id, dict) and 'filter_col' in filter_id:
+                            col_name = filter_id['filter_col']
+                            # Permite None como valor válido (para limpar um filtro, por exemplo)
+                            # A lógica em create_visualization deve ignorar filtros com valor None.
+                            # if filter_value is not None and filter_value != 'all': # Comentado para permitir None
+                            selected_filters[col_name] = filter_value
+                        else:
+                            logging.warning(f"({indicador_id}) ID de filtro inválido encontrado: {filter_id}")
 
-            for filter_id, filter_value in zip(filter_ids, filter_values):
-                if filter_id and 'filter_col' in filter_id and filter_value is not None and filter_value != 'all':
-                    col_name = filter_id['filter_col']
-                    selected_filters[col_name] = filter_value
-        except Exception as e:
-            logging.exception("Erro ao processar filtros dinâmicos no store: %s", e)
-            raise PreventUpdate
+                except Exception as e:
+                    logging.exception(f"({indicador_id}) Erro ao processar filtros dinâmicos no store: {e}")
+                    raise PreventUpdate # Mantém o PreventUpdate em caso de exceção inesperada
+        else:
+            logging.warning(f"({indicador_id}) filter_ids ou filter_values não são listas.")
 
     # Log dos filtros aplicados (nível DEBUG)
-    logging.debug("Filtros dinâmicos atualizados no store para %s: %s",
-                  ctx.inputs_list[1][0]['id']['index'], selected_filters)
+    logging.debug(f"Filtros dinâmicos atualizados no store para {indicador_id}: {selected_filters}")
 
+    # Só atualiza se os filtros realmente mudaram para evitar loops desnecessários?
+    # (Otimização futura, por enquanto atualiza sempre)
     current_data['selected_filters'] = selected_filters
     return current_data
 
