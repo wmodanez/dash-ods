@@ -1,16 +1,40 @@
 # Use uma imagem base Python oficial
 FROM python:3.9-slim
 
-# Define variáveis de ambiente para locale, timezone e build não interativo
-ENV LANG=pt_BR.UTF-8 \
-    LANGUAGE=pt_BR:pt:en \
-    LC_ALL=pt_BR.UTF-8 \
-    TZ=America/Sao_Paulo \
+# Define timezone e frontend não interativo primeiro
+ENV TZ=America/Sao_Paulo \
     DEBIAN_FRONTEND=noninteractive \
+    # Mantém env vars do Python
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Variáveis de ambiente da aplicação (mantidas)
+# Instala tzdata, locales, GERA O LOCALE, e depois as dependências de build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
+    locales \
+    # Gera o locale pt_BR.UTF-8 ANTES de instalar outros pacotes
+    && echo "pt_BR.UTF-8 UTF-8" >> /etc/locale.gen \
+    && locale-gen pt_BR.UTF-8 \
+    # Instala outras dependências de build
+    && apt-get install -y --no-install-recommends \
+       build-essential \
+       nano \
+       python3-dev \
+    # Limpa o cache do apt
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    # Cria diretórios e ajusta permissões (usando UID diretamente)
+    && mkdir -p /app/db /app/db-init \
+    && chown -R 1001:0 /app \
+    && chmod -R g+w /app \
+    && chmod g+w /etc/passwd
+
+# Define as variáveis de ambiente do LOCALE *APÓS* a geração
+ENV LANG=pt_BR.UTF-8 \
+    LANGUAGE=pt_BR:pt:en \
+    LC_ALL=pt_BR.UTF-8
+
+# Variáveis de ambiente da aplicação
 ENV DEBUG=False \
     PORT=8050 \
     HOST=0.0.0.0
@@ -19,25 +43,7 @@ ENV DEBUG=False \
 ENV USER_UID=1001 \
     USER_NAME=python
 
-# Instala as dependências do sistema, configura locale e timezone
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    locales \
-    tzdata \
-    build-essential \
-    nano \
-    python3-dev \
-    # Gera o locale pt_BR.UTF-8
-    && echo "pt_BR.UTF-8 UTF-8" >> /etc/locale.gen \
-    && locale-gen pt_BR.UTF-8 \
-    # Limpa o cache do apt
-    && rm -rf /var/lib/apt/lists/* \
-    # Cria diretórios e ajusta permissões
-    && mkdir -p /app/db /app/db-init \
-    && chown -R ${USER_UID}:0 /app \
-    && chmod -R g+w /app \
-    && chmod g+w /etc/passwd
-
-# Verifica a hora e o locale configurados
+# Verifica a hora e o locale configurados (Mantido para verificação)
 RUN echo "--- Verificando Hora e Locale --- " && \
     date && \
     echo "--- Locale Settings --- " && \
