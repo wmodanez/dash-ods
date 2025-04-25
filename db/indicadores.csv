@@ -1,73 +1,73 @@
-ID_INDICADOR;DESC_INDICADOR;ID_META;STATUS;RBC;VARIAVEIS;SERIE_TEMPORAL;GRAFICO_LINHA;RANKING;RANKING_ORDEM
-Indicador 1.1.1;Proporção da população vivendo abaixo da linha de pobreza internacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.1;Produzido;1;0;1;1;1;1
-Indicador 1.2.1;Proporção da população vivendo abaixo da linha de pobreza nacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.2;Produzido;1;0;1;0;1;1
-Indicador 1.2.2;Proporção de homens, mulheres e crianças de todas as idades vivendo na pobreza em todas as dimensões de acordo com as definições nacionais;Meta 1.2;Produzido;1;0;1;1;1;1
-Indicador 1.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 1.5;Produzido;1;0;1;1;1;1
-Indicador 1.5.2;Perdas econômicas diretas atribuídas a desastres em relação ao Produto Interno Bruto (PIB) global;Meta 1.5;Produzido;1;0;1;1;1;1
-Indicador 1.5.3;Número de países que adotaram e implementaram estratégias nacionais de redução de risco de desastres em linha com o Quadro de Sendai para a Redução de Risco de Desastres 2015-2030;Meta 1.5;Produzido;1;0;1;1;1;0
-Indicador 1.5.4;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 1.5;Produzido;1;0;0;1;1;0
-Indicador 3.1.1;Razão de mortalidade materna;Meta 3.1;Produzido;1;1;1;1;1;1
-Indicador 3.1.2;Proporção de nascimentos assistidos por pessoal de saúde qualificado;Meta 3.1;Produzido;1;1;1;1;1;0
-Indicador 3.2.1;Taxa de mortalidade em menores de 5 anos;Meta 3.2;Produzido;1;1;1;1;1;1
-Indicador 3.2.2;Taxa de mortalidade neonatal;Meta 3.2;Produzido;1;1;1;1;1;1
-Indicador 3.3.2;Incidência de tuberculose por 100.000 habitantes;Meta 3.3;Produzido;1;1;1;1;1;1
-Indicador 3.3.3;Taxa de incidência da malária por 1.000 habitantes;Meta 3.3;Produzido;1;1;1;1;1;1
-Indicador 3.3.4;Taxa de incidência da hepatite B por 100 mil habitantes;Meta 3.3;Produzido;1;1;1;1;1;1
-Indicador 3.3.5;Número de pessoas que necessitam de intervenções contra doenças tropicais negligenciadas (DTN);Meta 3.3;Produzido;1;0;0;1;1;1
-Indicador 3.4.1;Taxa de mortalidade por doenças do aparelho circulatório, tumores malignos, diabetes mellitus e doenças crônicas respiratórias;Meta 3.4;Produzido;1;1;1;1;1;1
-Indicador 3.4.2;Taxa de mortalidade por suicídio;Meta 3.4;Produzido;1;1;1;1;1;1
-Indicador 3.6.1;Taxa de mortalidade por acidentes de trânsito;Meta 3.6;Produzido;1;1;1;1;1;1
-Indicador 3.7.2;Número de nascidos vivos de mães adolescentes (grupos etários 10-14 e 15-19) por 1.000 mulheres destes grupos etários;Meta 3.7;Produzido;1;1;1;1;1;1
-Indicador 3.9.2;Taxa de mortalidade atribuída a fontes de água inseguras, saneamento inseguro e falta de higiene;Meta 3.9;Produzido;1;1;1;1;1;1
-Indicador 3.9.3;Taxa de mortalidade atribuída a intoxicação não intencional;Meta 3.9;Produzido;1;1;1;1;1;1
-Indicador 3.a.1;Prevalência do consumo atual de tabaco na população de 15 anos ou mais;Meta 3.a;Produzido;1;1;0;1;1;1
-Indicador 4.1.2;Taxa de conclusão do ensino fundamental e ensino médio;Meta 4.1;Produzido;1;0;1;0;1;0
-Indicador 4.2.1;Proporção de crianças com idade entre 24-59 meses que estão com desenvolvimento adequado da saúde, aprendizagem e bem-estar psicossocial, por sexo;Meta 4.2;Produzido;1;0;1;1;1;0
-Indicador 4.2.1.2;Proporção das pessoas de 5 anos de idade que frequentam escola de acordo com a situação do domicílio;Meta 4.2;Produzido;1;0;1;1;1;0
-Indicador 4.2.1.3;Proporção das pessoas de 5 anos de idade que frequentam escola em relação ao sexo;Meta 4.2;Produzido;1;0;1;1;1;0
-Indicador 4.2.1.4;Proporção das pessoas de 5 anos de idade que frequentam escola, em relação ao percentual das pessoas em ordem crescente de rendimento domiciliar per capita;Meta 4.2;Produzido;1;0;1;1;1;0
-Indicador 4.2.2;Taxa de participação no ensino organizado (um ano antes da idade oficial de ingresso no ensino fundamental), por sexo;Meta 4.2;Produzido;1;1;1;1;1;0
-Indicador 4.5.1;Índices de paridade (mulher/homem, rural/urbano, 1º/5º quintis de renda e outros como população com deficiência, populações indígenas e populações afetadas por conflitos, à medida que os dados estejam disponíveis) para todos os indicadores nesta lista que possam ser desagregados;Meta 4.5;Produzido;1;1;1;1;1;1
-Indicador 4.a.1;"Proporção de escolas com acesso a: (a) eletricidade; (b) internet para fins pedagógicos; (c) computadores para fins pedagógicos; (d) infraestrutura e materiais adaptados para alunos com deficiência; (e) água potável; (f) instalações sanitárias separadas por sexo; e (g) instalações básicas para lavagem das mãos (de acordo com as definições dos indicadores WASH)";Meta 4.a;Produzido;1;1;1;1;1;0
-Indicador 4.c.1;Proporção de professores que receberam a qualificação mínima exigida, por nível de ensino;Meta 4.c;Produzido;1;0;1;1;1;0
-Indicador 5.4.1;Proporção de tempo gasto em trabalho doméstico não remunerado e cuidados, por sexo, idade e localização;Meta 5.4;Produzido;1;0;1;1;1;1
-Indicador 5.4.1.2;Percentual de tempo gasto em trabalho doméstico não remunerado e cuidados por sexo e raça;Meta 5.4;Produzido;1;0;1;1;1;1
-Indicador 5.4.1.3;Percentual de tempo gasto em trabalho doméstico não remunerado e cuidados;Meta 5.4;Produzido;1;0;1;1;1;1
-Indicador 5.5.1;Proporção de assentos ocupados por mulheres em (a) parlamentos nacionais e (b) governos locais;Meta 5.5;Produzido;1;1;0;1;1;0
-Indicador 5.5.1.1;Número de assentos ocupados por mulheres na Câmara de Vereadores;Meta 5.5;Produzido;1;1;0;1;1;0
-Indicador 6.1.1;Proporção da população que utiliza serviços de água potável gerenciados de forma segura;Meta 6.1;Produzido;1;0;1;1;1;0
-Indicador 6.2.1;Proporção da população que utiliza (a) serviços de saneamento gerenciados de forma segura e (b) instalações para lavagem das mãos com água e sabão;Meta 6.2;Produzido;1;0;0;1;1;0
-Indicador 6.4.1;Alteração da eficiência no uso da água ao longo do tempo;Meta 6.4;Produzido;1;1;1;1;1;1
-Indicador 6.6.1;Alteração na extensão dos ecossistemas relacionados a água ao longo do tempo;Meta 6.6;Produzido;1;1;0;1;1;1
-Indicador 7.1.1;Percentagem da população com acesso à eletricidade;Meta 7.1;Produzido;1;0;1;1;1;0
-Indicador 7.1.2;Percentagem da população com acesso primário a combustíveis e tecnologias limpos;Meta 7.1;Produzido;1;0;0;1;1;0
-Indicador 8.3.1;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência, por sexo, setor de atividade do trabalho principal e existência de deficiência;Meta 8.3;Produzido;1;0;1;1;1;1
-Indicador 8.3.1.2;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência, por atividade principal de trabalho;Meta 8.3;Produzido;1;0;1;1;1;1
-Indicador 8.3.1.3;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência, por existência de deficiência;Meta 8.3;Produzido;1;0;0;1;1;1
-Indicador 8.5.1;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por sexo, grupo de idade, grupamento ocupacional do trabalho principal e existência de deficiência;Meta 8.5;Produzido;1;0;1;1;1;0
-Indicador 8.5.1.2;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por grupo de idade;Meta 8.5;Produzido;1;0;1;1;1;0
-Indicador 8.5.1.3;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por grupamento ocupacional no trabalho principal;Meta 8.5;Produzido;1;0;1;1;1;0
-Indicador 8.5.1.4;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por existência de deficiência;Meta 8.5;Produzido;1;0;0;1;1;0
-Indicador 8.5.2;Taxa de desocupação, por sexo, grupo de idade e existência de deficiência;Meta 8.5;Produzido;1;0;0;1;1;1
-Indicador 8.5.2.2;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade, por sexo;Meta 8.5;Produzido;1;0;1;1;1;1
-Indicador 8.5.2.3;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade, por grupo de idade;Meta 8.5;Produzido;1;0;1;1;1;1
-Indicador 8.6.1;Percentual de pessoas de 15 a 24 anos não ocupadas, não estudantes e que não estão em treinamento para um trabalho;Meta 8.6;Produzido;1;0;1;1;1;1
-Indicador 9.2.1;Valor adicionado da indústria em proporção do PIB e per capita;Meta 9.2;Produzido;1;1;1;1;1;0
-Indicador 9.2.2;Emprego na indústria em proporção do emprego total;Meta 9.2;Produzido;1;0;1;1;1;0
-Indicador 9.b.1;Proporção do valor adicionado nas indústrias de média e alta intensidade tecnológica no valor adicionado total;Meta 9.b;Produzido;1;0;1;1;1;0
-Indicador 11.3.2;Proporção de cidades com uma estrutura de participação direta da sociedade civil no planejamento e gestão urbana que opera de forma regular e democrática;Meta 11.3;Produzido;1;1;1;1;1;0
-Indicador 11.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 11.5;Produzido;1;0;1;1;1;1
-Indicador 11.b.2;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 11.b;Produzido;1;0;0;1;1;0
-Indicador 13.1.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 13.1;Produzido;1;0;1;1;1;1
-Indicador 13.1.3;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 13.1;Produzido;1;0;0;1;1;0
-Indicador 13.2.2;Emissões de gases do efeito estufa diretos, por fonte de emissão de gases de efeito estufa;Meta 13.2;Produzido;1;0;1;1;1;1
-Indicador 16.1.1;Número de vítimas de homicídios intencionais por 100 mil habitantes, por ano;Meta 16.1;Produzido;1;0;1;1;1;1
-Indicador 16.1.1.2;Número de vítimas de homicídios intencionais por 100 mil habitantes, por grupo de idade;Meta 16.1;Produzido;1;0;1;1;1;1
-Indicador 16.1.1.3;Número de vítimas de homicídios intencionais por 100 mil habitantes, por sexo e grupo de idade;Meta 16.1;Produzido;1;0;1;1;1;1
-Indicador 16.1.1.4;Número de vítimas de homicídios intencionais por 100 mil habitantes, por sexo;Meta 16.1;Produzido;1;0;1;1;1;1
-Indicador 16.1.3;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por sexo e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1;1
-Indicador 16.1.3.1;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por grupo de idade e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1;1
-Indicador 16.1.3.2;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por nível de instrução e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1;1
-Indicador 16.1.3.3;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por cor ou raça e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1;1
-Indicador 16.1.3.4;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por rendimento mensal domiciliar per capita e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1;1
-Indicador 16.9.1;Proporção de crianças com menos de 5 anos cujos nascimentos foram registrados por uma autoridade civil, por idade;Meta 16.9;Produzido;1;1;0;1;1;0
+ID_INDICADOR;DESC_INDICADOR;ID_META;STATUS;RBC;VARIAVEIS;SERIE_TEMPORAL;GRAFICO_LINHA;RANKING_ORDEM
+Indicador 1.1.1;Proporção da população vivendo abaixo da linha de pobreza internacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.1;Produzido;1;0;1;1;1
+Indicador 1.2.1;Proporção da população vivendo abaixo da linha de pobreza nacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.2;Produzido;1;0;1;0;1
+Indicador 1.2.2;Proporção de homens, mulheres e crianças de todas as idades vivendo na pobreza em todas as dimensões de acordo com as definições nacionais;Meta 1.2;Produzido;1;0;1;1;1
+Indicador 1.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 1.5;Produzido;1;0;1;1;1
+Indicador 1.5.2;Perdas econômicas diretas atribuídas a desastres em relação ao Produto Interno Bruto (PIB) global;Meta 1.5;Produzido;1;0;1;1;1
+Indicador 1.5.3;Número de países que adotaram e implementaram estratégias nacionais de redução de risco de desastres em linha com o Quadro de Sendai para a Redução de Risco de Desastres 2015-2030;Meta 1.5;Produzido;1;0;1;1;0
+Indicador 1.5.4;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 1.5;Produzido;1;0;0;1;0
+Indicador 3.1.1;Razão de mortalidade materna;Meta 3.1;Produzido;1;1;1;1;1
+Indicador 3.1.2;Proporção de nascimentos assistidos por pessoal de saúde qualificado;Meta 3.1;Produzido;1;1;1;1;0
+Indicador 3.2.1;Taxa de mortalidade em menores de 5 anos;Meta 3.2;Produzido;1;1;1;1;1
+Indicador 3.2.2;Taxa de mortalidade neonatal;Meta 3.2;Produzido;1;1;1;1;1
+Indicador 3.3.2;Incidência de tuberculose por 100.000 habitantes;Meta 3.3;Produzido;1;1;1;1;1
+Indicador 3.3.3;Taxa de incidência da malária por 1.000 habitantes;Meta 3.3;Produzido;1;1;1;1;1
+Indicador 3.3.4;Taxa de incidência da hepatite B por 100 mil habitantes;Meta 3.3;Produzido;1;1;1;1;1
+Indicador 3.3.5;Número de pessoas que necessitam de intervenções contra doenças tropicais negligenciadas (DTN);Meta 3.3;Produzido;1;0;0;1;1
+Indicador 3.4.1;Taxa de mortalidade por doenças do aparelho circulatório, tumores malignos, diabetes mellitus e doenças crônicas respiratórias;Meta 3.4;Produzido;1;1;1;1;1
+Indicador 3.4.2;Taxa de mortalidade por suicídio;Meta 3.4;Produzido;1;1;1;1;1
+Indicador 3.6.1;Taxa de mortalidade por acidentes de trânsito;Meta 3.6;Produzido;1;1;1;1;1
+Indicador 3.7.2;Número de nascidos vivos de mães adolescentes (grupos etários 10-14 e 15-19) por 1.000 mulheres destes grupos etários;Meta 3.7;Produzido;1;1;1;1;1
+Indicador 3.9.2;Taxa de mortalidade atribuída a fontes de água inseguras, saneamento inseguro e falta de higiene;Meta 3.9;Produzido;1;1;1;1;1
+Indicador 3.9.3;Taxa de mortalidade atribuída a intoxicação não intencional;Meta 3.9;Produzido;1;1;1;1;1
+Indicador 3.a.1;Prevalência do consumo atual de tabaco na população de 15 anos ou mais;Meta 3.a;Produzido;1;1;0;1;1
+Indicador 4.1.2;Taxa de conclusão do ensino fundamental e ensino médio;Meta 4.1;Produzido;1;0;1;0;0
+Indicador 4.2.1;Proporção de crianças com idade entre 24-59 meses que estão com desenvolvimento adequado da saúde, aprendizagem e bem-estar psicossocial, por sexo;Meta 4.2;Produzido;1;0;1;1;0
+Indicador 4.2.1.2;Proporção das pessoas de 5 anos de idade que frequentam escola de acordo com a situação do domicílio;Meta 4.2;Produzido;1;0;1;1;0
+Indicador 4.2.1.3;Proporção das pessoas de 5 anos de idade que frequentam escola em relação ao sexo;Meta 4.2;Produzido;1;0;1;1;0
+Indicador 4.2.1.4;Proporção das pessoas de 5 anos de idade que frequentam escola, em relação ao percentual das pessoas em ordem crescente de rendimento domiciliar per capita;Meta 4.2;Produzido;1;0;1;1;0
+Indicador 4.2.2;Taxa de participação no ensino organizado (um ano antes da idade oficial de ingresso no ensino fundamental), por sexo;Meta 4.2;Produzido;1;1;1;1;0
+Indicador 4.5.1;Índices de paridade (mulher/homem, rural/urbano, 1º/5º quintis de renda e outros como população com deficiência, populações indígenas e populações afetadas por conflitos, à medida que os dados estejam disponíveis) para todos os indicadores nesta lista que possam ser desagregados;Meta 4.5;Produzido;1;1;1;1;1
+Indicador 4.a.1;"Proporção de escolas com acesso a: (a) eletricidade; (b) internet para fins pedagógicos; (c) computadores para fins pedagógicos; (d) infraestrutura e materiais adaptados para alunos com deficiência; (e) água potável; (f) instalações sanitárias separadas por sexo; e (g) instalações básicas para lavagem das mãos (de acordo com as definições dos indicadores WASH)";Meta 4.a;Produzido;1;1;1;1;0
+Indicador 4.c.1;Proporção de professores que receberam a qualificação mínima exigida, por nível de ensino;Meta 4.c;Produzido;1;0;1;1;0
+Indicador 5.4.1;Proporção de tempo gasto em trabalho doméstico não remunerado e cuidados, por sexo, idade e localização;Meta 5.4;Produzido;1;0;1;1;1
+Indicador 5.4.1.2;Percentual de tempo gasto em trabalho doméstico não remunerado e cuidados por sexo e raça;Meta 5.4;Produzido;1;0;1;1;1
+Indicador 5.4.1.3;Percentual de tempo gasto em trabalho doméstico não remunerado e cuidados;Meta 5.4;Produzido;1;0;1;1;1
+Indicador 5.5.1;Proporção de assentos ocupados por mulheres em (a) parlamentos nacionais e (b) governos locais;Meta 5.5;Produzido;1;1;0;1;0
+Indicador 5.5.1.1;Número de assentos ocupados por mulheres na Câmara de Vereadores;Meta 5.5;Produzido;1;1;0;1;0
+Indicador 6.1.1;Proporção da população que utiliza serviços de água potável gerenciados de forma segura;Meta 6.1;Produzido;1;0;1;1;0
+Indicador 6.2.1;Proporção da população que utiliza (a) serviços de saneamento gerenciados de forma segura e (b) instalações para lavagem das mãos com água e sabão;Meta 6.2;Produzido;1;0;0;1;0
+Indicador 6.4.1;Alteração da eficiência no uso da água ao longo do tempo;Meta 6.4;Produzido;1;1;1;1;1
+Indicador 6.6.1;Alteração na extensão dos ecossistemas relacionados a água ao longo do tempo;Meta 6.6;Produzido;1;1;0;1;1
+Indicador 7.1.1;Percentagem da população com acesso à eletricidade;Meta 7.1;Produzido;1;0;1;1;0
+Indicador 7.1.2;Percentagem da população com acesso primário a combustíveis e tecnologias limpos;Meta 7.1;Produzido;1;0;0;1;0
+Indicador 8.3.1;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência, por sexo, setor de atividade do trabalho principal e existência de deficiência;Meta 8.3;Produzido;1;0;1;1;1
+Indicador 8.3.1.2;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência, por atividade principal de trabalho;Meta 8.3;Produzido;1;0;1;1;1
+Indicador 8.3.1.3;Taxa de informalidade das pessoas de 15 anos ou mais de idade ocupadas na semana de referência, por existência de deficiência;Meta 8.3;Produzido;1;0;0;1;1
+Indicador 8.5.1;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por sexo, grupo de idade, grupamento ocupacional do trabalho principal e existência de deficiência;Meta 8.5;Produzido;1;0;1;1;0
+Indicador 8.5.1.2;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por grupo de idade;Meta 8.5;Produzido;1;0;1;1;0
+Indicador 8.5.1.3;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por grupamento ocupacional no trabalho principal;Meta 8.5;Produzido;1;0;1;1;0
+Indicador 8.5.1.4;Rendimento médio por hora real das pessoas de 15 anos ou mais de idade ocupadas na semana de referência com rendimento de trabalho, habitualmente recebido em todos os trabalhos, por existência de deficiência;Meta 8.5;Produzido;1;0;0;1;0
+Indicador 8.5.2;Taxa de desocupação, por sexo, grupo de idade e existência de deficiência;Meta 8.5;Produzido;1;0;0;1;1
+Indicador 8.5.2.2;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade, por sexo;Meta 8.5;Produzido;1;0;1;1;1
+Indicador 8.5.2.3;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade, por grupo de idade;Meta 8.5;Produzido;1;0;1;1;1
+Indicador 8.6.1;Percentual de pessoas de 15 a 24 anos não ocupadas, não estudantes e que não estão em treinamento para um trabalho;Meta 8.6;Produzido;1;0;1;1;1
+Indicador 9.2.1;Valor adicionado da indústria em proporção do PIB e per capita;Meta 9.2;Produzido;1;1;1;1;0
+Indicador 9.2.2;Emprego na indústria em proporção do emprego total;Meta 9.2;Produzido;1;0;1;1;0
+Indicador 9.b.1;Proporção do valor adicionado nas indústrias de média e alta intensidade tecnológica no valor adicionado total;Meta 9.b;Produzido;1;0;1;1;0
+Indicador 11.3.2;Proporção de cidades com uma estrutura de participação direta da sociedade civil no planejamento e gestão urbana que opera de forma regular e democrática;Meta 11.3;Produzido;1;1;1;1;0
+Indicador 11.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 11.5;Produzido;1;0;1;1;1
+Indicador 11.b.2;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 11.b;Produzido;1;0;0;1;0
+Indicador 13.1.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 13.1;Produzido;1;0;1;1;1
+Indicador 13.1.3;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 13.1;Produzido;1;0;0;1;0
+Indicador 13.2.2;Emissões de gases do efeito estufa diretos, por fonte de emissão de gases de efeito estufa;Meta 13.2;Produzido;1;0;1;1;1
+Indicador 16.1.1;Número de vítimas de homicídios intencionais por 100 mil habitantes, por ano;Meta 16.1;Produzido;1;0;1;1;1
+Indicador 16.1.1.2;Número de vítimas de homicídios intencionais por 100 mil habitantes, por grupo de idade;Meta 16.1;Produzido;1;0;1;1;1
+Indicador 16.1.1.3;Número de vítimas de homicídios intencionais por 100 mil habitantes, por sexo e grupo de idade;Meta 16.1;Produzido;1;0;1;1;1
+Indicador 16.1.1.4;Número de vítimas de homicídios intencionais por 100 mil habitantes, por sexo;Meta 16.1;Produzido;1;0;1;1;1
+Indicador 16.1.3;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por sexo e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1
+Indicador 16.1.3.1;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por grupo de idade e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1
+Indicador 16.1.3.2;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por nível de instrução e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1
+Indicador 16.1.3.3;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por cor ou raça e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1
+Indicador 16.1.3.4;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, por rendimento mensal domiciliar per capita e situação de domicílio;Meta 16.1;Produzido;1;1;0;1;1
+Indicador 16.9.1;Proporção de crianças com menos de 5 anos cujos nascimentos foram registrados por uma autoridade civil, por idade;Meta 16.9;Produzido;1;1;0;1;0
