@@ -962,19 +962,22 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
                     # Define cores e opacidade
                     goias_color = 'rgba(34, 152, 70, 1)' # '#229846' opaco
-                    other_color = 'rgba(34, 152, 70, 0.8)' # '#229846' com 80% de opacidade
+                    other_color = 'rgba(34, 152, 70, 0.2)' # Define como 0.2 para consistência
 
-                    # Cria o gráfico de barras HORIZONTAL (ranking)
-                    fig_ranking = go.Figure()
+                    # Cria o gráfico de ranking com go.Figure e go.Bar
+                    fig_ranking_updated = go.Figure()
+                    print("--- [DEBUG] Ranking Bar Colors ---") # Print antes do loop
                     for _, row in df_ranking_data_initial.iterrows():
                         uf = row['DESC_UND_FED']
                         valor = row['VLR_VAR']
-                        und_med = row['DESC_UND_MED']
+                        und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
                         bar_color = goias_color if uf == 'Goiás' else other_color
-                        # Usa f-string para formatar o valor como inteiro
+                        # --- DEBUG PRINT COR --- 
+                        print(f"    UF: {uf}, Color: {bar_color}")
+                        # --- FIM DEBUG PRINT --- 
                         text_value = f"{valor:,.0f}".replace(",", ".")
 
-                        fig_ranking.add_trace(go.Bar(
+                        fig_ranking_updated.add_trace(go.Bar(
                             y=[uf], # Estados no eixo Y
                             x=[valor], # Valores no eixo X
                             name=uf,
@@ -988,33 +991,22 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 f"Unidade: {und_med}<extra></extra>"
                             )
                         ))
+                    print("--- [DEBUG] End Ranking Bar Colors ---") # Print depois do loop
 
-                    max_x_ranking = df_ranking_data_initial['VLR_VAR'].max()
-                    x_range_ranking = [0, max_x_ranking * 1.15] # Espaço extra para texto
+                    max_x_ranking = df_ranking_data_initial['VLR_VAR'].max() if not df_ranking_data_initial.empty else 0
+                    x_range_ranking = [0, max_x_ranking * 1.15]
 
-                    fig_ranking.update_layout(
-                        title=None, # Sem título principal no gráfico
-                        xaxis_title=None, # Sem título no eixo X
-                        yaxis_title=None, # Sem título no eixo Y
-                        yaxis=dict(
-                            showgrid=False,
-                            tickfont=dict(size=12, color='black'),
-                            categoryorder='array', # Mantém a ordem do dataframe (já ordenado)
-                            categoryarray=df_ranking_data_initial['DESC_UND_FED'].tolist() # Define a ordem
-                        ),
-                        xaxis=dict(
-                            showgrid=True, zeroline=False,
-                            tickfont=dict(size=12, color='black'),
-                            range=x_range_ranking,
-                            tickformat='d' # Formato inteiro para eixo X
-                        ),
-                        showlegend=False,
-                        margin=dict(l=150, r=20, t=30, b=30), # Aumenta margem esquerda para nomes das UFs
-                        bargap=0.1 # Espaço entre barras
+                    # Atualiza layout para gráfico de barras horizontal
+                    fig_ranking_updated.update_layout(
+                        xaxis_title=None, yaxis_title=None,
+                        yaxis=dict(showgrid=False, tickfont=dict(size=12, color='black'), categoryorder='array', categoryarray=df_ranking_data_initial['DESC_UND_FED'].tolist()),
+                        xaxis=dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), range=x_range_ranking, tickformat='d'),
+                        showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
                     )
+
                     # Define o conteúdo do ranking como o dropdown e o gráfico
                     ranking_content = html.Div([
-                        html.Label("Ano (Ranking):", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                        html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
                         dcc.Dropdown(
                             id={'type': 'year-dropdown-ranking', 'index': indicador_id},
                             options=[{'label': ano, 'value': ano} for ano in anos_unicos],
@@ -1022,13 +1014,13 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             clearable=False,
                             style={'width': '100%', 'marginBottom': '10px'}
                         ),
-                        dcc.Graph(id={'type': 'ranking-chart', 'index': indicador_id}, figure=fig_ranking)
+                        dcc.Graph(id={'type': 'ranking-chart', 'index': indicador_id}, figure=fig_ranking_updated)
                     ])
             else:
                  ranking_content = dbc.Alert(f"Ranking não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
                  # Mesmo sem dados, cria o dropdown para permitir seleção de outro ano
                  ranking_content = html.Div([
-                     html.Label("Ano (Ranking):", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                     html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
                      dcc.Dropdown(
                          id={'type': 'year-dropdown-ranking', 'index': indicador_id},
                          options=[{'label': ano, 'value': ano} for ano in anos_unicos],
@@ -1071,7 +1063,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         map_created_successfully = True # Mapa criado com sucesso
                         # Define o conteúdo do mapa como o dropdown e o gráfico
                         map_content = html.Div([
-                            html.Label("Ano (Mapa):", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                            html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
                             dcc.Dropdown(
                                 id={'type': 'year-dropdown-map', 'index': indicador_id},
                                 options=[{'label': ano, 'value': ano} for ano in anos_unicos],
@@ -1088,7 +1080,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                  map_content = dbc.Alert(f"Mapa não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
                  # Mesmo sem dados, cria o dropdown para permitir seleção de outro ano
                  map_content = html.Div([
-                     html.Label("Ano (Mapa):", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                     html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
                      dcc.Dropdown(
                          id={'type': 'year-dropdown-map', 'index': indicador_id},
                          options=[{'label': ano, 'value': ano} for ano in anos_unicos],
@@ -1110,30 +1102,29 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         # Adiciona aba de Ranking se o conteúdo foi gerado (não é apenas a mensagem de erro inicial)
         # Ou seja, se 'DESC_UND_FED' existe
         if 'DESC_UND_FED' in df_filtered.columns:
-            tabs_content.append(dbc.Tab(ranking_content, label="Ranking Estadual", tab_id=f'tab-ranking-{indicador_id}', id={'type': 'tab-ranking', 'index': indicador_id}))
+            tabs_content.append(dbc.Tab(ranking_content, label="Ranking", tab_id=f'tab-ranking-{indicador_id}', id={'type': 'tab-ranking', 'index': indicador_id}))
         # Adiciona aba de Mapa se o conteúdo foi gerado (não é apenas a mensagem de erro inicial)
         # Ou seja, se 'DESC_UND_FED' existe
         if 'DESC_UND_FED' in df_filtered.columns:
-            tabs_content.append(dbc.Tab(map_content, label="Mapa Estadual", tab_id=f'tab-map-{indicador_id}', id={'type': 'tab-map', 'index': indicador_id}))
+            tabs_content.append(dbc.Tab(map_content, label="Mapa Coroplético", tab_id=f'tab-map-{indicador_id}', id={'type': 'tab-map', 'index': indicador_id}))
 
-        # Monta o layout final
+        # Container para as abas (se existirem)
+        tabs_container = html.Div() # Vazio por padrão
+        if tabs_content:
+             tabs_container = dbc.Tabs(
+                 id={'type': 'visualization-tabs', 'index': indicador_id},
+                 children=tabs_content,
+                 # Define a primeira aba (ranking, se existir) como ativa
+                 active_tab=tabs_content[0].tab_id if tabs_content else None
+             )
+
+        # Monta o layout final com gráfico principal e abas lado a lado
         visualization_card_content = dbc.CardBody([
-            # Gráfico Principal sempre visível acima das abas
             dbc.Row([
-                dbc.Col(main_chart_content, width=12)
-            ]),
-            # Abas para Ranking e Mapa (se existirem)
-            dbc.Row([
-                dbc.Col(
-                    dbc.Tabs(
-                        id={'type': 'visualization-tabs', 'index': indicador_id},
-                        children=tabs_content,
-                        # Define a primeira aba (ranking, se existir) como ativa
-                        active_tab=tabs_content[0].tab_id if tabs_content else None
-                    ) if tabs_content else html.Div(), # Só mostra Tabs se houver conteúdo
-                    width=12,
-                    className="mt-4" # Adiciona espaço acima das abas
-                )
+                # Coluna para o Gráfico Principal
+                dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0"), # Ocupa 7 colunas em telas médias/grandes
+                # Coluna para as Abas (Ranking/Mapa)
+                dbc.Col(tabs_container, md=5, xs=12) # Ocupa 5 colunas em telas médias/grandes
             ])
         ])
 
@@ -1724,7 +1715,7 @@ def update_map(selected_year, store_data, year_options, current_year_value):
 
     # Recria o dropdown e o label para retornar em caso de erro
     dropdown_component = [
-        html.Label("Ano (Mapa):", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+        html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
         dcc.Dropdown(
             id={'type': 'year-dropdown', 'index': target_index},
             options=year_options,
@@ -1841,9 +1832,7 @@ def update_map(selected_year, store_data, year_options, current_year_value):
 
         fig_map.update_layout(
             margin=dict(r=0, l=0, t=0, b=0),
-            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
-        )
-
+            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
         # Retorna dropdown + gráfico
         return dropdown_component + [dcc.Graph(figure=fig_map, id={'type': 'choropleth-map', 'index': target_index})] 
 
@@ -2218,6 +2207,269 @@ def toggle_maintenance():
 def get_maintenance_password_hash():
     """Obtém o hash da senha de manutenção do arquivo .env"""
     return os.getenv('MAINTENANCE_PASSWORD_HASH')
+
+# Callback para atualizar o GRÁFICO DE RANKING quando o ano ou filtros mudam
+@app.callback(
+    # Output para o container do gráfico de ranking dentro da aba
+    Output({'type': 'ranking-chart', 'index': MATCH}, 'figure'),
+    # Inputs: dropdown de ano do ranking e store de filtros
+    Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value'),
+    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    # State para pegar o ID do indicador (MATCH)
+    State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
+    prevent_initial_call=True
+)
+def update_ranking_chart(selected_year, store_data, chart_id):
+    # --- DEBUG PRINTS ---
+    try:
+        indicador_id_debug = chart_id.get('index', 'N/A') if isinstance(chart_id, dict) else 'N/A'
+        print(f"--- [DEBUG] update_ranking_chart triggered ---")
+        print(f"    Indicator ID: {indicador_id_debug}")
+        print(f"    Selected Year: {selected_year}")
+        # Limit printing store data length for cleaner logs
+        store_data_str = str(store_data)
+        if len(store_data_str) > 200: store_data_str = store_data_str[:200] + '...'
+        print(f"    Store Data: {store_data_str}")
+    except Exception as e:
+        print(f"    Error in DEBUG print: {e}")
+    # --- END DEBUG PRINTS ---
+
+    ctx = callback_context
+    if not ctx.triggered or not selected_year or not store_data:
+        raise PreventUpdate
+
+    indicador_id = chart_id['index']
+
+    # Extrai filtros do store
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+
+    # Carrega os dados do indicador
+    df_ranking_base = load_dados_indicador_cache(indicador_id)
+    if df_ranking_base is None or df_ranking_base.empty or ('DESC_UND_FED' not in df_ranking_base.columns and 'CODG_UND_FED' not in df_ranking_base.columns):
+        # Retorna figura vazia com aviso se não houver dados ou UF
+        print(f"[DEBUG] update_ranking_chart: Dados insuficientes ou sem UF para {indicador_id}")
+        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # --- Aplica filtros (Variável principal e dinâmicos) ---
+    df_filtered_ranking = df_ranking_base.copy()
+    # Filtro Variável Principal
+    if 'CODG_VAR' in df_filtered_ranking.columns and selected_var:
+        df_filtered_ranking['CODG_VAR'] = df_filtered_ranking['CODG_VAR'].astype(str).str.strip()
+        selected_var_str = str(selected_var).strip()
+        df_filtered_ranking = df_filtered_ranking[df_filtered_ranking['CODG_VAR'] == selected_var_str]
+    # Filtros Dinâmicos
+    if selected_filters:
+        for col_code, selected_value in selected_filters.items():
+            if selected_value is not None and col_code in df_filtered_ranking.columns:
+                df_filtered_ranking[col_code] = df_filtered_ranking[col_code].astype(str).fillna('').str.strip()
+                selected_value_str = str(selected_value).strip()
+                df_filtered_ranking = df_filtered_ranking[df_filtered_ranking[col_code] == selected_value_str]
+
+    # Adiciona DESC_UND_FED se necessário
+    if 'DESC_UND_FED' not in df_filtered_ranking.columns and 'CODG_UND_FED' in df_filtered_ranking.columns:
+        df_filtered_ranking['DESC_UND_FED'] = df_filtered_ranking['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        df_filtered_ranking = df_filtered_ranking.dropna(subset=['DESC_UND_FED'])
+
+    # Adiciona DESC_UND_MED se necessário
+    if 'DESC_UND_MED' not in df_filtered_ranking.columns and 'CODG_UND_MED' in df_filtered_ranking.columns:
+        df_unidade_medida_loaded = load_unidade_medida()
+        if not df_unidade_medida_loaded.empty:
+            df_filtered_ranking['CODG_UND_MED'] = df_filtered_ranking['CODG_UND_MED'].astype(str)
+            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+            df_filtered_ranking = pd.merge(df_filtered_ranking, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df_filtered_ranking['DESC_UND_MED'] = df_filtered_ranking['DESC_UND_MED'].fillna('N/D')
+        else:
+            df_filtered_ranking['DESC_UND_MED'] = 'N/D'
+
+    # Filtra pelo ANO selecionado
+    df_ranking_ano = df_filtered_ranking[df_filtered_ranking['CODG_ANO'] == selected_year].copy()
+
+    if df_ranking_ano.empty or 'DESC_UND_FED' not in df_ranking_ano.columns:
+         print(f"[DEBUG] update_ranking_chart: Dados vazios ou sem UF para {indicador_id} no ano {selected_year} com filtros.")
+         return go.Figure().update_layout(title=f'Ranking não disponível para {selected_year} com filtros aplicados.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # Verifica unicidade por UF para o ano selecionado
+    counts_per_uf_ranking = df_ranking_ano['DESC_UND_FED'].value_counts()
+    if (counts_per_uf_ranking > 1).any():
+         print(f"[DEBUG] update_ranking_chart: Múltiplos valores por UF para {indicador_id} no ano {selected_year}.")
+         return go.Figure().update_layout(title='Ranking não gerado: múltiplos valores por UF.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # Lê a ordem do ranking do indicador
+    ranking_ordem = 0 # Padrão
+    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
+    if not indicador_info.empty and 'RANKING_ORDEM' in indicador_info.columns:
+        try:
+            ranking_ordem_val = pd.to_numeric(indicador_info['RANKING_ORDEM'].iloc[0], errors='coerce')
+            if not pd.isna(ranking_ordem_val): ranking_ordem = int(ranking_ordem_val)
+        except (ValueError, TypeError): pass
+
+    # Ordena baseado em VLR_VAR e RANKING_ORDEM
+    ascending_rank = (ranking_ordem == 1) # True se for menor para maior
+    df_ranking_ano = df_ranking_ano.sort_values('VLR_VAR', ascending=ascending_rank)
+
+    # Define cores e opacidade
+    goias_color = 'rgba(34, 152, 70, 1)'
+    other_color = 'rgba(34, 152, 70, 0.2)'
+
+    # Cria o gráfico de ranking com go.Figure e go.Bar
+    fig_ranking_updated = go.Figure()
+    print("--- [DEBUG] Ranking Bar Colors ---") # Print antes do loop
+    for _, row in df_ranking_ano.iterrows():
+        uf = row['DESC_UND_FED']
+        valor = row['VLR_VAR']
+        und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
+        bar_color = goias_color if uf == 'Goiás' else other_color
+        # --- DEBUG PRINT COR --- 
+        print(f"    UF: {uf}, Color: {bar_color}")
+        # --- FIM DEBUG PRINT --- 
+        text_value = f"{valor:,.0f}".replace(",", ".")
+
+        fig_ranking_updated.add_trace(go.Bar(
+            y=[uf], # Estados no eixo Y
+            x=[valor], # Valores no eixo X
+            name=uf,
+            orientation='h', # Barras horizontais
+            marker_color=bar_color,
+            text=text_value,
+            textposition='outside', # Texto fora da barra
+            hovertemplate=(
+                f"<b>{uf}</b><br>"
+                f"Valor: {text_value}<br>" # Usa o texto formatado
+                f"Unidade: {und_med}<extra></extra>"
+            )
+        ))
+    print("--- [DEBUG] End Ranking Bar Colors ---") # Print depois do loop
+
+    max_x_ranking = df_ranking_ano['VLR_VAR'].max() if not df_ranking_ano.empty else 0
+    x_range_ranking = [0, max_x_ranking * 1.15]
+
+    # Atualiza layout para gráfico de barras horizontal
+    fig_ranking_updated.update_layout(
+        xaxis_title=None, yaxis_title=None,
+        yaxis=dict(showgrid=False, tickfont=dict(size=12, color='black'), categoryorder='array', categoryarray=df_ranking_ano['DESC_UND_FED'].tolist()),
+        xaxis=dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), range=x_range_ranking, tickformat='d'),
+        showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
+    )
+
+    # --- DEBUG PRINT ---
+    print(f"--- [DEBUG] update_ranking_chart finished for year {selected_year} ---")
+    # --- END DEBUG PRINT ---
+    return fig_ranking_updated
+
+# Callback para atualizar o MAPA COROPLÉTICO quando o ano ou filtros mudam
+@app.callback(
+    # Output para o container do gráfico de mapa dentro da aba
+    Output({'type': 'choropleth-map', 'index': MATCH}, 'figure'),
+    # Inputs: dropdown de ano do MAPA e store de filtros
+    Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value'),
+    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    # State para pegar o ID do indicador (MATCH)
+    State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
+    prevent_initial_call=True
+)
+def update_map_chart(selected_year, store_data, chart_id):
+    # --- DEBUG PRINTS ---
+    try:
+        indicador_id_debug = chart_id.get('index', 'N/A') if isinstance(chart_id, dict) else 'N/A'
+        print(f"--- [DEBUG] update_map_chart triggered ---")
+        print(f"    Indicator ID: {indicador_id_debug}")
+        print(f"    Selected Year: {selected_year}")
+        # Limit printing store data length
+        store_data_str = str(store_data)
+        if len(store_data_str) > 200: store_data_str = store_data_str[:200] + '...'
+        print(f"    Store Data: {store_data_str}")
+    except Exception as e:
+        print(f"    Error in DEBUG print: {e}")
+    # --- END DEBUG PRINTS ---
+
+    ctx = callback_context
+    if not ctx.triggered or not selected_year or not store_data:
+        raise PreventUpdate
+
+    indicador_id = chart_id['index']
+    df_map = load_dados_indicador_cache(indicador_id)
+    if df_map is None or df_map.empty:
+        print(f"update_map_chart: Dados não encontrados para {indicador_id}.")
+        return dbc.Alert("Dados não disponíveis para este indicador.", color="warning")
+
+    # Filtra dados para o ano selecionado
+    df_filtered_map = df_map[df_map['CODG_ANO'] == selected_year]
+
+    # Verifica se há dados após o filtro
+    if df_filtered_map.empty:
+        print(f"update_map_chart: Dados não encontrados para {indicador_id} no ano {selected_year} após filtros.")
+        return dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")
+
+    # --- REMOVIDA A AGREGAÇÃO --- 
+
+    # Verifica unicidade por UF
+    if 'DESC_UND_FED' in df_filtered_map.columns:
+        counts_per_uf = df_filtered_map['DESC_UND_FED'].value_counts()
+        if (counts_per_uf > 1).any():
+            # Existem UFs com mais de uma linha
+            print(f"update_map_chart: Múltiplos valores por UF para {indicador_id} no ano {selected_year}. Mapa não pode ser gerado.")
+            alert_message = (
+                "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
+                "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
+            )
+            return dbc.Alert(alert_message, color="danger")
+        # Se chegou aqui, cada UF tem no máximo 1 linha
+    else:
+        # Deveria ter sido pego antes, mas por segurança
+        return dbc.Alert("Erro inesperado: Coluna de UF não encontrada.", color="danger")
+
+    # --- Se passou na verificação de unicidade, cria o mapa --- 
+    try:
+        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+            geojson = json.load(f)
+
+        # Pega unidade de medida (de forma segura)
+        und_med_map = ''
+        if 'DESC_UND_MED' in df_filtered_map.columns and not df_filtered_map['DESC_UND_MED'].empty:
+            first_valid_und_med = df_filtered_map['DESC_UND_MED'].dropna().iloc[0] if not df_filtered_map['DESC_UND_MED'].dropna().empty else ''
+            und_med_map = first_valid_und_med
+
+        fig_map = px.choropleth(
+            df_filtered_map, # Usa df_filtered_map diretamente (sem agregação)
+            geojson=geojson,
+            locations='DESC_UND_FED',
+            featureidkey='properties.name',
+            color='VLR_VAR',
+            color_continuous_scale='Greens_r',
+            scope="south america"
+        )
+
+        fig_map.update_geos(
+            visible=False, showcoastlines=True, coastlinecolor="White",
+            showland=True, landcolor="white", showframe=False,
+            center=dict(lat=-12.9598, lon=-53.2729),
+            projection=dict(type='mercator', scale=2.6)
+        )
+
+        fig_map.update_traces(
+            marker_line_color='white', marker_line_width=1,
+            hovertemplate="<b>%{location}</b><br>Valor: %{z}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+        )
+
+        fig_map.update_layout(
+            margin=dict(r=0, l=0, t=0, b=0),
+            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
+        )
+
+        # Retorna o gráfico
+        # return dcc.Graph(figure=fig_map, id={'type': 'choropleth-map', 'index': target_index})
+        return fig_map # Retorna apenas a figura
+
+    except Exception as e:
+        print(f"Erro ao gerar mapa atualizado para {indicador_id}: {e}")
+        return go.Figure().update_layout(title='Erro ao gerar mapa.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # --- DEBUG PRINT ---
+    print(f"--- [DEBUG] update_map_chart finished for year {selected_year} ---")
+    # --- END DEBUG PRINT ---
+    # Este return não será alcançado devido aos returns anteriores, mas o mantemos por segurança
+    # return fig_map
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
