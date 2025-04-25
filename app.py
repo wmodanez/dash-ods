@@ -957,7 +957,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                      )
                 else:
                     # Ordena baseado em VLR_VAR e RANKING_ORDEM
-                    ascending_rank = (ranking_ordem == 1) # True se for menor para maior
+                    ascending_rank = (ranking_ordem == 0) # True se for maior para menor
                     df_ranking_data_initial = df_ranking_data_initial.sort_values('VLR_VAR', ascending=ascending_rank)
 
                     # Define cores e opacidade
@@ -966,15 +966,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
                     # Cria o gráfico de ranking com go.Figure e go.Bar
                     fig_ranking_updated = go.Figure()
-                    print("--- [DEBUG] Ranking Bar Colors ---") # Print antes do loop
                     for _, row in df_ranking_data_initial.iterrows():
                         uf = row['DESC_UND_FED']
                         valor = row['VLR_VAR']
                         und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
                         bar_color = goias_color if uf == 'Goiás' else other_color
-                        # --- DEBUG PRINT COR --- 
-                        print(f"    UF: {uf}, Color: {bar_color}")
-                        # --- FIM DEBUG PRINT --- 
                         text_value = f"{valor:,.0f}".replace(",", ".")
 
                         fig_ranking_updated.add_trace(go.Bar(
@@ -991,7 +987,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 f"Unidade: {und_med}<extra></extra>"
                             )
                         ))
-                    print("--- [DEBUG] End Ranking Bar Colors ---") # Print depois do loop
 
                     max_x_ranking = df_ranking_data_initial['VLR_VAR'].max() if not df_ranking_data_initial.empty else 0
                     x_range_ranking = [0, max_x_ranking * 1.15]
@@ -2220,20 +2215,6 @@ def get_maintenance_password_hash():
     prevent_initial_call=True
 )
 def update_ranking_chart(selected_year, store_data, chart_id):
-    # --- DEBUG PRINTS ---
-    try:
-        indicador_id_debug = chart_id.get('index', 'N/A') if isinstance(chart_id, dict) else 'N/A'
-        print(f"--- [DEBUG] update_ranking_chart triggered ---")
-        print(f"    Indicator ID: {indicador_id_debug}")
-        print(f"    Selected Year: {selected_year}")
-        # Limit printing store data length for cleaner logs
-        store_data_str = str(store_data)
-        if len(store_data_str) > 200: store_data_str = store_data_str[:200] + '...'
-        print(f"    Store Data: {store_data_str}")
-    except Exception as e:
-        print(f"    Error in DEBUG print: {e}")
-    # --- END DEBUG PRINTS ---
-
     ctx = callback_context
     if not ctx.triggered or not selected_year or not store_data:
         raise PreventUpdate
@@ -2248,7 +2229,6 @@ def update_ranking_chart(selected_year, store_data, chart_id):
     df_ranking_base = load_dados_indicador_cache(indicador_id)
     if df_ranking_base is None or df_ranking_base.empty or ('DESC_UND_FED' not in df_ranking_base.columns and 'CODG_UND_FED' not in df_ranking_base.columns):
         # Retorna figura vazia com aviso se não houver dados ou UF
-        print(f"[DEBUG] update_ranking_chart: Dados insuficientes ou sem UF para {indicador_id}")
         return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
 
     # --- Aplica filtros (Variável principal e dinâmicos) ---
@@ -2286,13 +2266,11 @@ def update_ranking_chart(selected_year, store_data, chart_id):
     df_ranking_ano = df_filtered_ranking[df_filtered_ranking['CODG_ANO'] == selected_year].copy()
 
     if df_ranking_ano.empty or 'DESC_UND_FED' not in df_ranking_ano.columns:
-         print(f"[DEBUG] update_ranking_chart: Dados vazios ou sem UF para {indicador_id} no ano {selected_year} com filtros.")
          return go.Figure().update_layout(title=f'Ranking não disponível para {selected_year} com filtros aplicados.', xaxis={'visible': False}, yaxis={'visible': False})
 
     # Verifica unicidade por UF para o ano selecionado
     counts_per_uf_ranking = df_ranking_ano['DESC_UND_FED'].value_counts()
     if (counts_per_uf_ranking > 1).any():
-         print(f"[DEBUG] update_ranking_chart: Múltiplos valores por UF para {indicador_id} no ano {selected_year}.")
          return go.Figure().update_layout(title='Ranking não gerado: múltiplos valores por UF.', xaxis={'visible': False}, yaxis={'visible': False})
 
     # Lê a ordem do ranking do indicador
@@ -2305,7 +2283,8 @@ def update_ranking_chart(selected_year, store_data, chart_id):
         except (ValueError, TypeError): pass
 
     # Ordena baseado em VLR_VAR e RANKING_ORDEM
-    ascending_rank = (ranking_ordem == 1) # True se for menor para maior
+    ascending_rank = (ranking_ordem == 0) # True se for maior para menor
+
     df_ranking_ano = df_ranking_ano.sort_values('VLR_VAR', ascending=ascending_rank)
 
     # Define cores e opacidade
@@ -2314,15 +2293,11 @@ def update_ranking_chart(selected_year, store_data, chart_id):
 
     # Cria o gráfico de ranking com go.Figure e go.Bar
     fig_ranking_updated = go.Figure()
-    print("--- [DEBUG] Ranking Bar Colors ---") # Print antes do loop
     for _, row in df_ranking_ano.iterrows():
         uf = row['DESC_UND_FED']
         valor = row['VLR_VAR']
         und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
         bar_color = goias_color if uf == 'Goiás' else other_color
-        # --- DEBUG PRINT COR --- 
-        print(f"    UF: {uf}, Color: {bar_color}")
-        # --- FIM DEBUG PRINT --- 
         text_value = f"{valor:,.0f}".replace(",", ".")
 
         fig_ranking_updated.add_trace(go.Bar(
@@ -2339,7 +2314,6 @@ def update_ranking_chart(selected_year, store_data, chart_id):
                 f"Unidade: {und_med}<extra></extra>"
             )
         ))
-    print("--- [DEBUG] End Ranking Bar Colors ---") # Print depois do loop
 
     max_x_ranking = df_ranking_ano['VLR_VAR'].max() if not df_ranking_ano.empty else 0
     x_range_ranking = [0, max_x_ranking * 1.15]
@@ -2352,9 +2326,6 @@ def update_ranking_chart(selected_year, store_data, chart_id):
         showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
     )
 
-    # --- DEBUG PRINT ---
-    print(f"--- [DEBUG] update_ranking_chart finished for year {selected_year} ---")
-    # --- END DEBUG PRINT ---
     return fig_ranking_updated
 
 # Callback para atualizar o MAPA COROPLÉTICO quando o ano ou filtros mudam
@@ -2369,20 +2340,6 @@ def update_ranking_chart(selected_year, store_data, chart_id):
     prevent_initial_call=True
 )
 def update_map_chart(selected_year, store_data, chart_id):
-    # --- DEBUG PRINTS ---
-    try:
-        indicador_id_debug = chart_id.get('index', 'N/A') if isinstance(chart_id, dict) else 'N/A'
-        print(f"--- [DEBUG] update_map_chart triggered ---")
-        print(f"    Indicator ID: {indicador_id_debug}")
-        print(f"    Selected Year: {selected_year}")
-        # Limit printing store data length
-        store_data_str = str(store_data)
-        if len(store_data_str) > 200: store_data_str = store_data_str[:200] + '...'
-        print(f"    Store Data: {store_data_str}")
-    except Exception as e:
-        print(f"    Error in DEBUG print: {e}")
-    # --- END DEBUG PRINTS ---
-
     ctx = callback_context
     if not ctx.triggered or not selected_year or not store_data:
         raise PreventUpdate
@@ -2465,11 +2422,6 @@ def update_map_chart(selected_year, store_data, chart_id):
         print(f"Erro ao gerar mapa atualizado para {indicador_id}: {e}")
         return go.Figure().update_layout(title='Erro ao gerar mapa.', xaxis={'visible': False}, yaxis={'visible': False})
 
-    # --- DEBUG PRINT ---
-    print(f"--- [DEBUG] update_map_chart finished for year {selected_year} ---")
-    # --- END DEBUG PRINT ---
-    # Este return não será alcançado devido aos returns anteriores, mas o mantemos por segurança
-    # return fig_map
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
