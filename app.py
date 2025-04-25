@@ -14,9 +14,7 @@ import time
 import warnings
 from datetime import datetime
 import numpy as np
-from dash.exceptions import PreventUpdate # Mantém import específico
-# Removido o import plotly.io as pio (já importado abaixo)
-# Removido import do warning_counter
+from dash.exceptions import PreventUpdate 
 from config import *
 import secrets
 from dotenv import load_dotenv
@@ -27,6 +25,7 @@ import bcrypt
 from generate_password import generate_password_hash, generate_secret_key, update_env_file, check_password
 from flask_cors import CORS
 import constants  # Importar constantes
+import logging 
 
 # Carrega as variáveis de ambiente primeiro
 load_dotenv()
@@ -42,6 +41,15 @@ from config import (
     MAINTENANCE_PASSWORD
 )
 from constants import COLUMN_NAMES, UF_NAMES
+
+# Configuração do Logging
+log_level = logging.DEBUG if DEBUG else logging.INFO
+logging.basicConfig(
+    level=log_level,
+    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logging.info(f"Iniciando aplicação. Nível de log: {logging.getLevelName(log_level)}")
 
 # Variável global para controle do modo de manutenção
 MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
@@ -99,13 +107,20 @@ def log_message():
         return '', 204
     try:
         data = request.get_json(force=True)
-        print("\n====================== ERRO DO NAVEGADOR ======================")
-        print(f"Mensagem: {data.get('message', 'Sem mensagem')}")
-        print(f"Stack: {data.get('stack', 'Sem stack')}")
-        print("===============================================================\n")
+        # print("\n====================== ERRO DO NAVEGADOR ======================")
+        # print(f"Mensagem: {data.get('message', 'Sem mensagem')}")
+        # print(f"Stack: {data.get('stack', 'Sem stack')}")
+        # print("===============================================================\n")
+        # Usamos logging.error para registrar o erro do navegador no backend
+        # Corrigido: Removida a quebra de linha dentro da string de formatação
+        logging.error("Erro do navegador recebido: Mensagem: %s Stack: %s",
+                      data.get('message', 'Sem mensagem'),
+                      data.get('stack', 'Sem stack'))
         return jsonify({"status": "logged", "success": True})
     except Exception as e:
-        print(f"Erro ao processar log do cliente: {str(e)}")
+        # print(f"Erro ao processar log do cliente: {str(e)}")
+        # Usamos logging.exception para capturar o erro e o traceback
+        logging.exception("Erro ao processar log do cliente:")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.server.route('/_dash-component-suites/<path:path>')
@@ -119,19 +134,27 @@ def _load_dados_indicador_original(indicador_id):
         nome_arquivo = indicador_id.lower().replace("indicador ", "")
         arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
         if not os.path.exists(arquivo_parquet):
-            print(f"Aviso: Arquivo parquet não encontrado para {indicador_id}: {arquivo_parquet}")
+            # print(f"Aviso: Arquivo parquet não encontrado para {indicador_id}: {arquivo_parquet}")
+            # Usamos logging.warning para avisos
+            logging.warning("Arquivo parquet não encontrado para %s: %s", indicador_id, arquivo_parquet)
             return pd.DataFrame()
         try:
             df_load = pd.read_parquet(arquivo_parquet)
             if df_load.empty:
-                print(f"Aviso: Arquivo parquet vazio para {indicador_id}: {arquivo_parquet}")
+                # print(f"Aviso: Arquivo parquet vazio para {indicador_id}: {arquivo_parquet}")
+                # Usamos logging.warning para avisos
+                logging.warning("Arquivo parquet vazio para %s: %s", indicador_id, arquivo_parquet)
                 return pd.DataFrame()
         except Exception as e:
-            print(f"Erro ao ler arquivo parquet para {indicador_id}: {e}")
+            # print(f"Erro ao ler arquivo parquet para {indicador_id}: {e}")
+            # Usamos logging.exception para capturar o erro e o traceback
+            logging.exception("Erro ao ler arquivo parquet para %s", indicador_id)
             return pd.DataFrame()
         return df_load
     except Exception as e:
-        print(f"Erro geral em _load_dados_indicador_original para {indicador_id}: {e}")
+        # print(f"Erro geral em _load_dados_indicador_original para {indicador_id}: {e}")
+        # Usamos logging.exception para capturar o erro e o traceback
+        logging.exception("Erro geral em _load_dados_indicador_original para %s", indicador_id)
         return pd.DataFrame()
 
 # Função com cache de dois níveis
@@ -154,6 +177,8 @@ def limpar_cache():
         limpar_cache_indicadores()
         return redirect('/')
     except Exception as e:
+        # Usamos logging.exception aqui também, embora redirecione
+        logging.exception("Erro ao limpar cache:")
         return redirect('/')
 
 @app.server.route('/cache-stats')
@@ -1243,11 +1268,12 @@ def update_card_content(*args):
                  try:
                       meta_id = json.loads(triggered_id_str.split('.')[0])['index']
                  except (json.JSONDecodeError, IndexError, KeyError):
-                      print(f"Erro ao parsear meta_id de: {triggered_id_str}")
+                      logging.error("Erro ao parsear meta_id de: %s", triggered_id_str)
                       raise PreventUpdate
 
             if not meta_id:
                  raise PreventUpdate # Não conseguiu obter o meta_id
+            logging.debug("Atualizando conteúdo - Clique na Meta ID: %s", meta_id) # Log de Debug
 
             meta_filtrada = df_metas[df_metas['ID_META'] == meta_id]
             if meta_filtrada.empty:
@@ -1349,7 +1375,9 @@ def update_card_content(*args):
                                             code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
                                                                      index=mapping_df[filter_col_code].astype(str)).to_dict()
                                         except Exception as map_err:
-                                            print(f"Erro mapeamento {filter_col_code}: {map_err}")
+                                            logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
+                                            # Adiciona log de erro para mapeamento
+                                            logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
                                     unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
                                     col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                     filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
@@ -1405,8 +1433,10 @@ def update_card_content(*args):
                                     tab_content.append(dbc.Row(dynamic_filters_div))
                                 tab_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id_atual}, children=initial_visualization))
                             except Exception as e_inner:
-                                print(f"Erro interno ao gerar conteúdo da aba {indicador_id_atual}: {e_inner}")
+                                logging.exception("Erro interno ao gerar conteúdo da aba %s", indicador_id_atual)
                                 tab_content = [dbc.Alert(f"Erro ao gerar conteúdo para {indicador_id_atual}.", color="danger")]
+                                # Usamos logging.exception aqui
+                                logging.exception("Erro interno ao gerar conteúdo da aba %s", indicador_id_atual)
                         else:
                             tab_content = [dbc.Alert(f"Dados não disponíveis para {indicador_id_atual}.", color="warning")]
                     else:
@@ -1458,6 +1488,7 @@ def update_card_content(*args):
             if index >= len(df):
                 return "Erro", "Objetivo não encontrado.", [], "", []
             row_obj = df.iloc[index]
+            logging.debug("Atualizando conteúdo - Clique no Objetivo ID: %s (Index: %d)", row_obj['ID_OBJETIVO'], index) # Log de Debug
             header = f"{row_obj['ID_OBJETIVO']} - {row_obj['RES_OBJETIVO']}" if index > 0 else row_obj['RES_OBJETIVO']
             content = row_obj['DESC_OBJETIVO']
 
@@ -1564,7 +1595,9 @@ def update_card_content(*args):
                                             code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
                                                                      index=mapping_df[filter_col_code].astype(str)).to_dict()
                                         except Exception as map_err:
-                                            print(f"Erro mapeamento {filter_col_code}: {map_err}")
+                                            logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
+                                            # Adiciona log de erro para mapeamento
+                                            logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
                                     unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
                                     col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                                     filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
@@ -1624,8 +1657,10 @@ def update_card_content(*args):
                                 tab_content.append(html.Div(id={'type': 'graph-container', 'index': row_ind['ID_INDICADOR']}, children=initial_visualization))
 
                             except Exception as e_inner:
-                                print(f"Erro interno ao gerar conteúdo da aba {row_ind['ID_INDICADOR']}: {e_inner}")
+                                logging.exception("Erro interno ao gerar conteúdo da aba %s (clique objetivo)", row_ind['ID_INDICADOR'])
                                 tab_content = [dbc.Alert(f"Erro ao gerar conteúdo para {row_ind['ID_INDICADOR']}.", color="danger")]
+                                # Usamos logging.exception aqui
+                                logging.exception("Erro interno ao gerar conteúdo da aba %s (clique objetivo)", row_ind['ID_INDICADOR'])
                         else:
                             tab_content = [dbc.Alert(f"Dados não disponíveis para {row_ind['ID_INDICADOR']}.", color="warning")]
                     else:
@@ -1667,9 +1702,7 @@ def update_card_content(*args):
             raise PreventUpdate
 
     except Exception as e:
-        print(f"Erro geral em update_card_content: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.exception("Erro geral em update_card_content:")
         # Retorna um estado seguro em caso de erro inesperado
         return initial_header, initial_content, [], "Ocorreu um erro.", []
 
@@ -1691,6 +1724,7 @@ def update_map(selected_year, store_data, year_options, current_year_value):
 
     # Encontra o ID do indicador que disparou
     triggered_id = ctx.triggered_id
+    logging.debug("Update map triggered por: %s, Ano: %s", triggered_id, selected_year) # Log Debug
     if not isinstance(triggered_id, dict) or 'index' not in triggered_id:
         # Tenta obter do prop_id se o ID não for um dict (menos comum)
         prop_id = ctx.triggered[0]['prop_id']
@@ -1731,8 +1765,10 @@ def update_map(selected_year, store_data, year_options, current_year_value):
     indicador_id = target_index
     df_map = load_dados_indicador_cache(indicador_id)
     if df_map is None or df_map.empty:
-        print(f"update_map: Dados não encontrados para {indicador_id}.")
+        logging.warning("update_map: Dados não encontrados para %s.", indicador_id)
         # Modificado: Retorna APENAS o alerta
+        # Usamos logging.warning
+        logging.warning("update_map: Dados não encontrados para %s.", indicador_id)
         return dbc.Alert("Dados não disponíveis para este indicador.", color="warning")
         # return dropdown_component + [dbc.Alert("Dados não disponíveis para este indicador.", color="warning")]
 
@@ -1767,8 +1803,10 @@ def update_map(selected_year, store_data, year_options, current_year_value):
          # return dropdown_component + [dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")]
 
     if df_ano.empty:
-        print(f"update_map: Dados não encontrados para {indicador_id} no ano {selected_year} após filtros.")
+        logging.warning("update_map: Dados não encontrados para %s no ano %s após filtros.", indicador_id, selected_year)
         # Modificado: Retorna APENAS o alerta
+        # Usamos logging.warning
+        logging.warning("update_map: Dados não encontrados para %s no ano %s após filtros.", indicador_id, selected_year)
         return dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")
         # return dropdown_component + [dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")]
 
@@ -1779,12 +1817,14 @@ def update_map(selected_year, store_data, year_options, current_year_value):
         counts_per_uf = df_ano['DESC_UND_FED'].value_counts()
         if (counts_per_uf > 1).any():
             # Existem UFs com mais de uma linha
-            print(f"update_map: Múltiplos valores por UF para {indicador_id} no ano {selected_year}. Mapa não pode ser gerado.")
+            logging.warning("update_map: Múltiplos valores por UF para %s no ano %s. Mapa não gerado.", indicador_id, selected_year)
             alert_message = (
                 "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
                 "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
             )
             # Modificado: Retorna APENAS o alerta
+            # Usamos logging.warning
+            logging.warning("update_map: Múltiplos valores por UF para %s no ano %s. Mapa não gerado.", indicador_id, selected_year)
             return dbc.Alert(alert_message, color="danger")
             # return dropdown_component + [dbc.Alert(alert_message, color="danger")]
         # Se chegou aqui, cada UF tem no máximo 1 linha
@@ -1832,9 +1872,7 @@ def update_map(selected_year, store_data, year_options, current_year_value):
         return dropdown_component + [dcc.Graph(figure=fig_map, id={'type': 'choropleth-map', 'index': target_index})] 
 
     except Exception as e:
-        print(f"Erro ao gerar mapa para {indicador_id} mesmo após verificação de unicidade: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.exception("Erro ao gerar mapa para %s mesmo após verificação de unicidade: %s", indicador_id, e)
         # Modificado: Retorna APENAS o alerta
         return dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")
         # return dropdown_component + [dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")]
@@ -1890,7 +1928,7 @@ def update_store_from_filters(filter_values, filter_ids, current_data):
     if filter_ids and filter_values:
         try:
             if len(filter_ids) != len(filter_values):
-                print(f"Aviso [update_store_from_filters]: Comprimento de filter_ids({len(filter_ids)}) e filter_values({len(filter_values)}) não coincide.")
+                logging.warning("Comprimento de filter_ids e filter_values não coincide em update_store_from_filters.")
                 raise PreventUpdate # Evita erro de zip
 
             for filter_id, filter_value in zip(filter_ids, filter_values):
@@ -1898,8 +1936,12 @@ def update_store_from_filters(filter_values, filter_ids, current_data):
                     col_name = filter_id['filter_col']
                     selected_filters[col_name] = filter_value
         except Exception as e:
-            print(f"Erro ao processar filtros dinâmicos no store: {e}")
+            logging.exception("Erro ao processar filtros dinâmicos no store: %s", e)
             raise PreventUpdate
+
+    # Log dos filtros aplicados (nível DEBUG)
+    logging.debug("Filtros dinâmicos atualizados no store para %s: %s",
+                  ctx.inputs_list[1][0]['id']['index'], selected_filters)
 
     current_data['selected_filters'] = selected_filters
     return current_data
@@ -1918,19 +1960,21 @@ def update_visualization_from_store(store_data, store_id):
     store_data = store_data or {'selected_var': None, 'selected_filters': {}}
     selected_var = store_data.get('selected_var')
     selected_filters = store_data.get('selected_filters', {})
+    logging.debug("Atualizando visualização para %s com var=%s, filters=%s",
+                  indicador_id, selected_var, selected_filters) # Log Debug
 
     try:
         df = load_dados_indicador_cache(indicador_id)
         if df is None or df.empty:
+            # Adiciona log de aviso
+            logging.warning("Dados não encontrados para %s ao atualizar visualização.", indicador_id)
             return dbc.Alert(f"Dados não encontrados para o indicador {indicador_id} ao atualizar visualização.", color="warning")
 
         # Atualiza a visualização principal
         return create_visualization(df, indicador_id, selected_var, selected_filters)
 
     except Exception as e:
-        print(f"--- ERROR in update_visualization_from_store for indicator {indicador_id} ---")
-        import traceback
-        traceback.print_exc()
+        logging.exception("Erro ao atualizar visualização para indicador %s", indicador_id)
         return dbc.Alert(f"Ocorreu um erro ao atualizar a visualização para o indicador {indicador_id}.", color="danger")
 
 # Callback para acionar o carregamento do primeiro indicador quando o objetivo é selecionado
@@ -1986,6 +2030,7 @@ def load_indicator_on_demand(active_tab, container_id):
 
     # Obtém o ID do indicador
     indicador_id = container_id['index']
+    logging.debug("Tentando carregar indicador sob demanda: %s (Aba ativa: %s)", indicador_id, active_tab) # Log Debug
 
     # Ignora o placeholder
     if indicador_id == 'placeholder':
@@ -2030,7 +2075,9 @@ def load_indicator_on_demand(active_tab, container_id):
                         code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
                                                  index=mapping_df[filter_col_code].astype(str)).to_dict()
                     except Exception as map_err:
-                        print(f"Erro mapeamento {filter_col_code}: {map_err}")
+                        logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
+                        # Adiciona log de erro para mapeamento
+                        logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
                 unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
                 col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
                 filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
@@ -2086,7 +2133,7 @@ def load_indicator_on_demand(active_tab, container_id):
             tab_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
 
         except Exception as e_inner:
-            print(f"Erro interno ao gerar conteúdo da aba {indicador_id}: {e_inner}")
+            logging.exception("Erro interno ao gerar conteúdo da aba %s", indicador_id)
             import traceback
             traceback.print_exc()
             tab_content.append(dbc.Alert(f"Erro ao gerar conteúdo para {indicador_id}.", color="danger"))
@@ -2347,7 +2394,7 @@ def update_map_chart(selected_year, store_data, chart_id):
     indicador_id = chart_id['index']
     df_map = load_dados_indicador_cache(indicador_id)
     if df_map is None or df_map.empty:
-        print(f"update_map_chart: Dados não encontrados para {indicador_id}.")
+        logging.warning("update_map_chart: Dados não encontrados para %s.", indicador_id)
         return dbc.Alert("Dados não disponíveis para este indicador.", color="warning")
 
     # Filtra dados para o ano selecionado
@@ -2355,7 +2402,7 @@ def update_map_chart(selected_year, store_data, chart_id):
 
     # Verifica se há dados após o filtro
     if df_filtered_map.empty:
-        print(f"update_map_chart: Dados não encontrados para {indicador_id} no ano {selected_year} após filtros.")
+        logging.warning("update_map_chart: Dados não encontrados para %s no ano %s após filtros.", indicador_id, selected_year)
         return dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")
 
     # --- REMOVIDA A AGREGAÇÃO --- 
@@ -2365,7 +2412,7 @@ def update_map_chart(selected_year, store_data, chart_id):
         counts_per_uf = df_filtered_map['DESC_UND_FED'].value_counts()
         if (counts_per_uf > 1).any():
             # Existem UFs com mais de uma linha
-            print(f"update_map_chart: Múltiplos valores por UF para {indicador_id} no ano {selected_year}. Mapa não pode ser gerado.")
+            logging.warning("update_map_chart: Múltiplos valores por UF para %s no ano %s. Mapa não gerado.", indicador_id, selected_year)
             alert_message = (
                 "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
                 "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
@@ -2419,20 +2466,20 @@ def update_map_chart(selected_year, store_data, chart_id):
         return fig_map # Retorna apenas a figura
 
     except Exception as e:
-        print(f"Erro ao gerar mapa atualizado para {indicador_id}: {e}")
+        logging.exception("Erro ao gerar mapa atualizado para %s: %s", indicador_id, e)
         return go.Figure().update_layout(title='Erro ao gerar mapa.', xaxis={'visible': False}, yaxis={'visible': False})
 
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
     if not os.path.exists('.env'):
-        print("Arquivo .env não encontrado. Criando com as configurações padrão...")
+        logging.warning("Arquivo .env não encontrado. Criando com configurações padrão...")
 
         # Gera uma nova SECRET_KEY e atualiza o arquivo .env
         new_secret_key = generate_secret_key()
         update_env_file(generate_password_hash(MAINTENANCE_PASSWORD))
 
-        print("Arquivo .env criado com sucesso!")
+        logging.info("Arquivo .env criado com sucesso!")
         # Recarrega as variáveis de ambiente
         load_dotenv()
 
