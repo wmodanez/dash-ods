@@ -1441,13 +1441,14 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
 
         # Retorna descrição + conteúdo dinâmico e oculta o spinner
         logging.debug("Conteúdo carregado com sucesso para %s", indicador_id)
-        return [desc_p] + dynamic_content, {'display': 'none'}
+        # Modificado: Retorna APENAS o conteúdo dinâmico
+        return dynamic_content, {'display': 'none'}
 
     # --- FIM DO BLOCO TRY...EXCEPT ---
     except Exception as e_load:
         logging.exception("Erro CRÍTICO ao carregar conteúdo sob demanda para %s", indicador_id)
-        # Retorna descrição + alerta de erro e oculta o spinner
-        return [desc_p, dbc.Alert(f"Erro ao carregar dados para {indicador_id}. Consulte os logs do servidor.", color="danger")], {'display': 'none'}
+        # Modificado: Retorna APENAS o alerta de erro
+        return [dbc.Alert(f"Erro ao carregar dados para {indicador_id}. Consulte os logs do servidor.", color="danger")], {'display': 'none'} # Oculta spinner, mostra erro
 
 
 # Callback para atualizar o conteúdo do card principal (metas, indicadores)
