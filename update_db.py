@@ -52,9 +52,16 @@ async def get_sidra_data(session: aiohttp.ClientSession, url: str, indicador_nam
                 if 'application/json' not in content_type.lower():
                     logging.warning(f"[Async] Content-Type inesperado '{content_type}' para {indicador_name}. Tentando decodificar mesmo assim.")
                 # Tenta decodificar JSON, tratando o content_type se necessário
-                data = await response.json(encoding='UTF-8', content_type=None) # content_type=None para flexibilidade
-                logging.info(f"[Async] Sucesso ao obter dados de: {indicador_name}")
-                return indicador_name, data # Retorna nome + dados
+                data: Any = await response.json(encoding='UTF-8', content_type=None) # content_type=None para flexibilidade
+                
+                # Validação da estrutura dos dados recebidos
+                if not isinstance(data, list) or len(data) < 2:
+                    logging.warning(f"[Async] Estrutura de dados inválida recebida para {indicador_name} (não é lista ou tem menos de 2 elementos). Dados: {str(data)[:200]}") # Loga parte dos dados para debug
+                    # Considera isso uma falha e força uma nova tentativa (ou falha final se retries esgotarem)
+                    raise ValueError("Estrutura de dados inválida da API")
+                    
+                logging.info(f"[Async] Sucesso ao obter e validar dados de: {indicador_name}")
+                return indicador_name, data # Retorna nome + dados validados
         except aiohttp.ClientResponseError as e:
             logging.warning(f"[Async] Erro HTTP {e.status} para {indicador_name}: {e.message} - Tentativa {retry_count + 1}")
             last_exception = e
@@ -70,9 +77,13 @@ async def get_sidra_data(session: aiohttp.ClientSession, url: str, indicador_nam
         if retry_count < max_retries:
             await asyncio.sleep(5) # Espera assíncrona
 
-    logging.error(f"[Async] Falha ao obter dados para {indicador_name} após {max_retries} tentativas.")
+    # Log detalhado da falha final, incluindo a última exceção
+    final_error_msg = f"[Async] Falha ao obter dados para {indicador_name} após {max_retries} tentativas."
+    final_exception = last_exception if last_exception else Exception(f"Falha desconhecida para {indicador_name}")
+    logging.error(f"{final_error_msg} Último erro: {final_exception}", exc_info=isinstance(last_exception, Exception)) # Adiciona stack trace se for exceção real
+    
     # Retorna nome + exceção em caso de falha final
-    return indicador_name, last_exception if last_exception else Exception(f"Falha desconhecida para {indicador_name}")
+    return indicador_name, final_exception
 
 
 @lru_cache(maxsize=1)
