@@ -2201,8 +2201,26 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
         # Adiciona coluna formatada para hover
         df_filtered_map['VLR_VAR_FORMATADO'] = df_filtered_map['VLR_VAR'].apply(format_br)
         
-        # Tenta obter unidade de medida de forma segura
-        und_med_map = df_filtered_map['DESC_UND_MED'].dropna().iloc[0] if not df_filtered_map['DESC_UND_MED'].dropna().empty else ''
+        # Tenta obter unidade de medida de forma segura (mesma lógica do ranking e gráficos)
+        und_med_map = ''
+        
+        # Primeiro tenta obter da coluna CODG_UND_MED se existir
+        if 'CODG_UND_MED' in df_filtered_map.columns:
+            codg_und_med_values = df_filtered_map['CODG_UND_MED'].dropna().unique()
+            if len(codg_und_med_values) > 0:
+                df_unidade_medida_loaded = load_unidade_medida()
+                if not df_unidade_medida_loaded.empty:
+                    codg_und_med = str(codg_und_med_values[0])
+                    df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+                    match_rows = df_unidade_medida_loaded[df_unidade_medida_loaded['CODG_UND_MED'] == codg_und_med]
+                    if not match_rows.empty:
+                        und_med_map = match_rows['DESC_UND_MED'].iloc[0]
+        
+        # Se não encontrou pelo código, tenta pela coluna DESC_UND_MED se existir
+        if not und_med_map and 'DESC_UND_MED' in df_filtered_map.columns:
+            und_med_series = df_filtered_map['DESC_UND_MED'].dropna()
+            if not und_med_series.empty:
+                und_med_map = und_med_series.iloc[0]
         
         # Carrega GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
@@ -2215,8 +2233,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
             featureidkey='properties.name',
             color='VLR_VAR',
             color_continuous_scale='Greens_r',
-            scope="south america",
-            title=f"{var_title} - {selected_year}"
+            scope="south america"
         )
         
         fig_map.update_geos(
