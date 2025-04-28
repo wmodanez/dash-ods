@@ -55,6 +55,7 @@ logging.info(f"Iniciando aplicação. Nível de log: {logging.getLevelName(log_l
 # Variável global para controle do modo de manutenção
 MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
 
+
 def maintenance_middleware():
     """Middleware para verificar se o sistema está em manutenção"""
     global MAINTENANCE_MODE
@@ -64,8 +65,10 @@ def maintenance_middleware():
         return send_from_directory('assets', 'maintenance.html')
     return None
 
+
 def capitalize_words(text):
     return ' '.join(word.capitalize() for word in text.split())
+
 
 # Inicializa o aplicativo Dash com tema Bootstrap
 app = dash.Dash(
@@ -97,10 +100,8 @@ def serve_static(path):
     return send_from_directory('assets', path)
 
 
-
-
-
 CORS(app.server)
+
 
 @app.server.route('/log', methods=['POST'])
 def log_message():
@@ -124,9 +125,11 @@ def log_message():
         logging.exception("Erro ao processar log do cliente:")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
 @app.server.route('/_dash-component-suites/<path:path>')
 def serve_dash_files(path):
     return send_from_directory('_dash-component-suites', path)
+
 
 # Função original para carregar dados do indicador (sem cache)
 def _load_dados_indicador_original(indicador_id):
@@ -158,10 +161,12 @@ def _load_dados_indicador_original(indicador_id):
         logging.exception("Erro geral em _load_dados_indicador_original para %s", indicador_id)
         return pd.DataFrame()
 
+
 # Função com cache de dois níveis
 def load_dados_indicador_cache(indicador_id):
     """Carrega dados do indicador usando cache de dois níveis (memória e disco)."""
     return load_dados_indicador_cached(indicador_id, _load_dados_indicador_original)
+
 
 def limpar_cache_indicadores():
     """Limpa o cache de indicadores."""
@@ -170,6 +175,7 @@ def limpar_cache_indicadores():
     # Limpa o cache LRU da função original (se ainda estiver sendo usado em algum lugar)
     if hasattr(load_dados_indicador_cache, 'cache_clear'):
         load_dados_indicador_cache.cache_clear()
+
 
 @app.server.route('/limpar-cache')
 def limpar_cache():
@@ -181,6 +187,7 @@ def limpar_cache():
         # Usamos logging.exception aqui também, embora redirecione
         logging.exception("Erro ao limpar cache:")
         return redirect('/')
+
 
 @app.server.route('/cache-stats')
 def view_cache_stats():
@@ -241,6 +248,7 @@ def view_cache_stats():
     """
     return html
 
+
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -297,6 +305,7 @@ app.index_string = '''
 </html>
 '''
 
+
 @lru_cache(maxsize=1)
 def load_objetivos():
     try:
@@ -310,12 +319,14 @@ def load_objetivos():
     except Exception as e:
         return pd.DataFrame(columns=['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64'])
 
+
 @lru_cache(maxsize=1)
 def load_metas():
     try:
         return pd.read_csv('db/metas.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
     except Exception as e:
         return pd.DataFrame()
+
 
 @lru_cache(maxsize=1)
 def load_indicadores():
@@ -333,12 +344,14 @@ def load_indicadores():
         # Retorna DataFrame vazio com as colunas esperadas em caso de erro
         return pd.DataFrame(columns=['ID_INDICADOR', 'ID_META', 'ID_OBJETIVO', 'DESC_INDICADOR', 'VARIAVEIS', 'GRAFICO_LINHA', 'SERIE_TEMPORAL', 'RBC', 'RANKING_ORDEM'])
 
+
 @lru_cache(maxsize=1)
 def load_sugestoes_visualizacao():
     try:
         return pd.read_csv('db/sugestoes_visualizacao.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
     except Exception as e:
         return pd.DataFrame()
+
 
 @lru_cache(maxsize=1)
 def load_unidade_medida():
@@ -361,6 +374,7 @@ def load_unidade_medida():
     except Exception as e:
         return pd.DataFrame(columns=cols)
 
+
 @lru_cache(maxsize=1)
 def load_variavel():
     cols = ['CODG_VAR', 'DESC_VAR']
@@ -380,6 +394,7 @@ def load_variavel():
         return df_var
     except Exception as e:
         return pd.DataFrame(columns=cols)
+
 
 df = load_objetivos()
 df_metas = load_metas()
@@ -423,6 +438,7 @@ initial_indicadores_section = [
 if meta_inicial:
     indicadores_meta_inicial = df_indicadores[df_indicadores['ID_META'] == meta_inicial['ID_META']]
 
+
 # Função auxiliar para identificar colunas de filtro
 def identify_filter_columns(df):
     """Identifica colunas no DataFrame que devem ser usadas como filtros dinâmicos."""
@@ -442,6 +458,7 @@ def identify_filter_columns(df):
         if col in constants.COLUMN_NAMES and df[col].nunique(dropna=True) > 1
     ]
     return sorted(filter_cols)
+
 
 # Função auxiliar para formatar número no padrão brasileiro (pt-BR)
 def format_br(value):
@@ -481,6 +498,7 @@ def format_br(value):
     except (ValueError, TypeError):
         logging.warning(f"Could not format value '{value}' to Brazilian standard.")
         return str(value) # Fallback
+
 
 def create_visualization(df, indicador_id=None, selected_var=None, selected_filters=None):
     """Cria uma visualização (gráfico principal, ranking, mapa e tabela) com os dados do DataFrame, aplicando filtros."""
@@ -1304,6 +1322,134 @@ app.layout = dbc.Container([
     ], className="border-0 shadow-none")))
 ], fluid=True)
 
+
+# Callback para carregar indicadores sob demanda quando uma aba é clicada
+@app.callback(
+    [Output({'type': 'lazy-load-container', 'index': MATCH}, 'children'),
+     Output({'type': 'spinner-indicator', 'index': MATCH}, 'style')],
+    Input('tabs-indicadores', 'active_tab'),
+    State({'type': 'lazy-load-container', 'index': MATCH}, 'id'),
+    prevent_initial_call=True
+)
+def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FUNÇÃO
+    # Só carrega se a aba estiver ativa
+    if not active_tab or not container_id:
+        raise PreventUpdate
+
+    # Obtém o ID do indicador
+    indicador_id = container_id['index']
+    logging.debug("Tentando carregar indicador sob demanda: %s (Aba ativa: %s)", indicador_id, active_tab)
+
+    # Ignora o placeholder
+    if indicador_id == 'placeholder':
+        raise PreventUpdate
+
+    # Verifica se a aba ativa corresponde a este indicador
+    if active_tab != f"tab-{indicador_id}":
+        raise PreventUpdate
+
+    # --- INÍCIO DO BLOCO TRY...EXCEPT ---
+    try:
+        # Carrega os dados do indicador
+        logging.debug("Carregando dados para %s", indicador_id)
+        df_dados = load_dados_indicador_cache(indicador_id)
+
+        # Busca informações do indicador (descrição, etc.)
+        indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
+        if indicador_info.empty:
+            logging.error("Informações não encontradas para indicador %s", indicador_id)
+            # Oculta spinner, mostra erro
+            return [dbc.Alert(f"Informações de configuração não encontradas para o indicador {indicador_id}.", color="danger")], {'display': 'none'}
+
+        # Adiciona a descrição do indicador (será retornada junto com o conteúdo ou erro)
+        desc_p = html.P(indicador_info.iloc[0]['DESC_INDICADOR'], className="textJustify p-3")
+
+        # Verifica se os dados foram carregados
+        if df_dados is None or df_dados.empty:
+            logging.warning("Dados não disponíveis para %s em load_indicator_on_demand.", indicador_id)
+            # Retorna descrição + alerta de dados não disponíveis
+            return [desc_p, dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning")], {'display': 'none'} # Oculta spinner
+
+        # Variáveis para montar o conteúdo
+        dynamic_filters_div = []
+        variable_dropdown_div = []
+        valor_inicial_variavel = None
+        initial_dynamic_filters = {} # Dicionário para filtros iniciais
+
+        # --- Geração de Filtros Dinâmicos ---
+        logging.debug("Gerando filtros dinâmicos para %s", indicador_id)
+        filter_cols = identify_filter_columns(df_dados)
+        for idx, filter_col_code in enumerate(filter_cols):
+            desc_col_code = 'DESC_' + filter_col_code[5:]
+            code_to_desc = {}
+            if desc_col_code in df_dados.columns:
+                try:
+                    mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
+                    code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
+                                             index=mapping_df[filter_col_code].astype(str)).to_dict()
+                except Exception as map_err:
+                    logging.error("Erro ao mapear código/descrição para filtro %s em %s: %s", filter_col_code, indicador_id, map_err)
+            unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
+            col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+            filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
+            md_width = 7 if idx % 2 == 0 else 5
+            initial_value = unique_codes[0] if unique_codes else None
+            if initial_value is not None:
+                 initial_dynamic_filters[filter_col_code] = initial_value
+            dynamic_filters_div.append(dbc.Col([
+                html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
+                dcc.Dropdown(
+                    id={'type': 'dynamic-filter-dropdown', 'index': indicador_id, 'filter_col': filter_col_code},
+                    options=col_options, value=initial_value, style={'marginBottom': '10px', 'width': '100%'}
+                )
+            ], md=md_width, xs=12))
+
+        # --- Geração do Dropdown de Variável Principal ---
+        logging.debug("Verificando dropdown de variável para %s", indicador_id)
+        has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
+        if has_variable_dropdown:
+            df_variavel_loaded = load_variavel()
+            if 'CODG_VAR' in df_dados.columns:
+                variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
+                if not df_variavel_loaded.empty:
+                    df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
+                    if not df_variavel_filtrado.empty:
+                        valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
+                        variable_dropdown_div = [html.Div([
+                            html.Label("Selecione uma Variável:",
+                                     style={'fontWeight': 'bold','display': 'block','marginBottom': '5px'},
+                                     id={'type': 'var-label', 'index': indicador_id}),
+                            dcc.Dropdown(
+                                id={'type': 'var-dropdown', 'index': indicador_id},
+                                options=[{'label': desc, 'value': cod} for cod, desc in zip(df_variavel_filtrado['CODG_VAR'], df_variavel_filtrado['DESC_VAR'])],
+                                value=valor_inicial_variavel, style={'width': '100%'}
+                            )
+                        ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': indicador_id})]
+
+        # --- Geração da Visualização ---
+        logging.debug("Gerando visualização para %s", indicador_id)
+        initial_visualization = create_visualization(
+            df_dados, indicador_id, valor_inicial_variavel, initial_dynamic_filters
+        )
+
+        # --- Monta o conteúdo dinâmico final ---
+        dynamic_content = []
+        dynamic_content.extend(variable_dropdown_div)
+        if dynamic_filters_div:
+            dynamic_content.append(dbc.Row(dynamic_filters_div))
+        dynamic_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
+
+        # Retorna descrição + conteúdo dinâmico e oculta o spinner
+        logging.debug("Conteúdo carregado com sucesso para %s", indicador_id)
+        return [desc_p] + dynamic_content, {'display': 'none'}
+
+    # --- FIM DO BLOCO TRY...EXCEPT ---
+    except Exception as e_load:
+        logging.exception("Erro CRÍTICO ao carregar conteúdo sob demanda para %s", indicador_id)
+        # Retorna descrição + alerta de erro e oculta o spinner
+        return [desc_p, dbc.Alert(f"Erro ao carregar dados para {indicador_id}. Consulte os logs do servidor.", color="danger")], {'display': 'none'}
+
+
 # Callback para atualizar o conteúdo do card principal (metas, indicadores)
 @app.callback(
     [
@@ -1776,6 +1922,8 @@ def update_card_content(*args):
         logging.exception("Erro geral em update_card_content:")
         # Retorna um estado seguro em caso de erro inesperado
         return initial_header, initial_content, [], "Ocorreu um erro.", []
+
+
 def update_ranking_chart(selected_year, store_data, chart_id):
     ctx = callback_context
     if not ctx.triggered or not selected_year or not store_data:
