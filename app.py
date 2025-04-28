@@ -1925,7 +1925,99 @@ def update_card_content(*args):
         return initial_header, initial_content, [], "Ocorreu um erro.", []
 
 
-def update_ranking_chart(selected_year, store_data, chart_id):
+# Callback para atualizar o store quando a variável ou filtros são alterados
+@app.callback(
+    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    [
+        Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+        Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value')
+    ],
+    [
+        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
+    ],
+    prevent_initial_call=True
+)
+def update_store_on_filter_change(var_value, filter_values, filter_ids, current_data):
+    """Atualiza o store quando variável ou filtros são alterados"""
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+    
+    # Inicializa o store se não existir
+    if current_data is None:
+        current_data = {'selected_var': None, 'selected_filters': {}}
+    
+    # Cria uma cópia para não modificar o original
+    updated_data = dict(current_data)
+    
+    # Identifica qual input foi alterado
+    trigger_id = ctx.triggered[0]['prop_id']
+    
+    # Se foi o dropdown de variável
+    if 'var-dropdown' in trigger_id:
+        updated_data['selected_var'] = var_value
+    
+    # Se foi algum filtro dinâmico
+    elif 'dynamic-filter-dropdown' in trigger_id:
+        # Inicializa dicionário de filtros se não existir
+        if not updated_data.get('selected_filters'):
+            updated_data['selected_filters'] = {}
+        
+        # Mapeia valores para ids correspondentes
+        for i, filter_id in enumerate(filter_ids):
+            filter_col = filter_id.get('filter_col')
+            if filter_col:
+                updated_data['selected_filters'][filter_col] = filter_values[i]
+    
+    return updated_data
+
+
+# Callback para atualizar visualizações quando o store é alterado
+@app.callback(
+    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
+    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    State({'type': 'graph-container', 'index': MATCH}, 'id'),
+    prevent_initial_call=True
+)
+def update_visualization_on_store_change(store_data, container_id):
+    """Atualiza todas as visualizações quando o store é alterado"""
+    if not store_data:
+        raise PreventUpdate
+    
+    indicador_id = container_id['index']
+    
+    # Carrega dados do indicador
+    df_dados = load_dados_indicador_cache(indicador_id)
+    if df_dados is None or df_dados.empty:
+        return dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning")
+    
+    # Extrai variáveis e filtros do store
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+    
+    # Gera nova visualização
+    try:
+        visualization = create_visualization(
+            df_dados, indicador_id, selected_var, selected_filters
+        )
+        return visualization
+    except Exception as e:
+        logging.exception("Erro ao atualizar visualização para %s", indicador_id)
+        return dbc.Alert(f"Erro ao atualizar visualização: {str(e)}", color="danger")
+
+
+# Callback para atualizar o ranking quando o ano é alterado
+@app.callback(
+    Output({'type': 'ranking-chart', 'index': MATCH}, 'figure'),
+    [Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value')],
+    [
+        State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
+    ],
+    prevent_initial_call=True
+)
+def update_ranking_chart(selected_year, chart_id, store_data):
     ctx = callback_context
     if not ctx.triggered or not selected_year or not store_data:
         raise PreventUpdate
@@ -2039,6 +2131,121 @@ def update_ranking_chart(selected_year, store_data, chart_id):
     )
 
     return fig_ranking_updated
+
+
+# Callback para atualizar o mapa quando o ano é alterado
+@app.callback(
+    Output({'type': 'choropleth-map', 'index': MATCH}, 'figure'),
+    [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
+    [
+        State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
+    ],
+    prevent_initial_call=True
+)
+def update_map_on_year_change(selected_year, chart_id, store_data):
+    """Atualiza o mapa quando o ano é alterado"""
+    if not selected_year or not store_data:
+        raise PreventUpdate
+    
+    indicador_id = chart_id['index']
+    
+    # Extrai filtros do store
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+    
+    # Carrega os dados do indicador
+    df_map_base = load_dados_indicador_cache(indicador_id)
+    if df_map_base is None or df_map_base.empty or ('CODG_UND_FED' not in df_map_base.columns and 'DESC_UND_FED' not in df_map_base.columns):
+        # Retorna figura vazia com aviso se não houver dados ou UF
+        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para mapa.', 
+                                        xaxis={'visible': False}, yaxis={'visible': False})
+    
+    # Aplica filtros (Variável principal e dinâmicos)
+    df_filtered_map = df_map_base.copy()
+    
+    # Filtro Variável Principal
+    if 'CODG_VAR' in df_filtered_map.columns and selected_var:
+        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
+        selected_var_str = str(selected_var).strip()
+        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
+    
+    # Filtros Dinâmicos
+    if selected_filters:
+        for col_code, selected_value in selected_filters.items():
+            if selected_value is not None and col_code in df_filtered_map.columns:
+                df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
+                selected_value_str = str(selected_value).strip()
+                df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
+    
+    # Filtro de Ano
+    df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
+    df_filtered_map = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()]
+    
+    # Se não houver dados após filtrar por ano, retorna uma figura vazia
+    if df_filtered_map.empty:
+        return go.Figure().update_layout(title=f'Nenhum dado disponível para o ano {selected_year}', 
+                                         xaxis={'visible': False}, yaxis={'visible': False})
+    
+    # Obtém o título (nome da variável)
+    var_title = selected_var
+    if selected_var:
+        df_var_desc = load_variavel()
+        if not df_var_desc.empty:
+            var_info = df_var_desc[df_var_desc['CODG_VAR'].astype(str) == str(selected_var)]
+            if not var_info.empty:
+                var_title = var_info['DESC_VAR'].iloc[0]
+    
+    # Cria o mapa coroplético
+    try:
+        # Adiciona coluna formatada para hover
+        df_filtered_map['VLR_VAR_FORMATADO'] = df_filtered_map['VLR_VAR'].apply(format_br)
+        
+        # Tenta obter unidade de medida de forma segura
+        und_med_map = df_filtered_map['DESC_UND_MED'].dropna().iloc[0] if not df_filtered_map['DESC_UND_MED'].dropna().empty else ''
+        
+        # Carrega GeoJSON
+        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
+            geojson = json.load(f)
+        
+        fig_map = px.choropleth(
+            df_filtered_map,
+            geojson=geojson,
+            locations='DESC_UND_FED',
+            featureidkey='properties.name',
+            color='VLR_VAR',
+            color_continuous_scale='Greens_r',
+            scope="south america",
+            title=f"{var_title} - {selected_year}"
+        )
+        
+        fig_map.update_geos(
+            visible=False, showcoastlines=True, coastlinecolor="White",
+            showland=True, landcolor="white", showframe=False,
+            projection=dict(type='mercator', scale=2.6)
+        )
+        
+        fig_map.update_traces(
+            marker_line_color='white', marker_line_width=1,
+            customdata=df_filtered_map[['VLR_VAR_FORMATADO']],
+            hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+        )
+        
+        fig_map.update_layout(
+            margin=dict(r=0, l=0, t=30, b=0),
+            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
+        )
+        
+        return fig_map
+    except Exception as e:
+        logging.exception("Erro ao criar mapa para %s", indicador_id)
+        empty_fig = go.Figure()
+        empty_fig.update_layout(
+            title=f"Erro ao criar mapa: {str(e)}",
+            xaxis={'visible': False},
+            yaxis={'visible': False}
+        )
+        return empty_fig
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
