@@ -26,6 +26,7 @@ from generate_password import generate_password_hash, generate_secret_key, updat
 from flask_cors import CORS
 import constants  # Importar constantes
 import logging 
+import math
 
 # Carrega as variáveis de ambiente primeiro
 load_dotenv()
@@ -442,6 +443,45 @@ def identify_filter_columns(df):
     ]
     return sorted(filter_cols)
 
+# Função auxiliar para formatar número no padrão brasileiro (pt-BR)
+def format_br(value):
+    """Formats a number to Brazilian standard (dot for thousands, comma for decimal).
+       Shows integer if no significant decimal part, otherwise shows up to 2 decimals,
+       removing trailing zeros.
+    """
+    if pd.isna(value) or value is None:
+        return ""
+    # MODIFICADO: Lógica para tratar inteiros e remover zeros decimais
+    try:
+        f_value = float(value)
+        # Check if it's effectively an integer
+        if f_value == int(f_value):
+            # Format as integer with thousands separators
+            int_str = f"{int(f_value):,}".replace(",", ".")
+            return int_str
+        else:
+            # Format as float with 2 decimal places first for consistent rounding
+            formatted_str = f"{f_value:.2f}" # e.g., "1459.89", "15.00", "4.90"
+            int_part, dec_part = formatted_str.split('.')
+
+            # Format integer part with dots
+            int_part_formatted = f"{int(int_part):,}".replace(",", ".")
+
+            # Only add decimal part if it's not "00"
+            if dec_part == "00":
+                return int_part_formatted
+            else:
+                # Remove trailing zeros from decimal part *before* combining
+                dec_part = dec_part.rstrip('0') # "89" -> "89", "90" -> "9"
+                # Handle cases like "4.0" which become "4," -> should be "4"
+                if not dec_part: # If rstrip removed everything (e.g., was "00")
+                    return int_part_formatted # Return only integer part
+                return f"{int_part_formatted},{dec_part}"
+
+    except (ValueError, TypeError):
+        logging.warning(f"Could not format value '{value}' to Brazilian standard.")
+        return str(value) # Fallback
+
 def create_visualization(df, indicador_id=None, selected_var=None, selected_filters=None):
     """Cria uma visualização (gráfico principal, ranking, mapa e tabela) com os dados do DataFrame, aplicando filtros."""
     if df is None or df.empty:
@@ -707,12 +747,15 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             df_state = df_line_data[df_line_data['DESC_UND_FED'] == uf]
                             # Adiciona verificação se df_state não está vazio
                             if df_state.empty: continue
+                            # Modificado: Adiciona valor formatado ao customdata
                             customdata_state = np.column_stack((
                                 np.full(len(df_state), uf),
                                 df_state['DESC_UND_MED'].values,
-                                df_state['VLR_VAR'].values
+                                df_state['VLR_VAR'].values, # Original value
+                                df_state['VLR_VAR'].apply(format_br).values # Formatted value
                             ))
-                            text_values = df_state['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+                            # Modificado: Usa a função format_br
+                            text_values = df_state['VLR_VAR'].apply(format_br)
                             trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                             color_map = {
                                 'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
@@ -731,7 +774,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 hovertemplate=(
                                     "<b>%{customdata[0]}</b><br>" # UF do customdata
                                     "Ano: %{x}<br>"
-                                    "Valor: %{customdata[2]:,.0f}<br>"
+                                    "Valor: %{customdata[3]}<br>" # Modificado: Usa customdata[3] (pré-formatado)
                                     "Unidade: %{customdata[1]}<extra></extra>"
                                 )
                             ))
@@ -754,21 +797,21 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 else: # Gráfico de linha sem UF (e.g., só 'Brasil')
                     df_line_data = df_filtered.sort_values('CODG_ANO')
                     if not df_line_data.empty:
-                         # Adapta customdata para não ter UF
+                         # Adapta customdata para não ter UF, adiciona valor formatado
                          customdata_line_no_uf = np.column_stack((
                              df_line_data['DESC_UND_MED'].values,
-                             df_line_data['VLR_VAR'].values
+                             df_line_data['VLR_VAR'].values, # Original value
+                             df_line_data['VLR_VAR'].apply(format_br).values # Formatted value
                          ))
-                         text_values = df_line_data['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+                         # Modificado: Usa a função format_br
+                         text_values = df_line_data['VLR_VAR'].apply(format_br)
                          main_fig.add_trace(go.Scatter(
                              x=df_line_data['CODG_ANO'], y=df_line_data['VLR_VAR'], name='Valor',
                              customdata=customdata_line_no_uf, text=text_values, mode='lines+markers+text',
-                             texttemplate='%{text}', textposition='top center', textfont=dict(size=10),
-                             marker=dict(size=10, symbol='circle', line=dict(width=1, color='white')),
                              line=dict(color='#229846', width=3), # Cor padrão ou específica
                              hovertemplate=(
                                  "Ano: %{x}<br>"
-                                 "Valor: %{customdata[1]:,.0f}<br>"
+                                 "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
                                  "Unidade: %{customdata[0]}<extra></extra>"
                              )
                          ))
@@ -803,12 +846,15 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         for uf in df_bar_grouped_data['DESC_UND_FED'].unique():
                             df_state = df_bar_grouped_data[df_bar_grouped_data['DESC_UND_FED'] == uf]
                             if df_state.empty: continue # Pula UF sem dados
+                            # Modificado: Adiciona valor formatado ao customdata
                             customdata_state = np.column_stack((
                                 np.full(len(df_state), uf),
                                 df_state['DESC_UND_MED'].values,
-                                df_state['VLR_VAR'].values
+                                df_state['VLR_VAR'].values, # Original value
+                                df_state['VLR_VAR'].apply(format_br).values # Formatted value
                             ))
-                            text_values = df_state['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+                            # Modificado: Usa a função format_br
+                            text_values = df_state['VLR_VAR'].apply(format_br)
                             trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                             bar_color = color_map.get(uf)
 
@@ -819,7 +865,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 hovertemplate=(
                                     "<b>%{customdata[0]}</b><br>" # UF do customdata
                                     "Ano: %{x}<br>"
-                                    "Valor: %{customdata[2]:,.0f}<br>"
+                                    "Valor: %{customdata[3]}<br>" # Modificado: Usa customdata[3] (pré-formatado)
                                     "Unidade: %{customdata[1]}<extra></extra>"
                                 )
                             ))
@@ -843,24 +889,25 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     # Caso sem UF mas com série temporal -> Barras simples por ano
                     df_bar_no_uf = df_filtered.sort_values('CODG_ANO')
                     if not df_bar_no_uf.empty:
+                        # Modificado: Adiciona valor formatado ao customdata
                         customdata_bar_no_uf = np.column_stack((
                             df_bar_no_uf['DESC_UND_MED'].values,
-                            df_bar_no_uf['VLR_VAR'].values
+                            df_bar_no_uf['VLR_VAR'].values, # Original value
+                            df_bar_no_uf['VLR_VAR'].apply(format_br).values # Formatted value
                         ))
-                        text_values = df_bar_no_uf['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", "."))
+                        # Modificado: Usa a função format_br
+                        text_values = df_bar_no_uf['VLR_VAR'].apply(format_br)
                         main_fig.add_trace(go.Bar(
                             x=df_bar_no_uf['CODG_ANO'],
                             y=df_bar_no_uf['VLR_VAR'],
-                            name='Valor',
-                            customdata=customdata_bar_no_uf,
-                            text=text_values, texttemplate='%{text}', textposition='outside',
                             marker_color='#229846', # Cor padrão ou específica
                             hovertemplate=(
                                 "Ano: %{x}<br>"
-                                "Valor: %{customdata[1]:,.0f}<br>"
+                                "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
                                 "Unidade: %{customdata[0]}<extra></extra>"
                             )
                         ))
+
                         max_y_bar_no_uf = df_bar_no_uf['VLR_VAR'].max()
                         y_range_bar_no_uf = [0, max_y_bar_no_uf * 1.15]
                         layout_updates_bar_no_uf = DEFAULT_LAYOUT.copy()
@@ -892,11 +939,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     for uf in all_ufs:
                         df_state = df_bar_simple_data[df_bar_simple_data['DESC_UND_FED'] == uf]
                         if df_state.empty: continue # Pula se não houver dados para o estado
+                        # Modificado: Adiciona valor formatado ao customdata
                         customdata_state = np.column_stack((
                             df_state['DESC_UND_MED'].values,
-                            df_state['VLR_VAR'].values
+                            df_state['VLR_VAR'].values, # Original value
+                            df_state['VLR_VAR'].apply(format_br).values # Formatted value
                         ))
-                        text_values = df_state['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", ".")).values
+                        # Modificado: Usa a função format_br
+                        text_values = df_state['VLR_VAR'].apply(format_br).values
                         trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                         bar_color = color_map.get(uf)
                         opacity = 1.0 if uf == 'Goiás' else 0.85
@@ -910,7 +960,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             marker_line_width=line_width, marker_line_color=line_color,
                             hovertemplate=(
                                 "<b>%{x}</b><br>" # UF do eixo X
-                                "Valor: %{customdata[1]:,.0f}<br>" # Valor de VLR_VAR
+                                "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
                                 "Unidade: %{customdata[0]}<extra></extra>" # Unidade
                             )
                         ))
@@ -934,24 +984,25 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 # Caso sem UF e sem série temporal -> Barra simples do último ano sem UF
                 df_bar_simple_no_uf = df_filtered[df_filtered['CODG_ANO'] == ano_default]
                 if not df_bar_simple_no_uf.empty:
+                    # Modificado: Adiciona valor formatado ao customdata
                     customdata_bar_simple_no_uf = np.column_stack((
                         df_bar_simple_no_uf['DESC_UND_MED'].values,
-                        df_bar_simple_no_uf['VLR_VAR'].values
+                        df_bar_simple_no_uf['VLR_VAR'].values, # Original value
+                        df_bar_simple_no_uf['VLR_VAR'].apply(format_br).values # Formatted value
                     ))
-                    text_values = df_bar_simple_no_uf['VLR_VAR'].apply(lambda x: f"{x:,.0f}".replace(",", ".")).values
+                    # Modificado: Usa a função format_br
+                    text_values = df_bar_simple_no_uf['VLR_VAR'].apply(format_br).values
                     main_fig.add_trace(go.Bar(
                         x=['Valor'], # Categoria genérica
                         y=df_bar_simple_no_uf['VLR_VAR'],
-                        name='Valor',
-                        customdata=customdata_bar_simple_no_uf,
-                        text=text_values, texttemplate='%{text}', textposition='outside',
                         marker_color='#229846', # Cor padrão
                         hovertemplate=(
                             "<b>Valor</b><br>"
-                            "Valor: %{customdata[1]:,.0f}<br>"
+                            "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
                             "Unidade: %{customdata[0]}<extra></extra>"
                         )
                     ))
+
                     max_y_bar_simple_no_uf = df_bar_simple_no_uf['VLR_VAR'].max()
                     y_range_bar_simple_no_uf = [0, max_y_bar_simple_no_uf * 1.15]
                     layout_updates_bar_simple_no_uf = DEFAULT_LAYOUT.copy()
@@ -996,7 +1047,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         valor = row['VLR_VAR']
                         und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
                         bar_color = goias_color if uf == 'Goiás' else other_color
-                        text_value = f"{valor:,.0f}".replace(",", ".")
+                        # Modificado: Usa a função format_br
+                        text_value = format_br(valor)
 
                         fig_ranking_updated.add_trace(go.Bar(
                             y=[uf], # Estados no eixo Y
@@ -1072,14 +1124,33 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
                         # Tenta obter unidade de medida de forma segura
                         und_med_map = df_map_data_initial['DESC_UND_MED'].dropna().iloc[0] if not df_map_data_initial['DESC_UND_MED'].dropna().empty else ''
+                        # Modificado: Adiciona coluna formatada para hover
+                        df_map_data_initial['VLR_VAR_FORMATADO'] = df_map_data_initial['VLR_VAR'].apply(format_br)
 
                         fig_map = px.choropleth(
-                            df_map_data_initial, geojson=geojson, locations='DESC_UND_FED', featureidkey='properties.name',
-                            color='VLR_VAR', color_continuous_scale='Greens_r', scope="south america"
+                            df_map_data_initial, # Usa df_filtered_map diretamente (sem agregação)
+                            geojson=geojson,
+                            locations='DESC_UND_FED',
+                            featureidkey='properties.name',
+                            color='VLR_VAR',
+                            color_continuous_scale='Greens_r',
+                            scope="south america"
                         )
-                        fig_map.update_geos(visible=False, showcoastlines=True, coastlinecolor="White", showland=True, landcolor="white", showframe=False, center=dict(lat=-12.9598, lon=-53.2729), projection=dict(type='mercator', scale=2.6))
-                        fig_map.update_traces(marker_line_color='white', marker_line_width=1, hovertemplate=f"<b>%{{location}}</b><br>Valor: %{{z:,.0f}}{' ' + und_med_map if und_med_map else ''}<extra></extra>")
-                        fig_map.update_layout(margin=dict(r=0, l=0, t=0, b=0), coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
+                        fig_map.update_geos(
+                            visible=False, showcoastlines=True, coastlinecolor="White",
+                            showland=True, landcolor="white", showframe=False,
+                            projection=dict(type='mercator', scale=2.6)
+                        )
+                        # Modificado: Passa coluna formatada no customdata e atualiza hovertemplate
+                        fig_map.update_traces(
+                            marker_line_color='white', marker_line_width=1,
+                            customdata=df_map_data_initial[['VLR_VAR_FORMATADO']], # Passa coluna formatada
+                            hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+                        )
+                        fig_map.update_layout(
+                            margin=dict(r=0, l=0, t=0, b=0),
+                            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
+                        )
                         map_created_successfully = True # Mapa criado com sucesso
                         # Define o conteúdo do mapa como o dropdown e o gráfico
                         map_content = html.Div([
@@ -1705,578 +1776,6 @@ def update_card_content(*args):
         logging.exception("Erro geral em update_card_content:")
         # Retorna um estado seguro em caso de erro inesperado
         return initial_header, initial_content, [], "Ocorreu um erro.", []
-
-# Callback para atualizar o mapa coroplético quando o ano ou filtros mudam
-@app.callback(
-    # Modificado: Output para atualizar o container do mapa
-    Output({'type': 'map-container', 'index': MATCH}, 'children'),
-    Input({'type': 'year-dropdown', 'index': MATCH}, 'value'),
-    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    # Adiciona State para pegar o ano original e opções, caso precise recriar o dropdown no erro
-    State({'type': 'year-dropdown', 'index': MATCH}, 'options'),
-    State({'type': 'year-dropdown', 'index': MATCH}, 'value'), # Valor atual para manter no erro
-    prevent_initial_call=True
-)
-def update_map(selected_year, store_data, year_options, current_year_value):
-    ctx = callback_context
-    if not ctx.triggered or not selected_year:
-        raise PreventUpdate
-
-    # Encontra o ID do indicador que disparou
-    triggered_id = ctx.triggered_id
-    logging.debug("Update map triggered por: %s, Ano: %s", triggered_id, selected_year) # Log Debug
-    if not isinstance(triggered_id, dict) or 'index' not in triggered_id:
-        # Tenta obter do prop_id se o ID não for um dict (menos comum)
-        prop_id = ctx.triggered[0]['prop_id']
-        try:
-            trigger_info = json.loads(prop_id.split('.')[0])
-            if isinstance(trigger_info, dict) and 'index' in trigger_info:
-                target_index = trigger_info['index']
-            else:
-                raise PreventUpdate
-        except Exception:
-             raise PreventUpdate
-    else:
-        target_index = triggered_id['index']
-
-    if not target_index:
-        raise PreventUpdate
-
-    # Recria o dropdown e o label para retornar em caso de erro
-    dropdown_component = [
-        html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
-        dcc.Dropdown(
-            id={'type': 'year-dropdown', 'index': target_index},
-            options=year_options,
-            value=current_year_value, # Mantem o ano selecionado
-            clearable=False,
-            style={'width': '100%', 'marginBottom': '10px'}
-        )
-    ]
-
-    # Encontrar o store correspondente
-    selected_var = None
-    selected_filters = {}
-    if store_data:
-        selected_var = store_data.get('selected_var')
-        selected_filters = store_data.get('selected_filters', {})
-
-    # Carrega os dados do indicador
-    indicador_id = target_index
-    df_map = load_dados_indicador_cache(indicador_id)
-    if df_map is None or df_map.empty:
-        logging.warning("update_map: Dados não encontrados para %s.", indicador_id)
-        # Modificado: Retorna APENAS o alerta
-        # Usamos logging.warning
-        logging.warning("update_map: Dados não encontrados para %s.", indicador_id)
-        return dbc.Alert("Dados não disponíveis para este indicador.", color="warning")
-        # return dropdown_component + [dbc.Alert("Dados não disponíveis para este indicador.", color="warning")]
-
-    # CÓPIA do DataFrame para aplicar filtros
-    df_filtered_map = df_map.copy()
-
-    # Aplica filtro de VARIÁVEL PRINCIPAL
-    if 'CODG_VAR' in df_filtered_map.columns and selected_var:
-        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
-        selected_var_str = str(selected_var).strip()
-        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
-
-    # Aplica FILTROS DINÂMICOS
-    if selected_filters:
-        for col_code, selected_value in selected_filters.items():
-            if selected_value is not None and col_code in df_filtered_map.columns:
-                df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
-                selected_value_str = str(selected_value).strip()
-                df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
-
-    # Filtra pelo ANO selecionado
-    df_ano = df_filtered_map[df_filtered_map['CODG_ANO'] == selected_year]
-
-    # Adiciona DESC_UND_FED se existir CODG_UND_FED
-    if 'CODG_UND_FED' in df_ano.columns and 'DESC_UND_FED' not in df_ano.columns:
-        df_ano['DESC_UND_FED'] = df_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-        df_ano = df_ano.dropna(subset=['DESC_UND_FED']) # Remove linhas onde o mapeamento falhou
-    elif 'DESC_UND_FED' not in df_ano.columns:
-         # Se não tem nem CODG nem DESC, não pode fazer mapa
-          # Modificado: Retorna APENAS o alerta
-         return dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")
-         # return dropdown_component + [dbc.Alert("Dados insuficientes para gerar o mapa (sem informação de UF).", color="warning")]
-
-    if df_ano.empty:
-        logging.warning("update_map: Dados não encontrados para %s no ano %s após filtros.", indicador_id, selected_year)
-        # Modificado: Retorna APENAS o alerta
-        # Usamos logging.warning
-        logging.warning("update_map: Dados não encontrados para %s no ano %s após filtros.", indicador_id, selected_year)
-        return dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")
-        # return dropdown_component + [dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")]
-
-    # --- REMOVIDA A AGREGAÇÃO --- 
-
-    # VERIFICA UNICIDADE por Estado
-    if 'DESC_UND_FED' in df_ano.columns:
-        counts_per_uf = df_ano['DESC_UND_FED'].value_counts()
-        if (counts_per_uf > 1).any():
-            # Existem UFs com mais de uma linha
-            logging.warning("update_map: Múltiplos valores por UF para %s no ano %s. Mapa não gerado.", indicador_id, selected_year)
-            alert_message = (
-                "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
-                "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
-            )
-            # Modificado: Retorna APENAS o alerta
-            # Usamos logging.warning
-            logging.warning("update_map: Múltiplos valores por UF para %s no ano %s. Mapa não gerado.", indicador_id, selected_year)
-            return dbc.Alert(alert_message, color="danger")
-            # return dropdown_component + [dbc.Alert(alert_message, color="danger")]
-        # Se chegou aqui, cada UF tem no máximo 1 linha
-    else:
-        # Deveria ter sido pego antes, mas por segurança
-        return dropdown_component + [dbc.Alert("Erro inesperado: Coluna de UF não encontrada.", color="danger")]
-
-    # --- Se passou na verificação de unicidade, cria o mapa --- 
-    try:
-        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-            geojson = json.load(f)
-
-        # Pega unidade de medida (de forma segura)
-        und_med_map = ''
-        if 'DESC_UND_MED' in df_ano.columns and not df_ano['DESC_UND_MED'].empty:
-            first_valid_und_med = df_ano['DESC_UND_MED'].dropna().iloc[0] if not df_ano['DESC_UND_MED'].dropna().empty else ''
-            und_med_map = first_valid_und_med
-
-        fig_map = px.choropleth(
-            df_ano, # Usa df_ano diretamente (sem agregação)
-            geojson=geojson,
-            locations='DESC_UND_FED',
-            featureidkey='properties.name',
-            color='VLR_VAR',
-            color_continuous_scale='Greens_r',
-            scope="south america"
-        )
-
-        fig_map.update_geos(
-            visible=False, showcoastlines=True, coastlinecolor="White",
-            showland=True, landcolor="white", showframe=False,
-            center=dict(lat=-12.9598, lon=-53.2729),
-            projection=dict(type='mercator', scale=2.6)
-        )
-
-        fig_map.update_traces(
-            marker_line_color='white', marker_line_width=1,
-            hovertemplate="<b>%{location}</b><br>Valor: %{z}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
-        )
-
-        fig_map.update_layout(
-            margin=dict(r=0, l=0, t=0, b=0),
-            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black')))
-        # Retorna dropdown + gráfico
-        return dropdown_component + [dcc.Graph(figure=fig_map, id={'type': 'choropleth-map', 'index': target_index})] 
-
-    except Exception as e:
-        logging.exception("Erro ao gerar mapa para %s mesmo após verificação de unicidade: %s", indicador_id, e)
-        # Modificado: Retorna APENAS o alerta
-        return dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")
-        # return dropdown_component + [dbc.Alert("Ocorreu um erro inesperado ao gerar o mapa.", color="danger")]
-
-# Callback para controlar a visibilidade do label baseado na existência de variáveis
-@app.callback(
-    Output({'type': 'var-label', 'index': MATCH}, 'style'),
-    Input({'type': 'var-dropdown', 'index': MATCH}, 'options'),
-    prevent_initial_call=True
-)
-def update_label_visibility(options):
-    if not options:
-        return {'display': 'none'}
-    return {
-        'fontWeight': 'bold',
-        'display': 'block',
-        'marginBottom': '5px'
-    }
-
-# --- Novos Callbacks usando dcc.Store ---
-
-# Callback 1: Atualiza o Store quando a variável principal muda
-@app.callback(
-    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
-    Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
-    State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    prevent_initial_call=True
-)
-def update_store_from_variable(selected_var, current_data):
-    if selected_var is None and not callback_context.triggered_id: # Permite atualização inicial se var for None
-        raise PreventUpdate
-
-    current_data = current_data or {'selected_var': None, 'selected_filters': {}}
-    current_data['selected_var'] = selected_var
-    return current_data
-
-# Callback 2: Atualiza o Store quando um filtro dinâmico muda
-@app.callback(
-    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
-    Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
-    State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
-    State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    State({'type': 'visualization-state-store', 'index': MATCH}, 'id'), # Adiciona State para obter o ID do Store
-    prevent_initial_call=True
-)
-def update_store_from_filters(filter_values, filter_ids, current_data, store_id): # Adiciona store_id
-    ctx = callback_context
-    if not ctx.triggered or not store_id: # Verifica se store_id está presente
-        raise PreventUpdate
-
-    indicador_id = store_id.get('index', 'ID_DESCONHECIDO') # Obtem o ID do indicador de forma segura
-
-    current_data = current_data or {'selected_var': None, 'selected_filters': {}}
-
-    selected_filters = {}
-    if filter_ids and filter_values:
-        # Garante que ambos são listas antes de verificar o comprimento
-        if isinstance(filter_ids, list) and isinstance(filter_values, list):
-            if len(filter_ids) != len(filter_values):
-                logging.warning(f"({indicador_id}) Comprimento de filter_ids ({len(filter_ids)}) e filter_values ({len(filter_values)}) não coincide.")
-                # Não necessariamente um erro fatal, pode acontecer durante a inicialização.
-                # Poderia tentar parear os que têm ID correspondente? Por enquanto, mantém o comportamento.
-            else:
-                try:
-                    for filter_id, filter_value in zip(filter_ids, filter_values):
-                        # Verificação mais robusta
-                        if isinstance(filter_id, dict) and 'filter_col' in filter_id:
-                            col_name = filter_id['filter_col']
-                            # Permite None como valor válido (para limpar um filtro, por exemplo)
-                            # A lógica em create_visualization deve ignorar filtros com valor None.
-                            # if filter_value is not None and filter_value != 'all': # Comentado para permitir None
-                            selected_filters[col_name] = filter_value
-                        else:
-                            logging.warning(f"({indicador_id}) ID de filtro inválido encontrado: {filter_id}")
-
-                except Exception as e:
-                    logging.exception(f"({indicador_id}) Erro ao processar filtros dinâmicos no store: {e}")
-                    raise PreventUpdate # Mantém o PreventUpdate em caso de exceção inesperada
-        else:
-            logging.warning(f"({indicador_id}) filter_ids ou filter_values não são listas.")
-
-    # Log dos filtros aplicados (nível DEBUG)
-    logging.debug(f"Filtros dinâmicos atualizados no store para {indicador_id}: {selected_filters}")
-
-    # Só atualiza se os filtros realmente mudaram para evitar loops desnecessários?
-    # (Otimização futura, por enquanto atualiza sempre)
-    current_data['selected_filters'] = selected_filters
-    return current_data
-
-# Callback 3: Atualiza a visualização (gráficos/tabela) quando o Store muda
-@app.callback(
-    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
-    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    State({'type': 'visualization-state-store', 'index': MATCH}, 'id'),
-)
-def update_visualization_from_store(store_data, store_id):
-    if store_id is None:
-        raise PreventUpdate
-
-    indicador_id = store_id['index']
-    store_data = store_data or {'selected_var': None, 'selected_filters': {}}
-    selected_var = store_data.get('selected_var')
-    selected_filters = store_data.get('selected_filters', {})
-    logging.debug("Atualizando visualização para %s com var=%s, filters=%s",
-                  indicador_id, selected_var, selected_filters) # Log Debug
-
-    try:
-        df = load_dados_indicador_cache(indicador_id)
-        if df is None or df.empty:
-            # Adiciona log de aviso
-            logging.warning("Dados não encontrados para %s ao atualizar visualização.", indicador_id)
-            return dbc.Alert(f"Dados não encontrados para o indicador {indicador_id} ao atualizar visualização.", color="warning")
-
-        # Atualiza a visualização principal
-        return create_visualization(df, indicador_id, selected_var, selected_filters)
-
-    except Exception as e:
-        logging.exception("Erro ao atualizar visualização para indicador %s", indicador_id)
-        return dbc.Alert(f"Ocorreu um erro ao atualizar a visualização para o indicador {indicador_id}.", color="danger")
-
-# Callback para acionar o carregamento do primeiro indicador quando o objetivo é selecionado
-@app.callback(
-    Output('trigger-first-tab-load', 'children'),
-    Input('indicadores-section', 'children'),
-    prevent_initial_call=True
-)
-def trigger_first_tab_load(indicadores_section):
-    # Se não houver indicadores, não faz nada
-    if not indicadores_section:
-        raise PreventUpdate
-
-    # Retorna um valor qualquer para acionar o callback
-    return html.Div(f"Loaded at {time.time()}", style={'display': 'none'})
-
-# Callback para garantir que a primeira aba esteja ativa
-@app.callback(
-    Output('tabs-indicadores', 'active_tab'),
-    Input('trigger-first-tab-load', 'children'),
-    State('tabs-indicadores', 'children'),
-    State('tabs-indicadores', 'active_tab'),
-    prevent_initial_call=True
-)
-def set_first_tab_active(_trigger, tabs, current_active_tab):
-    # Se já houver uma aba ativa, mantém ela
-    if current_active_tab:
-        return current_active_tab
-
-    # Se não houver abas, não faz nada
-    if not tabs or len(tabs) == 0:
-        raise PreventUpdate
-
-    try:
-        # Tenta obter o ID da primeira aba
-        return tabs[0].tab_id
-    except (AttributeError, IndexError):
-        # Se não conseguir, não faz nada
-        raise PreventUpdate
-
-# Callback para carregar indicadores sob demanda quando uma aba é clicada
-@app.callback(
-    [Output({'type': 'lazy-load-container', 'index': MATCH}, 'children'),
-     Output({'type': 'spinner-indicator', 'index': MATCH}, 'style')],
-    Input('tabs-indicadores', 'active_tab'),
-    State({'type': 'lazy-load-container', 'index': MATCH}, 'id'),
-    prevent_initial_call=True
-)
-def load_indicator_on_demand(active_tab, container_id):
-    # Só carrega se a aba estiver ativa
-    if not active_tab or not container_id:
-        raise PreventUpdate
-
-    # Obtém o ID do indicador
-    indicador_id = container_id['index']
-    logging.debug("Tentando carregar indicador sob demanda: %s (Aba ativa: %s)", indicador_id, active_tab) # Log Debug
-
-    # Ignora o placeholder
-    if indicador_id == 'placeholder':
-        raise PreventUpdate
-
-    # Verifica se a aba ativa corresponde a este indicador
-    if active_tab != f"tab-{indicador_id}":
-        raise PreventUpdate
-
-    # Verifica se já está carregado (se já tiver um graph-container, não precisa carregar novamente)
-    ctx = callback_context
-    if not ctx.triggered:
-        raise PreventUpdate
-
-    # Carrega os dados do indicador
-    df_dados = load_dados_indicador_cache(indicador_id)
-    tab_content = []
-    dynamic_filters_div = []
-    valor_inicial_variavel = None
-
-    # Busca informações do indicador
-    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
-    if indicador_info.empty:
-        return [dbc.Alert(f"Informações não encontradas para o indicador {indicador_id}.", color="danger")], {'display': 'none'}
-
-    # Adiciona a descrição do indicador
-    tab_content = [html.P(indicador_info.iloc[0]['DESC_INDICADOR'], className="textJustify p-3")]
-
-    if df_dados is not None and not df_dados.empty:
-        try:
-            # Identifica filtros dinâmicos
-            filter_cols = identify_filter_columns(df_dados)
-            initial_dynamic_filters = {} # Dicionário para filtros iniciais
-
-            # Prepara os filtros dinâmicos
-            for idx, filter_col_code in enumerate(filter_cols):
-                desc_col_code = 'DESC_' + filter_col_code[5:]
-                code_to_desc = {}
-                if desc_col_code in df_dados.columns:
-                    try:
-                        mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
-                        code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
-                                                 index=mapping_df[filter_col_code].astype(str)).to_dict()
-                    except Exception as map_err:
-                        logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
-                        # Adiciona log de erro para mapeamento
-                        logging.error("Erro ao mapear código/descrição para filtro %s: %s", filter_col_code, map_err)
-                unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
-                col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
-                filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-
-                # Define larguras alternadas para os filtros
-                md_width = 7 if idx % 2 == 0 else 5
-                # Define o valor inicial e armazena
-                initial_value = unique_codes[0] if unique_codes else None
-                if initial_value is not None:
-                     initial_dynamic_filters[filter_col_code] = initial_value
-
-                dynamic_filters_div.append(dbc.Col([
-                    html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                    dcc.Dropdown(
-                        id={'type': 'dynamic-filter-dropdown', 'index': indicador_id, 'filter_col': filter_col_code},
-                        options=col_options,
-                        value=initial_value, # Usa o valor inicial definido
-                        style={'marginBottom': '10px', 'width': '100%'}
-                    )
-                ], md=md_width, xs=12))
-
-            # Dropdown de variável principal
-            has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
-            variable_dropdown_div = []
-            if has_variable_dropdown:
-                df_variavel_loaded = load_variavel()
-                if 'CODG_VAR' in df_dados.columns:
-                    variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
-                    if not df_variavel_loaded.empty:
-                        df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
-                        if not df_variavel_filtrado.empty:
-                            # Usar o primeiro valor disponível no dropdown
-                            valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
-                            variable_dropdown_div = [html.Div([
-                                html.Label("Selecione uma Variável:",
-                                         style={'fontWeight': 'bold','display': 'block','marginBottom': '5px'},
-                                         id={'type': 'var-label', 'index': indicador_id}),
-                                dcc.Dropdown(
-                                    id={'type': 'var-dropdown', 'index': indicador_id},
-                                    options=[{'label': desc, 'value': cod} for cod, desc in zip(df_variavel_filtrado['CODG_VAR'], df_variavel_filtrado['DESC_VAR'])],
-                                    value=valor_inicial_variavel,
-                                    style={'width': '100%'}
-                                )
-                            ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': indicador_id})]
-
-            # Cria a visualização inicial PASSANDO OS FILTROS INICIAIS
-            initial_visualization = create_visualization(
-                df_dados, indicador_id, valor_inicial_variavel, initial_dynamic_filters
-            )
-            tab_content.extend(variable_dropdown_div)
-            if dynamic_filters_div:
-                tab_content.append(dbc.Row(dynamic_filters_div))
-            tab_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
-
-        except Exception as e_inner:
-            logging.exception("Erro interno ao gerar conteúdo da aba %s", indicador_id)
-            import traceback
-            traceback.print_exc()
-            tab_content.append(dbc.Alert(f"Erro ao gerar conteúdo para {indicador_id}.", color="danger"))
-            return tab_content, {'display': 'none'}
-    else:
-        tab_content.append(dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning"))
-        return tab_content, {'display': 'none'}
-
-    # Retorna apenas o conteúdo para o contêiner de carregamento
-    # Não retornamos a descrição do indicador, pois ela já está na aba
-    # Retornamos apenas os filtros, variáveis e visualizações
-    dynamic_content = []
-
-    # Adiciona os dropdowns de variáveis se existirem
-    for item in tab_content:
-        if isinstance(item, html.Div) and item.id and isinstance(item.id, dict) and item.id.get('type') == 'var-dropdown-container':
-            dynamic_content.append(item)
-
-    # Adiciona os filtros dinâmicos
-    if dynamic_filters_div:
-        dynamic_content.append(dbc.Row(dynamic_filters_div))
-
-    # Adiciona a visualização
-    dynamic_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
-
-    # Nota: Não precisamos criar um novo store ou callback, pois eles já existem na aba
-
-    # Oculta o spinner quando os dados são carregados
-    spinner_style = {'display': 'none'}
-
-    return dynamic_content, spinner_style
-
-# Obtém a instância do servidor Flask
-server = app.server
-
-def update_maintenance_mode(new_state: bool):
-    """Atualiza o estado do modo de manutenção no arquivo .env"""
-    env_vars = {}
-
-    # Se o arquivo .env existe, lê as variáveis existentes
-    if os.path.exists('.env'):
-        with open('.env', 'r', encoding='utf-8') as f:
-            for loc in f:
-                if '=' in loc:
-                    key, value = loc.strip().split('=', 1)
-                    env_vars[key] = value
-    else:
-        # Se o arquivo não existe, define valores padrão
-        env_vars = {
-            'DEBUG': 'false',
-            'USE_RELOADER': 'false',
-            'PORT': '8050',
-            'HOST': '0.0.0.0',
-            'MAINTENANCE_MODE': 'false',
-            'SECRET_KEY': generate_secret_key(),
-            'MAINTENANCE_PASSWORD_HASH': generate_password_hash(MAINTENANCE_PASSWORD)
-        }
-
-    # Atualiza o estado do modo de manutenção
-    env_vars['MAINTENANCE_MODE'] = str(new_state).lower()
-
-    # Escreve o arquivo .env atualizado
-    with open('.env', 'w', encoding='utf-8') as f:
-        for key, value in env_vars.items():
-            f.write(f'{key}={value}\n')
-
-@server.route('/toggle-maintenance', methods=['POST'])
-def toggle_maintenance():
-    """Alterna o modo de manutenção do sistema"""
-    global MAINTENANCE_MODE
-    try:
-        data = request.get_json()
-        if not data or 'password' not in data:
-            return jsonify({
-                'success': False,
-                'message': 'Por favor, forneça a senha de manutenção para continuar.',
-                'maintenance_mode': MAINTENANCE_MODE
-            }), 400
-
-        stored_hash = get_maintenance_password_hash()
-        if not stored_hash:
-            return jsonify({
-                'success': False,
-                'message': 'Configuração de senha não encontrada. Por favor, entre em contato com o administrador do sistema.',
-                'maintenance_mode': MAINTENANCE_MODE
-            }), 500
-
-        if not check_password(data['password'], stored_hash):
-            return jsonify({
-                'success': False,
-                'message': 'A senha fornecida está incorreta. Por favor, verifique e tente novamente.',
-                'maintenance_mode': MAINTENANCE_MODE
-            }), 401
-
-        MAINTENANCE_MODE = not MAINTENANCE_MODE
-        # Persiste o novo estado no arquivo .env
-        update_maintenance_mode(MAINTENANCE_MODE)
-
-        return jsonify({
-            'success': True,
-            'message': f'Modo de manutenção {"ativado" if MAINTENANCE_MODE else "desativado"} com sucesso!',
-            'maintenance_mode': MAINTENANCE_MODE
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'message': 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente mais tarde.',
-            'maintenance_mode': MAINTENANCE_MODE,
-            'error': str(e)
-        }), 500
-
-def get_maintenance_password_hash():
-    """Obtém o hash da senha de manutenção do arquivo .env"""
-    return os.getenv('MAINTENANCE_PASSWORD_HASH')
-
-# Callback para atualizar o GRÁFICO DE RANKING quando o ano ou filtros mudam
-@app.callback(
-    # Output para o container do gráfico de ranking dentro da aba
-    Output({'type': 'ranking-chart', 'index': MATCH}, 'figure'),
-    # Inputs: dropdown de ano do ranking e store de filtros
-    Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value'),
-    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    # State para pegar o ID do indicador (MATCH)
-    State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
-    prevent_initial_call=True
-)
 def update_ranking_chart(selected_year, store_data, chart_id):
     ctx = callback_context
     if not ctx.triggered or not selected_year or not store_data:
@@ -2361,7 +1860,8 @@ def update_ranking_chart(selected_year, store_data, chart_id):
         valor = row['VLR_VAR']
         und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
         bar_color = goias_color if uf == 'Goiás' else other_color
-        text_value = f"{valor:,.0f}".replace(",", ".")
+        # Modificado: Usa a função format_br
+        text_value = format_br(valor)
 
         fig_ranking_updated.add_trace(go.Bar(
             y=[uf], # Estados no eixo Y
@@ -2390,101 +1890,6 @@ def update_ranking_chart(selected_year, store_data, chart_id):
     )
 
     return fig_ranking_updated
-
-# Callback para atualizar o MAPA COROPLÉTICO quando o ano ou filtros mudam
-@app.callback(
-    # Output para o container do gráfico de mapa dentro da aba
-    Output({'type': 'choropleth-map', 'index': MATCH}, 'figure'),
-    # Inputs: dropdown de ano do MAPA e store de filtros
-    Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value'),
-    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    # State para pegar o ID do indicador (MATCH)
-    State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
-    prevent_initial_call=True
-)
-def update_map_chart(selected_year, store_data, chart_id):
-    ctx = callback_context
-    if not ctx.triggered or not selected_year or not store_data:
-        raise PreventUpdate
-
-    indicador_id = chart_id['index']
-    df_map = load_dados_indicador_cache(indicador_id)
-    if df_map is None or df_map.empty:
-        logging.warning("update_map_chart: Dados não encontrados para %s.", indicador_id)
-        return dbc.Alert("Dados não disponíveis para este indicador.", color="warning")
-
-    # Filtra dados para o ano selecionado
-    df_filtered_map = df_map[df_map['CODG_ANO'] == selected_year]
-
-    # Verifica se há dados após o filtro
-    if df_filtered_map.empty:
-        logging.warning("update_map_chart: Dados não encontrados para %s no ano %s após filtros.", indicador_id, selected_year)
-        return dbc.Alert(f"Nenhum dado encontrado para o ano {selected_year} com os filtros aplicados.", color="warning")
-
-    # --- REMOVIDA A AGREGAÇÃO --- 
-
-    # Verifica unicidade por UF
-    if 'DESC_UND_FED' in df_filtered_map.columns:
-        counts_per_uf = df_filtered_map['DESC_UND_FED'].value_counts()
-        if (counts_per_uf > 1).any():
-            # Existem UFs com mais de uma linha
-            logging.warning("update_map_chart: Múltiplos valores por UF para %s no ano %s. Mapa não gerado.", indicador_id, selected_year)
-            alert_message = (
-                "Não é possível exibir o mapa, pois a combinação atual de filtros resulta em múltiplos valores por estado. "
-                "Considere aplicar filtros adicionais (se disponíveis) para detalhar os dados."
-            )
-            return dbc.Alert(alert_message, color="danger")
-        # Se chegou aqui, cada UF tem no máximo 1 linha
-    else:
-        # Deveria ter sido pego antes, mas por segurança
-        return dbc.Alert("Erro inesperado: Coluna de UF não encontrada.", color="danger")
-
-    # --- Se passou na verificação de unicidade, cria o mapa --- 
-    try:
-        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-            geojson = json.load(f)
-
-        # Pega unidade de medida (de forma segura)
-        und_med_map = ''
-        if 'DESC_UND_MED' in df_filtered_map.columns and not df_filtered_map['DESC_UND_MED'].empty:
-            first_valid_und_med = df_filtered_map['DESC_UND_MED'].dropna().iloc[0] if not df_filtered_map['DESC_UND_MED'].dropna().empty else ''
-            und_med_map = first_valid_und_med
-
-        fig_map = px.choropleth(
-            df_filtered_map, # Usa df_filtered_map diretamente (sem agregação)
-            geojson=geojson,
-            locations='DESC_UND_FED',
-            featureidkey='properties.name',
-            color='VLR_VAR',
-            color_continuous_scale='Greens_r',
-            scope="south america"
-        )
-
-        fig_map.update_geos(
-            visible=False, showcoastlines=True, coastlinecolor="White",
-            showland=True, landcolor="white", showframe=False,
-            center=dict(lat=-12.9598, lon=-53.2729),
-            projection=dict(type='mercator', scale=2.6)
-        )
-
-        fig_map.update_traces(
-            marker_line_color='white', marker_line_width=1,
-            hovertemplate="<b>%{location}</b><br>Valor: %{z}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
-        )
-
-        fig_map.update_layout(
-            margin=dict(r=0, l=0, t=0, b=0),
-            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
-        )
-
-        # Retorna o gráfico
-        # return dcc.Graph(figure=fig_map, id={'type': 'choropleth-map', 'index': target_index})
-        return fig_map # Retorna apenas a figura
-
-    except Exception as e:
-        logging.exception("Erro ao gerar mapa atualizado para %s: %s", indicador_id, e)
-        return go.Figure().update_layout(title='Erro ao gerar mapa.', xaxis={'visible': False}, yaxis={'visible': False})
-
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
