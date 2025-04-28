@@ -4,9 +4,11 @@ from pathlib import Path
 import time
 import logging
 import asyncio
+from asyncio import Semaphore # Importa Semaphore
 import aiohttp
 from tqdm.asyncio import tqdm as async_tqdm
 import logging.handlers
+from typing import Dict, Any, List, Tuple, Optional, Union
 
 import pandas as pd
 import numpy as np
@@ -32,7 +34,10 @@ logging.basicConfig(level=logging.INFO, handlers=[file_handler, console_handler]
 # console_handler.setLevel(logging.INFO)
 # file_handler.setLevel(logging.DEBUG) # Log mais detalhado no arquivo
 
-async def get_sidra_data(session: aiohttp.ClientSession, url: str, indicador_name: str):
+# Define o tipo de retorno como uma tupla onde o segundo elemento pode ser Any (dados) ou uma Exception
+AsyncSidraResult = Tuple[str, Union[Any, Exception]]
+
+async def get_sidra_data(session: aiohttp.ClientSession, url: str, indicador_name: str) -> AsyncSidraResult:
     """Obtém dados de uma URL da API SIDRA de forma assíncrona com retries."""
     max_retries = 5
     retry_count = 0
@@ -78,15 +83,7 @@ def load_indicadores() -> pd.DataFrame:
     return df
 
 
-@lru_cache(maxsize=1)
-def remove_duplicates_from_csv(file_path: str) -> pd.DataFrame:
-    df = pd.read_csv(file_path, sep=';', na_filter=False)
-    df = df.drop_duplicates()
-    df.columns = df.columns.str.replace('"', '').str.replace("'", '')
-    return df
-
-
-def filter_indicadores(list_indicadores, indicadores_ids):
+def filter_indicadores(list_indicadores: Dict[str, Any], indicadores_ids: List[str]) -> Dict[str, Any]:
     return {
         objetivo: {
             meta: {
@@ -100,7 +97,7 @@ def filter_indicadores(list_indicadores, indicadores_ids):
     }
 
 
-def converter_tipos_dados(df):
+def converter_tipos_dados(df: pd.DataFrame) -> pd.DataFrame:
     """
     Converte os tipos de dados do DataFrame para formatos mais apropriados.
     
@@ -131,7 +128,6 @@ def converter_tipos_dados(df):
                 df[col] = df[col].astype(str)
                 codes_to_nan = ["...", "-", "X"]
                 df[col] = df[col].replace(codes_to_nan, np.nan)
-                df[col] = df[col].str.replace('.', '', regex=False)
                 df[col] = pd.to_numeric(df[col], errors='coerce')
                 # Adicionado: Preenche NaN com 0 após a conversão
                 df[col] = df[col].fillna(0)
@@ -159,27 +155,41 @@ def converter_tipos_dados(df):
 
 
 async def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
-                             df_und_med_global, df_variavel_global, df_indicadores):
+                             df_und_med_global: pd.DataFrame, 
+                             df_variavel_global: pd.DataFrame, 
+                             df_indicadores: pd.DataFrame) -> None:
     """Processa indicadores de forma assíncrona com barra de progresso."""
     base_dir = Path(__file__).parent
     results_dir = base_dir / 'db' / 'resultados'
     results_dir.mkdir(parents=True, exist_ok=True)
 
+    CONCURRENCY_LIMIT = 15  # Limite de requisições simultâneas
+    semaphore = Semaphore(CONCURRENCY_LIMIT)
+
+    # Função auxiliar para controlar concorrência com Semaphore
+    async def fetch_with_semaphore(session: aiohttp.ClientSession, url: str, indicador_name: str) -> AsyncSidraResult:
+        async with semaphore:
+            # logging.debug(f"Semaphore acquired for {indicador_name}") # Debug (opcional)
+            result = await get_sidra_data(session, url, indicador_name)
+            # logging.debug(f"Semaphore released for {indicador_name}") # Debug (opcional)
+            return result
+
     tasks = []
     logging.info("Coletando URLs e criando tarefas de download...")
-    failed_indicators = [] # Lista para rastrear falhas
+    failed_indicators: List[Tuple[str, str]] = [] # Lista para rastrear falhas
 
     # Modificado: O loop as_completed agora está DENTRO do bloco da sessão
     async with aiohttp.ClientSession() as session:
-        # 1. Cria todas as tarefas primeiro
+        # 1. Cria todas as tarefas primeiro, usando a função com semáforo
         for objetivo, metas_objetivo in filtered_list_indicadores.items():
             for meta, indicadores_meta in metas_objetivo.items():
                 for indicador, endpoint in indicadores_meta.items():
                     link = url_base + str(endpoint)
-                    tasks.append(asyncio.create_task(get_sidra_data(session, link, indicador)))
+                    # Cria a tarefa chamando a função auxiliar
+                    tasks.append(asyncio.create_task(fetch_with_semaphore(session, link, indicador)))
 
         total_tasks = len(tasks)
-        logging.info(f"{total_tasks} tarefas de download criadas. Iniciando downloads e processamento...")
+        logging.info(f"{total_tasks} tarefas de download criadas (limite de concorrência: {CONCURRENCY_LIMIT}). Iniciando downloads e processamento...")
 
         # Listas para acumular dataframes auxiliares (inicializadas antes do loop)
         und_med_dfs = [df_und_med_global]
@@ -335,7 +345,7 @@ async def process_indicadores(filtered_list_indicadores, url_base, list_colunas,
         logging.info("Todos os indicadores foram processados sem falhas aparentes.")
 
 
-async def main():
+async def main() -> None:
     logging.info("Iniciando atualização da base de dados...")
     url_base = 'https://apisidra.ibge.gov.br/values'
     db_path = Path(__file__).parent / 'db'
