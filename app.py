@@ -1357,10 +1357,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         # Monta o layout final com gráfico principal e abas lado a lado
         # Usa a variável main_chart_content diretamente
         visualization_card_content = dbc.CardBody([
+            # --- MODIFICADO: Alterado para align-items-end ---
             dbc.Row([
-                dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0"), # Coluna Gráfico Principal (agora pode ser Div ou Graph)
-                dbc.Col(tabs_container, md=5, xs=12) # Coluna Abas
-            ])
+                dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0 h-100"), # Coluna Gráfico Principal
+                dbc.Col(tabs_container, md=5, xs=12, className="h-100") # Coluna Abas
+            ], className="align-items-end") # Alinha o conteúdo das colunas na parte inferior
+            # --- FIM DA MODIFICAÇÃO ---
         ])
 
         graph_layout.append(dbc.Row([
