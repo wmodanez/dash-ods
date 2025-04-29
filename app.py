@@ -45,12 +45,38 @@ from constants import COLUMN_NAMES, UF_NAMES
 
 # Configuração do Logging
 log_level = logging.DEBUG if DEBUG else logging.INFO
-logging.basicConfig(
-    level=log_level,
-    format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
+# logging.basicConfig(
+#     level=log_level,
+#     format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
+
+# --- Nova Configuração de Logging com Arquivo Timestamped ---
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
+# MODIFICADO: Nome do arquivo agora é baseado apenas na data (um arquivo por dia)
+log_filename = datetime.now().strftime(f'{log_dir}/app_log_%Y-%m-%d.log')
+
+log_formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
-logging.info(f"Iniciando aplicação. Nível de log: {logging.getLevelName(log_level)}")
+
+file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+file_handler.setFormatter(log_formatter)
+
+# Configura o logger raiz
+root_logger = logging.getLogger()
+root_logger.setLevel(log_level)
+root_logger.addHandler(file_handler)
+
+# Opcional: Adiciona também um handler para o console se ainda quiser ver logs no terminal
+# console_handler = logging.StreamHandler()
+# console_handler.setFormatter(log_formatter)
+# root_logger.addHandler(console_handler)
+# --- Fim da Nova Configuração ---
+
+logging.info(f"Iniciando aplicação. Nível de log: {logging.getLevelName(log_level)}. Logando em: {log_filename}")
 
 # Variável global para controle do modo de manutenção
 MAINTENANCE_MODE = os.getenv('MAINTENANCE_MODE', 'false').lower() == 'true'
@@ -1124,7 +1150,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
         # --- Criação do Mapa (se houver UF e ano) ---
         map_content = dbc.Alert("Mapa não disponível (requer dados por Unidade Federativa).", color="info", className="textCenter p-3")
-        map_created_successfully = False
+        map_center = {'lat': -12.95984198, 'lon': -53.27299730} # Inicializa fora do try
+
         if 'DESC_UND_FED' in df_filtered.columns and ano_default:
             # Filtra dados para o ano padrão (será atualizado pelo dropdown)
             df_map_data_initial = df_filtered[df_filtered['CODG_ANO'] == ano_default].copy()
@@ -1152,24 +1179,28 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             featureidkey='properties.name',
                             color='VLR_VAR',
                             color_continuous_scale='Greens_r',
-                            scope="south america"
+                            # scope="south america" # Removido para usar 'center'
                         )
-                        fig_map.update_geos(
+
+                        # --- Atualizar Geos com Centroide FIXO 
+                        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
+                        geos_update = dict(
                             visible=False, showcoastlines=True, coastlinecolor="White",
                             showland=True, landcolor="white", showframe=False,
-                            projection=dict(type='mercator', scale=2.6)
+                            projection=dict(type='mercator', scale=10),
+                            center=map_center
                         )
-                        # Modificado: Passa coluna formatada no customdata e atualiza hovertemplate
+
+                        # Aplica a atualização geo
+                        fig_map.update_geos(**geos_update)
+                        # ----------------------------------
+
                         fig_map.update_traces(
                             marker_line_color='white', marker_line_width=1,
-                            customdata=df_map_data_initial[['VLR_VAR_FORMATADO']], # Passa coluna formatada
+                            customdata=df_map_data_initial[['VLR_VAR_FORMATADO']],
                             hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
                         )
-                        fig_map.update_layout(
-                            margin=dict(r=0, l=0, t=0, b=0),
-                            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
-                        )
-                        map_created_successfully = True # Mapa criado com sucesso
+
                         # Define o conteúdo do mapa como o dropdown e o gráfico
                         map_content = html.Div([
                             html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
@@ -2178,7 +2209,6 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
                 selected_value_str = str(selected_value).strip()
                 df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
     
-    # Filtro de Ano
     df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
     df_filtered_map = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()]
     
@@ -2186,16 +2216,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
     if df_filtered_map.empty:
         return go.Figure().update_layout(title=f'Nenhum dado disponível para o ano {selected_year}', 
                                          xaxis={'visible': False}, yaxis={'visible': False})
-    
-    # Obtém o título (nome da variável)
-    var_title = selected_var
-    if selected_var:
-        df_var_desc = load_variavel()
-        if not df_var_desc.empty:
-            var_info = df_var_desc[df_var_desc['CODG_VAR'].astype(str) == str(selected_var)]
-            if not var_info.empty:
-                var_title = var_info['DESC_VAR'].iloc[0]
-    
+   
     # Cria o mapa coroplético
     try:
         # Adiciona coluna formatada para hover
@@ -2233,24 +2254,26 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
             featureidkey='properties.name',
             color='VLR_VAR',
             color_continuous_scale='Greens_r',
-            scope="south america"
+            # scope="south america" # Removido para usar 'center'
         )
         
-        fig_map.update_geos(
+        # --- Atualizar Geos com Centroide FIXO 
+        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
+        geos_update = dict(
             visible=False, showcoastlines=True, coastlinecolor="White",
             showland=True, landcolor="white", showframe=False,
-            projection=dict(type='mercator', scale=2.6)
+            projection=dict(type='mercator', scale=10),
+            center=map_center
         )
-        
+
+        # Aplica a atualização geo
+        fig_map.update_geos(**geos_update)
+        # ----------------------------------
+
         fig_map.update_traces(
             marker_line_color='white', marker_line_width=1,
             customdata=df_filtered_map[['VLR_VAR_FORMATADO']],
             hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
-        )
-        
-        fig_map.update_layout(
-            margin=dict(r=0, l=0, t=30, b=0),
-            coloraxis_colorbar=dict(title=None, tickfont=dict(size=12, color='black'))
         )
         
         return fig_map
@@ -2263,6 +2286,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
             yaxis={'visible': False}
         )
         return empty_fig
+
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
