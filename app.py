@@ -340,9 +340,11 @@ def load_objetivos():
             df_obj = df_obj.iloc[1:]
         required_columns = ['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64']
         if not all(col in df_obj.columns for col in required_columns):
+             logging.error("Colunas obrigatórias faltando em objetivos.csv: %s", [col for col in required_columns if col not in df_obj.columns])
              return pd.DataFrame(columns=required_columns)
         return df_obj
     except Exception as e:
+        logging.exception("Erro ao carregar db/objetivos.csv") # Adicionado logging
         return pd.DataFrame(columns=['ID_OBJETIVO', 'RES_OBJETIVO', 'DESC_OBJETIVO', 'BASE64'])
 
 
@@ -351,10 +353,10 @@ def load_metas():
     try:
         return pd.read_csv('db/metas.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
     except Exception as e:
+        logging.exception("Erro ao carregar db/metas.csv") # Adicionado logging
         return pd.DataFrame()
 
 
-@lru_cache(maxsize=1)
 def load_indicadores():
     try:
         df_ind = pd.read_csv('db/indicadores.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
@@ -364,11 +366,18 @@ def load_indicadores():
             df_ind['RANKING_ORDEM'] = pd.to_numeric(df_ind['RANKING_ORDEM'], errors='coerce').fillna(0).astype(int) # Converte para int, NaN vira 0
         else:
             df_ind['RANKING_ORDEM'] = 0 # Adiciona coluna com 0 se não existir
+        # Garante que TIPO_GRAFICO existe e é string
+        if 'TIPO_GRAFICO' not in df_ind.columns:
+            logging.warning("Coluna 'TIPO_GRAFICO' não encontrada em indicadores.csv. Adicionando como 'S' (Simples) por padrão.")
+            df_ind['TIPO_GRAFICO'] = 'S' # Valor padrão se a coluna não existir
+        df_ind['TIPO_GRAFICO'] = df_ind['TIPO_GRAFICO'].fillna('S').astype(str).str.upper() # Garante que é string e maiúscula, padrão 'S'
         # Filtra por RBC == 1
         return df_ind.loc[df_ind['RBC'] == 1]
     except Exception as e:
         # Retorna DataFrame vazio com as colunas esperadas em caso de erro
-        return pd.DataFrame(columns=['ID_INDICADOR', 'ID_META', 'ID_OBJETIVO', 'DESC_INDICADOR', 'VARIAVEIS', 'GRAFICO_LINHA', 'SERIE_TEMPORAL', 'RBC', 'RANKING_ORDEM'])
+        # Modificado: Colunas esperadas atualizadas
+        logging.exception("Erro ao carregar indicadores:")
+        return pd.DataFrame(columns=['ID_INDICADOR', 'ID_META', 'ID_OBJETIVO', 'DESC_INDICADOR', 'VARIAVEIS', 'RBC', 'RANKING_ORDEM', 'TIPO_GRAFICO'])
 
 
 @lru_cache(maxsize=1)
@@ -376,6 +385,7 @@ def load_sugestoes_visualizacao():
     try:
         return pd.read_csv('db/sugestoes_visualizacao.csv', low_memory=False, encoding='utf-8', dtype=str, sep=';', on_bad_lines='skip')
     except Exception as e:
+        logging.exception("Erro ao carregar db/sugestoes_visualizacao.csv") # Adicionado logging
         return pd.DataFrame()
 
 
@@ -393,11 +403,13 @@ def load_unidade_medida():
                 df_um = df_um.iloc[:, [0, 1]]
                 df_um.columns = cols
         if not all(col in df_um.columns for col in cols):
+            logging.error("Colunas obrigatórias faltando em unidade_medida.csv: %s", [col for col in cols if col not in df_um.columns])
             return pd.DataFrame(columns=cols)
         for col in cols:
             df_um[col] = df_um[col].str.strip().str.strip('"')
         return df_um
     except Exception as e:
+        logging.exception("Erro ao carregar db/unidade_medida.csv") # Adicionado logging
         return pd.DataFrame(columns=cols)
 
 
@@ -419,6 +431,7 @@ def load_variavel():
                 df_var.columns = cols[:2]
         return df_var
     except Exception as e:
+        logging.exception("Erro ao carregar db/variavel.csv") # Adicionado logging
         return pd.DataFrame(columns=cols)
 
 
@@ -449,7 +462,7 @@ if not df.empty and not df_metas.empty:
              meta_inicial = metas_com_indicadores_inicial[0]
              initial_meta_description = meta_inicial['DESC_META']
     except Exception as e:
-        pass
+        logging.warning("Erro ao determinar meta inicial ou descrição: %s", e) # Modificado: Adicionado logging
 
 # Prepara os indicadores iniciais
 # Cria componentes vazios para evitar erros de callback
@@ -528,8 +541,12 @@ def format_br(value):
 
 def create_visualization(df, indicador_id=None, selected_var=None, selected_filters=None):
     """Cria uma visualização (gráfico principal, ranking, mapa e tabela) com os dados do DataFrame, aplicando filtros."""
+    # --- MODIFICADO: Inicializa main_chart_content com um Alerta padrão ---
+    main_chart_content = dbc.Alert("Visualização não disponível devido a dados insuficientes ou erro.", color="warning", className="textCenter p-3")
+
     if df is None or df.empty:
-        return dbc.Alert("Nenhum dado disponível para este indicador.", color="warning", className="textCenter p-3")
+        # Retorna o alerta padrão se o DF de entrada já for inválido
+        return main_chart_content
 
     try:
         colunas_necessarias = ['CODG_ANO', 'VLR_VAR']
@@ -752,36 +769,34 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         num_anos = len(anos_unicos)
         ano_default = anos_unicos[-1] if anos_unicos else None
 
-        # Lê as flags do indicador e RANKING_ORDEM
-        grafico_linha_flag = 1 # Padrão
-        serie_temporal_flag = 1 # Padrão
+        # --- Modificado: Lê TIPO_GRAFICO e RANKING_ORDEM ---
+        tipo_grafico = 'S' # Padrão: Coluna Simples
         ranking_ordem = 0 # Padrão (0 = maior para menor, 1 = menor para maior)
         if indicador_id and not df_indicadores.empty:
             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
             if not indicador_info.empty:
-                if 'GRAFICO_LINHA' in indicador_info.columns:
+                indicador_info_row = indicador_info.iloc[0]
+                # Lê TIPO_GRAFICO
+                if 'TIPO_GRAFICO' in indicador_info_row.index:
+                    tipo_grafico = indicador_info_row['TIPO_GRAFICO'].strip().upper() or 'S' # Garante que não seja vazio, padrão 'S'
+
+                # Lê RANKING_ORDEM
+                if 'RANKING_ORDEM' in indicador_info_row.index:
                     try:
-                        grafico_linha_val = pd.to_numeric(indicador_info['GRAFICO_LINHA'].iloc[0], errors='coerce')
-                        if not pd.isna(grafico_linha_val): grafico_linha_flag = int(grafico_linha_val)
-                    except (ValueError, TypeError): pass # Mantém padrão
-                if 'SERIE_TEMPORAL' in indicador_info.columns:
-                    try:
-                        serie_temporal_val = pd.to_numeric(indicador_info['SERIE_TEMPORAL'].iloc[0], errors='coerce')
-                        if not pd.isna(serie_temporal_val): serie_temporal_flag = int(serie_temporal_val)
-                    except (ValueError, TypeError): pass # Mantém padrão
-                # --- Adicionado: Lê RANKING_ORDEM ---
-                if 'RANKING_ORDEM' in indicador_info.columns:
-                    try:
-                        ranking_ordem_val = pd.to_numeric(indicador_info['RANKING_ORDEM'].iloc[0], errors='coerce')
+                        ranking_ordem_val = pd.to_numeric(indicador_info_row['RANKING_ORDEM'], errors='coerce')
                         if not pd.isna(ranking_ordem_val): ranking_ordem = int(ranking_ordem_val)
                     except (ValueError, TypeError): pass # Mantém padrão 0
+        # --- Fim da Modificação ---
 
-        # Define o número mínimo de anos para gráficos temporais
+        # Define o número mínimo de anos para gráficos temporais (Linha ou Coluna Agrupada)
         min_years_for_temporal = 5
+        # Determina se o gráfico principal deve ser temporal baseado no tipo e número de anos
+        is_temporal = (tipo_grafico in ['L', 'C']) and (num_anos >= min_years_for_temporal)
 
-        # --- Criação do Gráfico Principal baseado na lógica existente ---
-        if serie_temporal_flag == 1 and num_anos >= min_years_for_temporal:
-            if grafico_linha_flag == 1:
+        # --- Modificado: Criação do Gráfico Principal baseada em TIPO_GRAFICO ---
+        if is_temporal:
+            main_fig = go.Figure() # Inicializa figura para L ou C
+            if tipo_grafico == 'L':
                 # --- Lógica do Gráfico de Linha (Refatorado com go.Figure) ---
                 main_fig = go.Figure() # Reinicializa para garantir que está vazia
                 if 'DESC_UND_FED' in df_filtered.columns:
@@ -876,7 +891,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     else:
                          main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de linha.', xaxis={'visible': False}, yaxis={'visible': False})
 
-            else: # grafico_linha_flag == 0
+            elif tipo_grafico == 'C':
                 # --- Lógica do Gráfico de Barras AGRUPADO POR ANO (Refatorado com go.Figure) ---
                 main_fig = go.Figure()
                 if 'DESC_UND_FED' in df_filtered.columns and 'CODG_ANO' in df_filtered.columns:
@@ -904,7 +919,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
                             main_fig.add_trace(go.Bar(
                                 x=df_state['CODG_ANO'], y=df_state['VLR_VAR'], name=trace_name,
-                                customdata=customdata_state, text=text_values, texttemplate='%{text}',
+                                customdata=customdata_state, text=text_values,
+                                texttemplate='<b>%{text}</b>', # <--- MODIFICADO
                                 textposition='outside', marker_color=bar_color, marker_line_width=1.5,
                                 hovertemplate=(
                                     "<b>%{customdata[0]}</b><br>" # UF do customdata
@@ -944,6 +960,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         main_fig.add_trace(go.Bar(
                             x=df_bar_no_uf['CODG_ANO'],
                             y=df_bar_no_uf['VLR_VAR'],
+                            text=text_values, texttemplate='<b>%{text}</b>', textposition='outside', # <-- MODIFICADO
                             marker_color='#229846', # Cor padrão ou específica
                             hovertemplate=(
                                 "Ano: %{x}<br>"
@@ -966,292 +983,365 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         main_fig.update_layout(layout_updates_bar_no_uf)
                     else:
                         main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de barras.', xaxis={'visible': False}, yaxis={'visible': False})
-        else: # serie_temporal_flag == 0 OR num_anos < min_years_for_temporal
-            # --- Lógica do Gráfico de Barras SIMPLES (Último Ano) (Refatorado com go.Figure) ---
-            main_fig = go.Figure()
-            if 'DESC_UND_FED' in df_filtered.columns and ano_default:
-                df_bar_simple_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
-                if not df_bar_simple_data.empty:
-                    # Ordenação baseada no valor (descendente)
-                    df_bar_simple_data = df_bar_simple_data.sort_values('VLR_VAR', ascending=False)
-                    color_map = { # Reutiliza color map
-                        'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
-                        'Mato Grosso': '#ab63fa', 'Mato Grosso do Sul': '#ffa15a', 'Rondônia': '#19d3f3',
-                        'Tocantins': '#ff6692', 'Brasil': '#FF0000' # Adiciona Brasil
-                    }
-                    all_ufs = df_bar_simple_data['DESC_UND_FED'].unique() # Pega UFs ordenadas
-                    for uf in all_ufs:
-                        df_state = df_bar_simple_data[df_bar_simple_data['DESC_UND_FED'] == uf]
-                        if df_state.empty: continue # Pula se não houver dados para o estado
-                        # Modificado: Adiciona valor formatado ao customdata
-                        customdata_state = np.column_stack((
-                            df_state['DESC_UND_MED'].values,
-                            df_state['VLR_VAR'].values, # Original value
-                            df_state['VLR_VAR'].apply(format_br).values # Formatted value
-                        ))
-                        # Modificado: Usa a função format_br
-                        text_values = df_state['VLR_VAR'].apply(format_br).values
-                        trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
-                        bar_color = color_map.get(uf)
-                        opacity = 1.0 if uf == 'Goiás' else 0.85
-                        line_color = '#0a6b28' if uf == 'Goiás' else None
-                        line_width = 2 if uf == 'Goiás' else 1.5
 
-                        main_fig.add_trace(go.Bar(
-                            x=[uf], y=df_state['VLR_VAR'], name=trace_name,
-                            customdata=customdata_state, text=text_values, texttemplate='%{text}',
-                            textposition='outside', marker_color=bar_color, marker_opacity=opacity,
-                            marker_line_width=line_width, marker_line_color=line_color,
-                            hovertemplate=(
-                                "<b>%{x}</b><br>" # UF do eixo X
-                                "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
-                                "Unidade: %{customdata[0]}<extra></extra>" # Unidade
-                            )
-                        ))
+            # --- MODIFICADO: Atribui main_chart_content AQUI para L e C ---
+            main_chart_content = dcc.Graph(id={'type': 'main-chart', 'index': indicador_id}, figure=main_fig)
 
-                    max_y_value = df_bar_simple_data['VLR_VAR'].max()
-                    y_axis_range = [0, max_y_value * 1.15] # 15% de espaço extra
+        else: # Não é temporal (tipo_grafico == 'S' ou 'B', ou poucos anos para 'L'/'C')
+             if tipo_grafico == 'B':
+                 # --- MODIFICADO: Lógica do Gráfico Boxplot Interativo por Ano ---
+                 anos_unicos_box = sorted(df_filtered['CODG_ANO'].unique()) # Obtém todos os anos
+                 ano_default_box = anos_unicos_box[-1] if anos_unicos_box else None
+                 main_chart_content = dbc.Alert("Boxplot requer dados por UF e pelo menos um ano.", color="warning", className="textCenter p-3") # Padrão
 
-                    layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
-                    layout_updates_bar_simple.update({
-                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=all_ufs), # Ordena pelo DataFrame
-                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_axis_range),
-                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
-                    })
-                    x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in all_ufs] # Usa all_ufs
-                    layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext
-                    layout_updates_bar_simple['xaxis']['tickvals'] = all_ufs # Usa os nomes das UFs como tickvals
-                    main_fig.update_layout(layout_updates_bar_simple)
-                else:
-                     main_fig = go.Figure().update_layout(title=f'Dados insuficientes para o ano {ano_default}.', xaxis={'visible': False}, yaxis={'visible': False})
-            else:
-                # Caso sem UF e sem série temporal -> Barra simples do último ano sem UF
-                df_bar_simple_no_uf = df_filtered[df_filtered['CODG_ANO'] == ano_default]
-                if not df_bar_simple_no_uf.empty:
-                    # Modificado: Adiciona valor formatado ao customdata
-                    customdata_bar_simple_no_uf = np.column_stack((
-                        df_bar_simple_no_uf['DESC_UND_MED'].values,
-                        df_bar_simple_no_uf['VLR_VAR'].values, # Original value
-                        df_bar_simple_no_uf['VLR_VAR'].apply(format_br).values # Formatted value
-                    ))
-                    # Modificado: Usa a função format_br
-                    text_values = df_bar_simple_no_uf['VLR_VAR'].apply(format_br).values
-                    main_fig.add_trace(go.Bar(
-                        x=['Valor'], # Categoria genérica
-                        y=df_bar_simple_no_uf['VLR_VAR'],
-                        marker_color='#229846', # Cor padrão
-                        hovertemplate=(
-                            "<b>Valor</b><br>"
-                            "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
-                            "Unidade: %{customdata[0]}<extra></extra>"
-                        )
-                    ))
+                 if 'DESC_UND_FED' in df_filtered.columns and ano_default_box:
+                     # Filtra para o ano inicial
+                     df_boxplot_initial = df_filtered[df_filtered['CODG_ANO'] == ano_default_box].copy()
 
-                    max_y_bar_simple_no_uf = df_bar_simple_no_uf['VLR_VAR'].max()
-                    y_range_bar_simple_no_uf = [0, max_y_bar_simple_no_uf * 1.15]
-                    layout_updates_bar_simple_no_uf = DEFAULT_LAYOUT.copy()
-                    layout_updates_bar_simple_no_uf.update({
-                        'xaxis': dict(showgrid=False, tickfont=dict(size=12, color='black'), title=None),
-                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_bar_simple_no_uf),
-                        'showlegend': False
-                    })
-                    main_fig.update_layout(layout_updates_bar_simple_no_uf)
-                else:
-                    main_fig = go.Figure().update_layout(title=f'Dados insuficientes para o ano {ano_default}.', xaxis={'visible': False}, yaxis={'visible': False})
-        # --- Fim da Lógica do Gráfico Principal ---
+                     if not df_boxplot_initial.empty:
+                         # --- Criação da Figura Inicial ---
+                         df_boxplot_initial = df_boxplot_initial.sort_values('DESC_UND_FED')
+                         # Adiciona valor formatado ao customdata
+                         df_boxplot_initial['VLR_VAR_FORMATADO'] = df_boxplot_initial['VLR_VAR'].apply(format_br)
 
-        # --- Criação do Gráfico de Ranking (se houver UF e ano) ---
-        ranking_content = dbc.Alert("Ranking não disponível (requer dados por Unidade Federativa).", color="info", className="textCenter p-3")
-        if 'DESC_UND_FED' in df_filtered.columns and ano_default:
-            # Filtra dados para o ano padrão (será atualizado pelo dropdown)
-            df_ranking_data_initial = df_filtered[df_filtered['CODG_ANO'] == ano_default].copy()
+                         fig_boxplot_initial = px.box(
+                             df_boxplot_initial, x='DESC_UND_FED', y='VLR_VAR', points="all",
+                             color='DESC_UND_FED',
+                             hover_data={
+                                 'DESC_UND_FED': True, 'VLR_VAR': False,
+                                 'VLR_VAR_FORMATADO': True, 'DESC_UND_MED': True
+                             }
+                         )
+                         fig_boxplot_initial.update_traces(
+                             hovertemplate="<b>%{x}</b><br>Valor: %{customdata[0]}<br>Unidade: %{customdata[1]}<extra></extra>",
+                             customdata=np.column_stack((
+                                 df_boxplot_initial['VLR_VAR_FORMATADO'].values,
+                                 df_boxplot_initial['DESC_UND_MED'].values
+                             ))
+                         )
+                         # Layout
+                         layout_updates_boxplot = DEFAULT_LAYOUT.copy()
+                         layout_updates_boxplot.update({
+                             'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
+                             'xaxis': dict(showgrid=False, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=sorted(df_boxplot_initial['DESC_UND_FED'].unique())),
+                             'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
+                         })
+                         all_ufs_box_initial = sorted(df_boxplot_initial['DESC_UND_FED'].unique())
+                         x_ticktext_box_initial = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in all_ufs_box_initial]
+                         layout_updates_boxplot['xaxis']['ticktext'] = x_ticktext_box_initial
+                         layout_updates_boxplot['xaxis']['tickvals'] = all_ufs_box_initial
+                         fig_boxplot_initial.update_layout(layout_updates_boxplot)
+                         # --- Fim Figura Inicial ---
 
-            # Verifica se há dados para o ano padrão antes de prosseguir
-            if not df_ranking_data_initial.empty:
-                # Verifica unicidade por UF para o ano padrão
-                counts_per_uf_ranking = df_ranking_data_initial['DESC_UND_FED'].value_counts()
-                if (counts_per_uf_ranking > 1).any():
-                     ranking_content = dbc.Alert(
-                        "Ranking não pode ser gerado: múltiplos valores por UF para o ano selecionado. "
-                        "Aplique filtros adicionais se disponíveis.", color="warning", className="textCenter p-3"
+                         # --- Monta o Conteúdo com Dropdown e Gráfico ---
+                         main_chart_content = html.Div([
+                             html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                             dcc.Dropdown(
+                                 id={'type': 'year-dropdown-boxplot', 'index': indicador_id},
+                                 options=[{'label': ano, 'value': ano} for ano in anos_unicos_box],
+                                 value=ano_default_box,
+                                 clearable=False,
+                                 style={'width': '100%', 'marginBottom': '10px'}
+                             ),
+                             dcc.Graph(id={'type': 'boxplot-chart', 'index': indicador_id}, figure=fig_boxplot_initial)
+                         ])
+                         # --- Fim Conteúdo ---
+                     else: # Alinhado com 'if not df_boxplot_initial.empty:'
+                         # Se não houver dados nem para o ano default, mostra alerta com dropdown vazio
+                         main_chart_content = html.Div([
+                             html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                             dcc.Dropdown(
+                                 id={'type': 'year-dropdown-boxplot', 'index': indicador_id},
+                                 options=[{'label': ano, 'value': ano} for ano in anos_unicos_box], # Usa anos totais se houver
+                                 value=ano_default_box,
+                                 clearable=False,
+                                 disabled=not anos_unicos_box, # Desabilita se não houver anos
+                                 style={'width': '100%', 'marginBottom': '10px'}
+                             ),
+                             dbc.Alert(f"Dados insuficientes para Boxplot no ano {ano_default_box}.", color="warning", className="textCenter p-3")
+                         ])
+
+                 # IMPORTANTE: Não atribui mais main_fig aqui para o tipo 'B'.
+                 # main_chart_content já foi definido acima.
+
+             else: # tipo_grafico == 'S' (ou 'L'/'C' com poucos anos) -> Gráfico de Coluna Simples # Alinhado com 'if tipo_grafico == \'B\':'
+                 # --- Lógica do Gráfico de Barras SIMPLES (Último Ano) ---
+                 main_fig = go.Figure() # Inicializa figura para S
+
+                 # Prepara dados para barras simples (último ano)
+                 df_bar_simple_data = pd.DataFrame()
+                 if ano_default:
+                     df_bar_simple_data = df_filtered[df_filtered['CODG_ANO'] == ano_default].copy()
+
+                 if not df_bar_simple_data.empty:
+                     # Adiciona descrições se necessário (UF, Und Medida)
+                     if 'DESC_UND_FED' not in df_bar_simple_data.columns and 'CODG_UND_FED' in df_bar_simple_data.columns:
+                         df_bar_simple_data['DESC_UND_FED'] = df_bar_simple_data['CODG_UND_FED'].astype(str).map(constants.UF_NAMES).fillna('N/D')
+                     elif 'DESC_UND_FED' not in df_bar_simple_data.columns:
+                          df_bar_simple_data['DESC_UND_FED'] = 'Brasil' # Ou algum padrão
+
+                     if 'DESC_UND_MED' not in df_bar_simple_data.columns and 'CODG_UND_MED' in df_bar_simple_data.columns:
+                        df_um = load_unidade_medida()
+                        if not df_um.empty:
+                             df_um['CODG_UND_MED'] = df_um['CODG_UND_MED'].astype(str)
+                             df_bar_simple_data['CODG_UND_MED'] = df_bar_simple_data['CODG_UND_MED'].astype(str)
+                             df_bar_simple_data = pd.merge(df_bar_simple_data, df_um[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+                             df_bar_simple_data['DESC_UND_MED'] = df_bar_simple_data['DESC_UND_MED'].fillna('N/D')
+                        else:
+                             df_bar_simple_data['DESC_UND_MED'] = 'N/D'
+                     elif 'DESC_UND_MED' not in df_bar_simple_data.columns:
+                         df_bar_simple_data['DESC_UND_MED'] = 'N/D'
+
+                     # Ordena e formata
+                     df_bar_simple_data = df_bar_simple_data.sort_values('VLR_VAR', ascending=False)
+                     df_bar_simple_data['VLR_VAR_FORMATADO'] = df_bar_simple_data['VLR_VAR'].apply(format_br)
+
+                     # --- MODIFICADO: Define o mapa de cores igual aos gráficos temporais ---
+                     color_map_simple = {
+                         'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
+                         'Mato Grosso': '#ab63fa', 'Mato Grosso do Sul': '#ffa15a', 'Rondônia': '#19d3f3',
+                         'Tocantins': '#ff6692', 'Brasil': '#FF0000' # Adiciona Brasil
+                     }
+                     # --- FIM DA MODIFICAÇÃO ---
+
+                     # Cria a figura
+                     main_fig = px.bar(
+                         df_bar_simple_data, x='DESC_UND_FED', y='VLR_VAR',
+                         text='VLR_VAR_FORMATADO',
+                         # --- MODIFICADO: Usa color e color_discrete_map ---
+                         color='DESC_UND_FED',  # Colore com base no estado
+                         color_discrete_map=color_map_simple, # Aplica o mapa de cores definido
+                         # color_discrete_sequence=['#229846'] * len(df_bar_simple_data), # Linha removida
+                         # --- FIM DA MODIFICAÇÃO ---
+                         hover_data={
+                             'DESC_UND_FED': True,
+                             'VLR_VAR': False,
+                             'VLR_VAR_FORMATADO': True,
+                             'DESC_UND_MED': True
+                         }
                      )
-                else:
-                    # Ordena baseado em VLR_VAR e RANKING_ORDEM
-                    ascending_rank = (ranking_ordem == 0) # True se for maior para menor
-                    df_ranking_data_initial = df_ranking_data_initial.sort_values('VLR_VAR', ascending=ascending_rank)
+                     main_fig.update_traces(
+                         texttemplate='<b>%{text}</b>', textposition='outside',
+                         hovertemplate="<b>%{x}</b><br>Valor: %{customdata[0]}<br>Unidade: %{customdata[1]}<extra></extra>",
+                         customdata=np.column_stack((
+                            df_bar_simple_data['VLR_VAR_FORMATADO'].values,
+                            df_bar_simple_data['DESC_UND_MED'].values
+                         ))
+                     )
 
-                    # Define cores e opacidade
-                    goias_color = 'rgba(34, 152, 70, 1)' # '#229846' opaco
-                    other_color = 'rgba(34, 152, 70, 0.2)' # Define como 0.2 para consistência
+                     max_y_simple = df_bar_simple_data['VLR_VAR'].max()
+                     y_range_simple = [0, max_y_simple * 1.15]
+                     layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
+                     layout_updates_bar_simple.update({
+                         'xaxis': dict(showgrid=False, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                         'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_simple),
+                         'showlegend': False
+                     })
+                     all_ufs_simple = sorted(df_bar_simple_data['DESC_UND_FED'].unique())
+                     x_ticktext_simple = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in all_ufs_simple]
+                     layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext_simple
+                     layout_updates_bar_simple['xaxis']['tickvals'] = all_ufs_simple
+                     main_fig.update_layout(layout_updates_bar_simple)
 
-                    # Cria o gráfico de ranking com go.Figure e go.Bar
-                    fig_ranking_updated = go.Figure()
-                    for _, row in df_ranking_data_initial.iterrows():
-                        uf = row['DESC_UND_FED']
-                        valor = row['VLR_VAR']
-                        und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
-                        bar_color = goias_color if uf == 'Goiás' else other_color
-                        # Modificado: Usa a função format_br
-                        text_value = format_br(valor)
+                 else:
+                     main_fig = go.Figure().update_layout(title=f'Dados insuficientes para Gráfico de Barras no ano {ano_default}.', xaxis={'visible': False}, yaxis={'visible': False})
 
-                        fig_ranking_updated.add_trace(go.Bar(
-                            y=[uf], # Estados no eixo Y
-                            x=[valor], # Valores no eixo X
-                            name=uf,
-                            orientation='h', # Barras horizontais
-                            marker_color=bar_color,
-                            text=text_value,
-                            textposition='outside', # Texto fora da barra
-                            hovertemplate=(
-                                f"<b>{uf}</b><br>"
-                                f"Valor: {text_value}<br>" # Usa o texto formatado
-                                f"Unidade: {und_med}<extra></extra>"
-                            )
-                        ))
-
-                    max_x_ranking = df_ranking_data_initial['VLR_VAR'].max() if not df_ranking_data_initial.empty else 0
-                    x_range_ranking = [0, max_x_ranking * 1.15]
-
-                    # Atualiza layout para gráfico de barras horizontal
-                    fig_ranking_updated.update_layout(
-                        xaxis_title=None, yaxis_title=None,
-                        yaxis=dict(showgrid=False, tickfont=dict(size=12, color='black'), categoryorder='array', categoryarray=df_ranking_data_initial['DESC_UND_FED'].tolist()),
-                        xaxis=dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), range=x_range_ranking, tickformat='d'),
-                        showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
-                    )
-
-                    # Define o conteúdo do ranking como o dropdown e o gráfico
-                    ranking_content = html.Div([
-                        html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
-                        dcc.Dropdown(
-                            id={'type': 'year-dropdown-ranking', 'index': indicador_id},
-                            options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                            value=ano_default,
-                            clearable=False,
-                            style={'width': '100%', 'marginBottom': '10px'}
-                        ),
-                        dcc.Graph(id={'type': 'ranking-chart', 'index': indicador_id}, figure=fig_ranking_updated)
-                    ])
-            else:
-                 ranking_content = dbc.Alert(f"Ranking não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
-                 # Mesmo sem dados, cria o dropdown para permitir seleção de outro ano
-                 ranking_content = html.Div([
-                     html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
-                     dcc.Dropdown(
-                         id={'type': 'year-dropdown-ranking', 'index': indicador_id},
-                         options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                         value=ano_default,
-                         clearable=False,
-                         style={'width': '100%', 'marginBottom': '10px'}
-                     ),
-                     dbc.Alert(f"Ranking não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
-                 ])
+                 # --- ADICIONADO: Atribui main_chart_content AQUI para S ---
+                 main_chart_content = dcc.Graph(id={'type': 'main-chart', 'index': indicador_id}, figure=main_fig)
 
 
         # --- Criação do Mapa (se houver UF e ano) ---
-        map_content = dbc.Alert("Mapa não disponível (requer dados por Unidade Federativa).", color="info", className="textCenter p-3")
-        map_center = {'lat': -12.95984198, 'lon': -53.27299730} # Inicializa fora do try
+        map_content = dbc.Alert("Mapa não disponível (requer dados por Unidade Federativa).", color="info", className="textCenter p-3") # Inicialização padrão
+        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
+        # Obtém todos os anos únicos disponíveis APÓS filtros gerais, para usar no dropdown
+        anos_unicos_map = sorted(df_filtered['CODG_ANO'].unique()) if 'CODG_ANO' in df_filtered.columns else []
 
         if 'DESC_UND_FED' in df_filtered.columns and ano_default:
-            # Filtra dados para o ano padrão (será atualizado pelo dropdown)
+            # Filtra dados para o ano padrão inicial
             df_map_data_initial = df_filtered[df_filtered['CODG_ANO'] == ano_default].copy()
 
-            # Verifica se há dados e unicidade por UF para o ano padrão
+            # Conteúdo padrão dentro do Div (será substituído se o mapa puder ser gerado)
+            map_children_content = dbc.Alert(f"Mapa não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
+
             if not df_map_data_initial.empty:
                 counts_per_uf_map = df_map_data_initial['DESC_UND_FED'].value_counts()
                 if (counts_per_uf_map > 1).any():
-                     map_content = dbc.Alert(
+                     # MODIFICADO: Define o ALERTA como conteúdo filho, mas o Div com dropdown será criado abaixo
+                     map_children_content = dbc.Alert(
                          "Mapa não pode ser gerado: múltiplos valores por UF para o ano selecionado. "
                          "Aplique filtros adicionais se disponíveis.", color="warning", className="textCenter p-3"
                      )
                 else:
+                    # Tenta gerar o mapa se os dados do ano inicial são válidos
                     try:
                         with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
-                        # Tenta obter unidade de medida de forma segura
                         und_med_map = df_map_data_initial['DESC_UND_MED'].dropna().iloc[0] if not df_map_data_initial['DESC_UND_MED'].dropna().empty else ''
-                        # Modificado: Adiciona coluna formatada para hover
                         df_map_data_initial['VLR_VAR_FORMATADO'] = df_map_data_initial['VLR_VAR'].apply(format_br)
 
                         fig_map = px.choropleth(
-                            df_map_data_initial, # Usa df_filtered_map diretamente (sem agregação)
-                            geojson=geojson,
-                            locations='DESC_UND_FED',
-                            featureidkey='properties.name',
-                            color='VLR_VAR',
-                            color_continuous_scale=[ # Escala baseada no Ranking
-                                [0.0, 'rgba(34, 152, 70, 0.2)'],
-                                [1.0, 'rgba(34, 152, 70, 1)']
-                            ],
-                            # scope="south america" # Removido para usar 'center'
+                            df_map_data_initial, geojson=geojson, locations='DESC_UND_FED',
+                            featureidkey='properties.name', color='VLR_VAR',
+                            color_continuous_scale=[[0.0, 'rgba(34, 152, 70, 0.2)'], [1.0, 'rgba(34, 152, 70, 1)']]
                         )
-
-                        # --- Atualizar Geos com Centroide FIXO 
-                        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
                         geos_update = dict(
                             visible=False, showcoastlines=True, coastlinecolor="White",
                             showland=True, landcolor="white", showframe=False,
-                            projection=dict(type='mercator', scale=15),
-                            center=map_center
+                            projection=dict(type='mercator', scale=15), center=map_center
                         )
-
-                        # Aplica a atualização geo
                         fig_map.update_geos(**geos_update)
-                        # ----------------------------------
-
                         fig_map.update_traces(
                             marker_line_color='white', marker_line_width=1,
                             customdata=df_map_data_initial[['VLR_VAR_FORMATADO']],
                             hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
                         )
-
-                        # --- Remove o título da barra de cores ---
                         fig_map.update_layout(coloraxis_colorbar_title_text='')
-                        # -----------------------------------------
 
-                        # Define o conteúdo do mapa como o dropdown e o gráfico
-                        map_content = html.Div([
-                            html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
-                            dcc.Dropdown(
-                                id={'type': 'year-dropdown-map', 'index': indicador_id},
-                                options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                                value=ano_default,
-                                clearable=False,
-                                style={'width': '100%', 'marginBottom': '10px'}
-                            ),
-                            dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)
-                        ])
+                        # MODIFICADO: Se o mapa foi gerado com sucesso, define o Graph como conteúdo filho
+                        map_children_content = dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)
+
                     except Exception as map_err:
-                         print(f"Erro ao gerar mapa inicial: {map_err}")
-                         map_content = dbc.Alert("Erro ao gerar o mapa.", color="danger", className="textCenter p-3")
-            else:
-                 map_content = dbc.Alert(f"Mapa não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
-                 # Mesmo sem dados, cria o dropdown para permitir seleção de outro ano
-                 map_content = html.Div([
-                     html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
-                     dcc.Dropdown(
-                         id={'type': 'year-dropdown-map', 'index': indicador_id},
-                         options=[{'label': ano, 'value': ano} for ano in anos_unicos],
-                         value=ano_default,
-                         clearable=False,
-                         style={'width': '100%', 'marginBottom': '10px'}
-                     ),
-                     dbc.Alert(f"Mapa não disponível para o ano {ano_default}.", color="info", className="textCenter p-3")
-                 ])
+                         logging.warning(f"Erro ao gerar mapa inicial: {map_err}")
+                         # MODIFICADO: Define alerta de erro como conteúdo filho
+                         map_children_content = dbc.Alert("Erro ao gerar o mapa.", color="danger", className="textCenter p-3")
+            # else: # Se df_map_data_initial estava vazio
+                 # map_children_content já está definido como Alerta "não disponível para ano X"
+
+            # --- MODIFICADO: Monta o map_content final com Dropdown + Conteúdo Filho (Graph ou Alert) ---
+            # Isso garante que o Dropdown sempre apareça se houver dados por UF
+            map_content = html.Div([
+                html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                dcc.Dropdown(
+                    id={'type': 'year-dropdown-map', 'index': indicador_id},
+                    options=[{'label': ano, 'value': ano} for ano in anos_unicos_map], # Usa todos os anos disponíveis
+                    value=ano_default,
+                    clearable=False,
+                    disabled=not anos_unicos_map, # Desabilita se não houver anos
+                    style={'width': '100%', 'marginBottom': '10px'}
+                ),
+                # Container para o Graph ou Alert
+                html.Div(id={'type': 'map-container', 'index': indicador_id}, children=map_children_content)
+            ])
+        # else: # Se não houver 'DESC_UND_FED' ou 'ano_default'
+            # map_content permanece como o Alert inicial "Mapa não disponível (requer dados...)"
+
+        # Inicialização do ranking (mantém como antes)
+        ranking_content = dbc.Alert("Ranking não disponível (requer dados por Unidade Federativa).", color="info", className="textCenter p-3")
 
         # --- Monta o Layout da Visualização com Abas ---
         graph_layout = []
 
         # Conteúdo do gráfico principal (sempre exibido)
-        main_chart_content = dcc.Graph(id={'type': 'main-chart', 'index': indicador_id}, figure=main_fig)
+        # !! MODIFICADO !! A variável 'main_chart_content' agora contém ou o dcc.Graph (tipos L, C, S)
+        # OU o html.Div com Dropdown+Graph (tipo B).
+        # O ID do gráfico principal ('main-chart') não é mais usado para o tipo 'B'.
+        # O callback de atualização do boxplot usará {'type': 'boxplot-chart', 'index': MATCH}
 
         # Cria as abas para Ranking e Mapa
         tabs_content = []
-        # Adiciona aba de Ranking se o conteúdo foi gerado (não é apenas a mensagem de erro inicial)
-        # Ou seja, se 'DESC_UND_FED' existe
+        # Adiciona aba de Ranking
         if 'DESC_UND_FED' in df_filtered.columns:
-            tabs_content.append(dbc.Tab(ranking_content, label="Ranking", tab_id=f'tab-ranking-{indicador_id}', id={'type': 'tab-ranking', 'index': indicador_id}))
-        # Adiciona aba de Mapa se o conteúdo foi gerado (não é apenas a mensagem de erro inicial)
-        # Ou seja, se 'DESC_UND_FED' existe
+             # --- Lógica para gerar ranking_content (com dropdown de ano) ---
+             anos_ranking = sorted(df_filtered['CODG_ANO'].unique())
+             ano_default_ranking = anos_ranking[-1] if anos_ranking else None
+
+             # --- MODIFICADO: Define o conteúdo inicial para o container do ranking ---
+             initial_ranking_children = dbc.Alert(f"Ranking não disponível para o ano {ano_default_ranking}.", color="info", className="textCenter p-3") # Padrão: Alerta
+
+             # Tenta gerar a figura/gráfico inicial se possível
+             if ano_default_ranking:
+                 try:
+                     # Reutiliza a lógica do callback update_ranking_chart para gerar o conteúdo inicial
+                     # Passa os dados filtrados gerais (df_filtered) e o ano padrão
+                     df_ranking_initial_check = df_filtered[df_filtered['CODG_ANO'] == ano_default_ranking].copy()
+
+                     if df_ranking_initial_check.empty:
+                         initial_ranking_children = dbc.Alert(f'Ranking não disponível para {ano_default_ranking} com filtros aplicados.', color="warning", className="textCenter p-3")
+                     elif df_ranking_initial_check['DESC_UND_FED'].nunique() != len(df_ranking_initial_check):
+                         initial_ranking_children = dbc.Alert('Ranking não gerado (inicial): múltiplos valores por UF.', color="warning", className="textCenter p-3")
+                     else:
+                         # Se os dados são válidos, tenta gerar a figura
+                         ranking_ordem = 0
+                         indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
+                         if not indicador_info.empty and 'RANKING_ORDEM' in indicador_info.columns:
+                             try:
+                                 ranking_ordem_val = pd.to_numeric(indicador_info['RANKING_ORDEM'].iloc[0], errors='coerce')
+                                 if not pd.isna(ranking_ordem_val): ranking_ordem = int(ranking_ordem_val)
+                             except (ValueError, TypeError): pass
+
+                         ascending_rank = (ranking_ordem == 0)
+                         df_ranking_ano_fig = df_ranking_initial_check.sort_values('VLR_VAR', ascending=ascending_rank)
+
+                         # Adiciona DESC_UND_MED se necessário para hovertemplate
+                         if 'DESC_UND_MED' not in df_ranking_ano_fig.columns and 'CODG_UND_MED' in df_ranking_ano_fig.columns:
+                             df_um_rank = load_unidade_medida()
+                             if not df_um_rank.empty:
+                                 df_um_rank['CODG_UND_MED'] = df_um_rank['CODG_UND_MED'].astype(str)
+                                 df_ranking_ano_fig['CODG_UND_MED'] = df_ranking_ano_fig['CODG_UND_MED'].astype(str)
+                                 df_ranking_ano_fig = pd.merge(df_ranking_ano_fig, df_um_rank[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+                                 df_ranking_ano_fig['DESC_UND_MED'] = df_ranking_ano_fig['DESC_UND_MED'].fillna('N/D')
+                             else:
+                                 df_ranking_ano_fig['DESC_UND_MED'] = 'N/D'
+                         elif 'DESC_UND_MED' not in df_ranking_ano_fig.columns:
+                             df_ranking_ano_fig['DESC_UND_MED'] = 'N/D'
+
+                         fig_ranking_initial = go.Figure()
+                         goias_color = 'rgba(34, 152, 70, 1)'
+                         other_color = 'rgba(34, 152, 70, 0.2)'
+                         for _, row in df_ranking_ano_fig.iterrows():
+                             uf = row['DESC_UND_FED']
+                             valor = row['VLR_VAR']
+                             und_med = row.get('DESC_UND_MED', 'N/D')
+                             bar_color = goias_color if uf == 'Goiás' else other_color
+                             text_value = format_br(valor)
+                             fig_ranking_initial.add_trace(go.Bar(
+                                 y=[uf], x=[valor], name=uf, orientation='h',
+                                 marker_color=bar_color, text=text_value,
+                                 textposition='outside', texttemplate='<b>%{text}</b>',
+                                 hovertemplate=f"<b>{uf}</b><br>Valor: {text_value}<br>Unidade: {und_med}<extra></extra>"
+                             ))
+
+                         max_x_ranking = df_ranking_ano_fig['VLR_VAR'].max() if not df_ranking_ano_fig.empty else 0
+                         x_range_ranking = [0, max_x_ranking * 1.15]
+                         fig_ranking_initial.update_layout(
+                             xaxis_title=None, yaxis_title=None,
+                             yaxis=dict(showgrid=False, tickfont=dict(size=12, color='black'), categoryorder='array', categoryarray=df_ranking_ano_fig['DESC_UND_FED'].tolist()),
+                             xaxis=dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), range=x_range_ranking, tickformat='d'),
+                             showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
+                         )
+                         # Se chegou aqui, o conteúdo inicial é o gráfico
+                         initial_ranking_children = dcc.Graph(id={'type': 'ranking-chart', 'index': indicador_id}, figure=fig_ranking_initial)
+
+                 except Exception as initial_rank_err:
+                     logging.warning("Erro ao gerar gráfico inicial do ranking: %s", initial_rank_err)
+                     initial_ranking_children = dbc.Alert(f'Erro ao gerar ranking inicial para {ano_default_ranking}.', color="danger", className="textCenter p-3")
+                     # Garante que a figura esteja vazia em caso de erro na geração
+                     fig_ranking_initial = go.Figure().update_layout(title=None, xaxis={'visible': False}, yaxis={'visible': False})
+             else:
+                  # Se não há ano default, a figura inicial deve ser vazia mesmo
+                  fig_ranking_initial = go.Figure().update_layout(title=None, xaxis={'visible': False}, yaxis={'visible': False})
+                  # O alerta padrão já foi definido
+
+             # Monta o conteúdo completo da aba Ranking - Nível 1
+             ranking_content = html.Div([
+                 html.Label("Ano:", style={'fontWeight': 'bold', 'marginBottom': '5px', 'display': 'block'}),
+                 dcc.Dropdown(
+                     id={'type': 'year-dropdown-ranking', 'index': indicador_id},
+                     options=[{'label': ano, 'value': ano} for ano in anos_ranking],
+                     value=ano_default_ranking,
+                     clearable=False,
+                     disabled=not anos_ranking,
+                     style={'width': '100%', 'marginBottom': '10px'}
+                 ),
+                 html.Div(
+                     id={'type': 'ranking-container', 'index': indicador_id},
+                     # MODIFICADO: Usa o conteúdo (Graph ou Alert) gerado acima
+                     children=initial_ranking_children
+                 )
+             ])
+             # --- Fim Lógica Ranking --- Nível 1
+             tabs_content.append(dbc.Tab(ranking_content, label="Ranking", tab_id=f'tab-ranking-{indicador_id}', id={'type': 'tab-ranking', 'index': indicador_id}))
+
+        # Adiciona aba de Mapa - Nível 0 (alinhado com o if principal)
         if 'DESC_UND_FED' in df_filtered.columns:
             tabs_content.append(dbc.Tab(map_content, label="Mapa Coroplético", tab_id=f'tab-map-{indicador_id}', id={'type': 'tab-map', 'index': indicador_id}))
 
@@ -1261,17 +1351,15 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
              tabs_container = dbc.Tabs(
                  id={'type': 'visualization-tabs', 'index': indicador_id},
                  children=tabs_content,
-                 # Define a primeira aba (ranking, se existir) como ativa
                  active_tab=tabs_content[0].tab_id if tabs_content else None
              )
 
         # Monta o layout final com gráfico principal e abas lado a lado
+        # Usa a variável main_chart_content diretamente
         visualization_card_content = dbc.CardBody([
             dbc.Row([
-                # Coluna para o Gráfico Principal
-                dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0"), # Ocupa 7 colunas em telas médias/grandes
-                # Coluna para as Abas (Ranking/Mapa)
-                dbc.Col(tabs_container, md=5, xs=12) # Ocupa 5 colunas em telas médias/grandes
+                dbc.Col(main_chart_content, md=7, xs=12, className="mb-4 mb-md-0"), # Coluna Gráfico Principal (agora pode ser Div ou Graph)
+                dbc.Col(tabs_container, md=5, xs=12) # Coluna Abas
             ])
         ])
 
@@ -1302,10 +1390,9 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         return graph_layout
 
     except Exception as e:
-        print(f"Erro em create_visualization para {indicador_id}: {e}")
-        import traceback
-        traceback.print_exc()
-        return dbc.Alert(f"Erro ao gerar visualização para {indicador_id}.", color="danger")
+        # Modificado: Usa logging.exception em vez de print/traceback
+        logging.exception("Erro em create_visualization para %s:", indicador_id)
+        return dbc.Alert(f"Erro ao gerar visualização para {indicador_id}. Consulte os logs.", color="danger")
 
 # Define o layout padrão
 DEFAULT_LAYOUT = {
@@ -2045,17 +2132,382 @@ def update_visualization_on_store_change(store_data, container_id):
         return dbc.Alert(f"Erro ao atualizar visualização: {str(e)}", color="danger")
 
 
-# Callback para atualizar o ranking quando o ano é alterado
+# Callback para atualizar o Ranking quando o ano é alterado
+# --- MODIFICADO: Adicionado Output para a figura do gráfico principal ---
 @app.callback(
-    Output({'type': 'ranking-chart', 'index': MATCH}, 'figure'),
+    [
+        Output({'type': 'ranking-container', 'index': MATCH}, 'children'),
+        Output({'type': 'main-chart', 'index': MATCH}, 'figure') # Novo Output
+    ],
     [Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value')],
     [
-        State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+        State({'type': 'ranking-container', 'index': MATCH}, 'id'),
+        # Adicionado State para obter o ID do gráfico principal correspondente
+        State({'type': 'main-chart', 'index': MATCH}, 'id')
+    ],
+    prevent_initial_call=True
+)
+def update_ranking_chart(selected_year, store_data, ranking_container_id, main_chart_id): # Modificada assinatura
+    """Atualiza o ranking e, se aplicável, o gráfico principal (barras simples) quando o ano é selecionado."""
+    ctx = callback_context
+    # Verifica se o callback foi acionado e se os dados necessários existem
+    # Adicionado main_chart_id à verificação
+    if not ctx.triggered or not selected_year or not store_data or not ranking_container_id or not main_chart_id:
+        raise PreventUpdate
+
+    # Confirma se os IDs do indicador correspondem (sanity check)
+    indicador_id_ranking = ranking_container_id['index']
+    indicador_id_main = main_chart_id['index']
+    if indicador_id_ranking != indicador_id_main:
+        logging.warning(f"IDs de indicador incompatíveis no callback update_ranking_chart: Ranking={indicador_id_ranking}, Main={indicador_id_main}")
+        raise PreventUpdate # Previne atualização se os IDs não baterem
+
+    indicador_id = indicador_id_ranking # Usa o ID confirmado
+
+    # --- Inicializa saídas padrão ---
+    ranking_output = dbc.Alert('Erro inesperado ao atualizar ranking.', color="danger", className="textCenter p-3")
+    main_chart_figure_output = dash.no_update # Gráfico principal não atualiza por padrão
+
+    # Extrai filtros do store
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+
+    # Carrega os dados do indicador (apenas uma vez)
+    df_base = load_dados_indicador_cache(indicador_id)
+    # Verifica se os dados base existem e contêm colunas essenciais (ano, valor, uf)
+    if df_base is None or df_base.empty or not all(col in df_base.columns for col in ['CODG_ANO', 'VLR_VAR']) or ('DESC_UND_FED' not in df_base.columns and 'CODG_UND_FED' not in df_base.columns):
+        ranking_output = dbc.Alert('Dados não disponíveis ou incompletos.', color="warning", className="textCenter p-3")
+        return ranking_output, main_chart_figure_output # Retorna alerta e no_update
+
+    # --- Aplica filtros (Variável principal e dinâmicos) ao DF base ---
+    # (Este código é similar ao início da função original, mas opera no df_base)
+    df_filtered_base = df_base.copy()
+    # Garante que CODG_ANO seja string para filtragem consistente
+    df_filtered_base['CODG_ANO'] = df_filtered_base['CODG_ANO'].astype(str)
+    # Filtro Variável Principal
+    if 'CODG_VAR' in df_filtered_base.columns and selected_var:
+        df_filtered_base['CODG_VAR'] = df_filtered_base['CODG_VAR'].astype(str).str.strip()
+        selected_var_str = str(selected_var).strip()
+        df_filtered_base = df_filtered_base[df_filtered_base['CODG_VAR'] == selected_var_str]
+    # Filtros Dinâmicos
+    if selected_filters:
+        for col_code, selected_value in selected_filters.items():
+            if selected_value is not None and col_code in df_filtered_base.columns:
+                # Convert column to string *before* fillna/strip for comparison
+                df_filtered_base[col_code] = df_filtered_base[col_code].astype(str).fillna('').str.strip()
+                selected_value_str = str(selected_value).strip()
+                df_filtered_base = df_filtered_base[df_filtered_base[col_code] == selected_value_str]
+
+    # --- Adiciona colunas de descrição necessárias (UF, UND_MED) ---
+    # Adiciona DESC_UND_FED
+    if 'DESC_UND_FED' not in df_filtered_base.columns and 'CODG_UND_FED' in df_filtered_base.columns:
+        df_filtered_base['DESC_UND_FED'] = df_filtered_base['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        # Mantém linhas mesmo que a UF não seja encontrada, pode ser 'Brasil' ou outro nível
+        # df_filtered_base = df_filtered_base.dropna(subset=['DESC_UND_FED']) # Removido dropna aqui
+
+    # Adiciona DESC_UND_MED
+    if 'DESC_UND_MED' not in df_filtered_base.columns and 'CODG_UND_MED' in df_filtered_base.columns:
+        df_unidade_medida_loaded = load_unidade_medida()
+        if not df_unidade_medida_loaded.empty:
+            # Garante que as chaves de merge são strings
+            df_filtered_base['CODG_UND_MED'] = df_filtered_base['CODG_UND_MED'].astype(str)
+            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+            df_filtered_base = pd.merge(df_filtered_base, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df_filtered_base['DESC_UND_MED'] = df_filtered_base['DESC_UND_MED'].fillna('N/D')
+        else:
+            df_filtered_base['DESC_UND_MED'] = 'N/D'
+    elif 'DESC_UND_MED' not in df_filtered_base.columns:
+            df_filtered_base['DESC_UND_MED'] = 'N/D' # Garante que a coluna existe
+
+    # --- Verifica se o Gráfico Principal deve ser Barras Simples ---
+    # (Baseado nos dados filtrados gerais e no tipo/anos do indicador)
+    tipo_grafico = 'S' # Padrão
+    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
+    if not indicador_info.empty:
+         tipo_grafico = indicador_info.iloc[0].get('TIPO_GRAFICO', 'S').strip().upper() or 'S'
+
+    # Calcula número de anos únicos *após* aplicar os filtros
+    anos_unicos_filtrados = df_filtered_base['CODG_ANO'].unique()
+    num_anos_filtrados = len(anos_unicos_filtrados)
+    min_years_for_temporal = 5 # Definido como em create_visualization
+
+    is_simple_bar_chart = (tipo_grafico == 'S') or ((tipo_grafico in ['L', 'C']) and (num_anos_filtrados < min_years_for_temporal))
+
+    # --- Geração do Gráfico Principal (se for Barras Simples) ---
+    if is_simple_bar_chart:
+        # Filtra os dados base JÁ FILTRADOS para o ANO SELECIONADO
+        df_simple_bar_ano = df_filtered_base[df_filtered_base['CODG_ANO'] == str(selected_year)].copy()
+
+        if not df_simple_bar_ano.empty:
+            try:
+                # Garante DESC_UND_FED (pode ser 'Brasil')
+                if 'DESC_UND_FED' not in df_simple_bar_ano.columns:
+                    df_simple_bar_ano['DESC_UND_FED'] = 'Brasil' # Ou N/D
+
+                # Ordena, formata e adiciona coluna de valor formatado
+                df_simple_bar_ano = df_simple_bar_ano.sort_values('VLR_VAR', ascending=False)
+                df_simple_bar_ano['VLR_VAR_FORMATADO'] = df_simple_bar_ano['VLR_VAR'].apply(format_br)
+
+                # Define o mapa de cores
+                color_map_simple = {
+                    'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
+                    'Mato Grosso': '#ab63fa', 'Mato Grosso do Sul': '#ffa15a', 'Rondônia': '#19d3f3',
+                    'Tocantins': '#ff6692', 'Brasil': '#FF0000'
+                }
+
+                # Cria a figura de barras simples
+                fig_simple_bar = px.bar(
+                    df_simple_bar_ano, x='DESC_UND_FED', y='VLR_VAR',
+                    text='VLR_VAR_FORMATADO',
+                    color='DESC_UND_FED',
+                    color_discrete_map=color_map_simple,
+                    hover_data={
+                        'DESC_UND_FED': True, 'VLR_VAR': False,
+                        'VLR_VAR_FORMATADO': True, 'DESC_UND_MED': True
+                    }
+                )
+                fig_simple_bar.update_traces(
+                    texttemplate='<b>%{text}</b>', textposition='outside',
+                    hovertemplate="<b>%{x}</b><br>Valor: %{customdata[0]}<br>Unidade: %{customdata[1]}<extra></extra>",
+                    customdata=np.column_stack((
+                       df_simple_bar_ano['VLR_VAR_FORMATADO'].values,
+                       df_simple_bar_ano['DESC_UND_MED'].values
+                    ))
+                )
+
+                # Aplica layout
+                max_y_simple = df_simple_bar_ano['VLR_VAR'].max()
+                y_range_simple = [0, max_y_simple * 1.15]
+                layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
+                layout_updates_bar_simple.update({
+                    'title': None, # Remove título que pode vir por padrão
+                    'xaxis': dict(showgrid=False, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                    'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_simple),
+                    'showlegend': False
+                })
+                # Ajusta ticks do eixo X
+                all_ufs_simple = sorted(df_simple_bar_ano['DESC_UND_FED'].unique())
+                x_ticktext_simple = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in all_ufs_simple]
+                layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext_simple
+                layout_updates_bar_simple['xaxis']['tickvals'] = all_ufs_simple
+                fig_simple_bar.update_layout(layout_updates_bar_simple)
+
+                # Atribui a figura gerada à saída do gráfico principal
+                main_chart_figure_output = fig_simple_bar
+
+            except Exception as e_simple_bar:
+                logging.exception(f"Erro ao gerar gráfico de barras simples para {indicador_id}, ano {selected_year}: {e_simple_bar}")
+                # Se falhar, main_chart_figure_output continua como no_update
+        else:
+            # Se não houver dados para o ano selecionado no gráfico simples
+            logging.warning(f"Dados insuficientes para gráfico de barras simples ({indicador_id}, ano {selected_year})")
+            # Retorna uma figura vazia com aviso para o gráfico principal
+            fig_vazia = go.Figure().update_layout(title=f'Dados insuficientes para {selected_year}', xaxis={'visible': False}, yaxis={'visible': False})
+            main_chart_figure_output = fig_vazia
+    # else: Se não for gráfico de barras simples, main_chart_figure_output permanece dash.no_update
+
+    # --- Geração do Conteúdo do Ranking (código existente adaptado) ---
+    # Usa o df_filtered_base já filtrado pelas variáveis/filtros dinâmicos
+    df_ranking_ano = df_filtered_base[df_filtered_base['CODG_ANO'] == str(selected_year)].copy()
+
+    # Verifica se há dados e unicidade de UF APÓS filtrar pelo ano
+    if df_ranking_ano.empty:
+         ranking_output = dbc.Alert(f'Ranking não disponível para {selected_year} com filtros aplicados.', color="warning", className="textCenter p-3")
+    elif 'DESC_UND_FED' not in df_ranking_ano.columns:
+         ranking_output = dbc.Alert(f'Ranking não disponível (sem dados por UF).', color="warning", className="textCenter p-3")
+    elif (df_ranking_ano['DESC_UND_FED'].value_counts() > 1).any():
+         ranking_output = dbc.Alert('Ranking não gerado: múltiplos valores por UF. Verifique os filtros.', color="warning", className="textCenter p-3")
+    else:
+        # Tenta gerar a figura do ranking
+        try:
+            ranking_ordem = 0 # Padrão
+            if not indicador_info.empty and 'RANKING_ORDEM' in indicador_info.columns:
+                try:
+                    ranking_ordem_val = pd.to_numeric(indicador_info['RANKING_ORDEM'].iloc[0], errors='coerce')
+                    if not pd.isna(ranking_ordem_val): ranking_ordem = int(ranking_ordem_val)
+                except (ValueError, TypeError) as e_rank:
+                    logging.warning("Erro ao converter RANKING_ORDEM para %s: %s. Usando padrão 0.", indicador_id, e_rank)
+
+            ascending_rank = (ranking_ordem == 0)
+            df_ranking_ano_sorted = df_ranking_ano.sort_values('VLR_VAR', ascending=ascending_rank)
+
+            goias_color = 'rgba(34, 152, 70, 1)'
+            other_color = 'rgba(34, 152, 70, 0.2)'
+
+            fig_ranking_updated = go.Figure()
+            for _, row in df_ranking_ano_sorted.iterrows():
+                uf = row['DESC_UND_FED']
+                valor = row['VLR_VAR']
+                und_med = row.get('DESC_UND_MED', 'N/D') # Já garantimos que existe
+                bar_color = goias_color if uf == 'Goiás' else other_color
+                text_value = format_br(valor)
+
+                fig_ranking_updated.add_trace(go.Bar(
+                    y=[uf], x=[valor], name=uf, orientation='h',
+                    marker_color=bar_color, text=text_value,
+                    textposition='outside', texttemplate='<b>%{text}</b>',
+                    hovertemplate=(
+                        f"<b>{uf}</b><br>"
+                        f"Valor: {text_value}<br>"
+                        f"Unidade: {und_med}<extra></extra>"
+                    )
+                ))
+
+            max_x_ranking = df_ranking_ano_sorted['VLR_VAR'].max() if not df_ranking_ano_sorted.empty else 0
+            x_range_ranking = [0, max_x_ranking * 1.15]
+
+            fig_ranking_updated.update_layout(
+                xaxis_title=None, yaxis_title=None,
+                yaxis=dict(showgrid=False, tickfont=dict(size=12, color='black'), categoryorder='array', categoryarray=df_ranking_ano_sorted['DESC_UND_FED'].tolist()),
+                xaxis=dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), range=x_range_ranking, tickformat='d'),
+                showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
+            )
+
+            # Define a saída do ranking como o gráfico gerado
+            ranking_output = dcc.Graph(id={'type': 'ranking-chart', 'index': indicador_id}, figure=fig_ranking_updated)
+
+        except Exception as e_rank_fig:
+            logging.exception(f"Erro ao gerar figura de ranking para {indicador_id}, ano {selected_year}: {e_rank_fig}")
+            ranking_output = dbc.Alert(f'Erro ao gerar ranking para {selected_year}.', color="danger", className="textCenter p-3")
+
+    # --- Retorna as duas saídas ---
+    return ranking_output, main_chart_figure_output
+
+
+# Callback para atualizar o mapa quando o ano é alterado
+@app.callback(
+    # MODIFICADO: Output agora é o children do container do mapa
+    Output({'type': 'map-container', 'index': MATCH}, 'children'),
+    [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
+    [
+        # State({'type': 'choropleth-map', 'index': MATCH}, 'id'), # Removido
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+        # Adicionado State para pegar ID do indicador do container
+        State({'type': 'map-container', 'index': MATCH}, 'id')
+    ],
+    prevent_initial_call=True
+)
+def update_map_on_year_change(selected_year, store_data, container_id):
+    """Atualiza o conteúdo do container do mapa (gráfico ou alerta) quando o ano é alterado"""
+    if not selected_year or not store_data:
+        raise PreventUpdate
+
+    indicador_id = container_id['index']
+
+    # Extrai filtros do store
+    selected_var = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {})
+
+    # Carrega os dados do indicador
+    df_map_base = load_dados_indicador_cache(indicador_id)
+    if df_map_base is None or df_map_base.empty or ('CODG_UND_FED' not in df_map_base.columns and 'DESC_UND_FED' not in df_map_base.columns):
+        # MODIFICADO: Retorna Alerta
+        return dbc.Alert('Dados não disponíveis ou incompletos para mapa.', color="warning", className="textCenter p-3")
+
+    # Aplica filtros (Variável principal e dinâmicos)
+    df_filtered_map = df_map_base.copy()
+
+    # Filtro Variável Principal
+    if 'CODG_VAR' in df_filtered_map.columns and selected_var:
+        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
+        selected_var_str = str(selected_var).strip()
+        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
+
+    # Filtros Dinâmicos
+    if selected_filters:
+        for col_code, selected_value in selected_filters.items():
+            if selected_value is not None and col_code in df_filtered_map.columns:
+                df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
+                selected_value_str = str(selected_value).strip()
+                df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
+
+    # Adiciona DESC_UND_FED se não existir
+    if 'DESC_UND_FED' not in df_filtered_map.columns and 'CODG_UND_FED' in df_filtered_map.columns:
+        df_filtered_map['DESC_UND_FED'] = df_filtered_map['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        df_filtered_map = df_filtered_map.dropna(subset=['DESC_UND_FED'])
+    elif 'DESC_UND_FED' not in df_filtered_map.columns:
+         # Se ainda não tem UF, não pode gerar mapa
+         return dbc.Alert('Dados não contêm Unidade Federativa para gerar mapa.', color="warning", className="textCenter p-3")
+
+    # Filtra pelo ano selecionado
+    df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
+    df_map_ano = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()]
+
+    # Se não houver dados após filtrar por ano, retorna alerta
+    if df_map_ano.empty:
+        # MODIFICADO: Retorna Alerta
+        return dbc.Alert(f'Nenhum dado disponível para o mapa no ano {selected_year}', color="info", className="textCenter p-3")
+
+    # Verifica unicidade por UF
+    counts_per_uf_map = df_map_ano['DESC_UND_FED'].value_counts()
+    if (counts_per_uf_map > 1).any():
+        # MODIFICADO: Retorna Alerta
+        return dbc.Alert(
+            f"Mapa não pode ser gerado para {selected_year}: múltiplos valores por UF. "
+            "Verifique os filtros aplicados.", color="warning", className="textCenter p-3"
+        )
+
+    # Cria o mapa coroplético
+    try:
+        df_map_ano['VLR_VAR_FORMATADO'] = df_map_ano['VLR_VAR'].apply(format_br)
+
+        und_med_map = ''
+        if 'DESC_UND_MED' in df_map_ano.columns:
+             und_med_series = df_map_ano['DESC_UND_MED'].dropna()
+             if not und_med_series.empty: und_med_map = und_med_series.iloc[0]
+        elif 'CODG_UND_MED' in df_map_ano.columns:
+            codg_und_med_values = df_map_ano['CODG_UND_MED'].dropna().unique()
+            if len(codg_und_med_values) > 0:
+                df_um = load_unidade_medida()
+                if not df_um.empty:
+                    codg_und_med = str(codg_und_med_values[0])
+                    df_um['CODG_UND_MED'] = df_um['CODG_UND_MED'].astype(str)
+                    match = df_um[df_um['CODG_UND_MED'] == codg_und_med]
+                    if not match.empty: und_med_map = match['DESC_UND_MED'].iloc[0]
+
+        with open('db/br_geojson.json', 'r', encoding='utf-8') as f: geojson = json.load(f)
+
+        fig_map = px.choropleth(
+            df_map_ano, geojson=geojson, locations='DESC_UND_FED',
+            featureidkey='properties.name', color='VLR_VAR',
+            color_continuous_scale=[[0.0, 'rgba(34, 152, 70, 0.2)'], [1.0, 'rgba(34, 152, 70, 1)']]
+        )
+        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
+        geos_update = dict(
+            visible=False, showcoastlines=True, coastlinecolor="White",
+            showland=True, landcolor="white", showframe=False,
+            projection=dict(type='mercator', scale=15), center=map_center
+        )
+        fig_map.update_geos(**geos_update)
+        fig_map.update_traces(
+            marker_line_color='white', marker_line_width=1,
+            customdata=df_map_ano[['VLR_VAR_FORMATADO']],
+            hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+        )
+        fig_map.update_layout(coloraxis_colorbar_title_text='')
+
+        # MODIFICADO: Retorna o componente Graph
+        return dcc.Graph(id={'type': 'choropleth-map', 'index': indicador_id}, figure=fig_map)
+
+    except Exception as e:
+        logging.exception("Erro ao criar mapa para %s, ano %s:", indicador_id, selected_year)
+        # MODIFICADO: Retorna Alerta
+        return dbc.Alert(f"Erro ao criar mapa para {selected_year}: {str(e)}", color="danger", className="textCenter p-3")
+
+
+# Callback para atualizar o Boxplot quando o ano é alterado
+@app.callback(
+    Output({'type': 'boxplot-chart', 'index': MATCH}, 'figure'),
+    [Input({'type': 'year-dropdown-boxplot', 'index': MATCH}, 'value')],
+    [
+        State({'type': 'boxplot-chart', 'index': MATCH}, 'id'),
         State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
     ],
     prevent_initial_call=True
 )
-def update_ranking_chart(selected_year, chart_id, store_data):
+def update_boxplot_chart(selected_year, chart_id, store_data):
+    """Atualiza o gráfico Boxplot quando o ano é selecionado no dropdown."""
     ctx = callback_context
     if not ctx.triggered or not selected_year or not store_data:
         raise PreventUpdate
@@ -2067,240 +2519,87 @@ def update_ranking_chart(selected_year, chart_id, store_data):
     selected_filters = store_data.get('selected_filters', {})
 
     # Carrega os dados do indicador
-    df_ranking_base = load_dados_indicador_cache(indicador_id)
-    if df_ranking_base is None or df_ranking_base.empty or ('DESC_UND_FED' not in df_ranking_base.columns and 'CODG_UND_FED' not in df_ranking_base.columns):
-        # Retorna figura vazia com aviso se não houver dados ou UF
-        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
+    df_boxplot_base = load_dados_indicador_cache(indicador_id)
+    if df_boxplot_base is None or df_boxplot_base.empty or 'DESC_UND_FED' not in df_boxplot_base.columns:
+        # Retorna figura vazia com aviso
+        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para Boxplot.',
+                                        xaxis={'visible': False}, yaxis={'visible': False})
 
     # --- Aplica filtros (Variável principal e dinâmicos) ---
-    df_filtered_ranking = df_ranking_base.copy()
+    df_filtered_boxplot = df_boxplot_base.copy()
     # Filtro Variável Principal
-    if 'CODG_VAR' in df_filtered_ranking.columns and selected_var:
-        df_filtered_ranking['CODG_VAR'] = df_filtered_ranking['CODG_VAR'].astype(str).str.strip()
+    if 'CODG_VAR' in df_filtered_boxplot.columns and selected_var:
+        df_filtered_boxplot['CODG_VAR'] = df_filtered_boxplot['CODG_VAR'].astype(str).str.strip()
         selected_var_str = str(selected_var).strip()
-        df_filtered_ranking = df_filtered_ranking[df_filtered_ranking['CODG_VAR'] == selected_var_str]
+        df_filtered_boxplot = df_filtered_boxplot[df_filtered_boxplot['CODG_VAR'] == selected_var_str]
     # Filtros Dinâmicos
     if selected_filters:
         for col_code, selected_value in selected_filters.items():
-            if selected_value is not None and col_code in df_filtered_ranking.columns:
-                df_filtered_ranking[col_code] = df_filtered_ranking[col_code].astype(str).fillna('').str.strip()
+            if selected_value is not None and col_code in df_filtered_boxplot.columns:
+                # Converte ambos para string para comparação segura
+                df_filtered_boxplot[col_code] = df_filtered_boxplot[col_code].astype(str).fillna('').str.strip()
                 selected_value_str = str(selected_value).strip()
-                df_filtered_ranking = df_filtered_ranking[df_filtered_ranking[col_code] == selected_value_str]
+                df_filtered_boxplot = df_filtered_boxplot[df_filtered_boxplot[col_code] == selected_value_str]
 
-    # Adiciona DESC_UND_FED se necessário
-    if 'DESC_UND_FED' not in df_filtered_ranking.columns and 'CODG_UND_FED' in df_filtered_ranking.columns:
-        df_filtered_ranking['DESC_UND_FED'] = df_filtered_ranking['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-        df_filtered_ranking = df_filtered_ranking.dropna(subset=['DESC_UND_FED'])
+    # Filtra pelo ANO selecionado no dropdown
+    df_boxplot_ano = df_filtered_boxplot[df_filtered_boxplot['CODG_ANO'] == selected_year].copy()
 
-    # Adiciona DESC_UND_MED se necessário
-    if 'DESC_UND_MED' not in df_filtered_ranking.columns and 'CODG_UND_MED' in df_filtered_ranking.columns:
-        df_unidade_medida_loaded = load_unidade_medida()
-        if not df_unidade_medida_loaded.empty:
-            df_filtered_ranking['CODG_UND_MED'] = df_filtered_ranking['CODG_UND_MED'].astype(str)
-            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
-            df_filtered_ranking = pd.merge(df_filtered_ranking, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df_filtered_ranking['DESC_UND_MED'] = df_filtered_ranking['DESC_UND_MED'].fillna('N/D')
-        else:
-            df_filtered_ranking['DESC_UND_MED'] = 'N/D'
-
-    # Filtra pelo ANO selecionado
-    df_ranking_ano = df_filtered_ranking[df_filtered_ranking['CODG_ANO'] == selected_year].copy()
-
-    if df_ranking_ano.empty or 'DESC_UND_FED' not in df_ranking_ano.columns:
-         return go.Figure().update_layout(title=f'Ranking não disponível para {selected_year} com filtros aplicados.', xaxis={'visible': False}, yaxis={'visible': False})
-
-    # Verifica unicidade por UF para o ano selecionado
-    counts_per_uf_ranking = df_ranking_ano['DESC_UND_FED'].value_counts()
-    if (counts_per_uf_ranking > 1).any():
-         return go.Figure().update_layout(title='Ranking não gerado: múltiplos valores por UF.', xaxis={'visible': False}, yaxis={'visible': False})
-
-    # Lê a ordem do ranking do indicador
-    ranking_ordem = 0 # Padrão
-    indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
-    if not indicador_info.empty and 'RANKING_ORDEM' in indicador_info.columns:
-        try:
-            ranking_ordem_val = pd.to_numeric(indicador_info['RANKING_ORDEM'].iloc[0], errors='coerce')
-            if not pd.isna(ranking_ordem_val): ranking_ordem = int(ranking_ordem_val)
-        except (ValueError, TypeError): pass
-
-    # Ordena baseado em VLR_VAR e RANKING_ORDEM
-    ascending_rank = (ranking_ordem == 0) # True se for maior para menor
-
-    df_ranking_ano = df_ranking_ano.sort_values('VLR_VAR', ascending=ascending_rank)
-
-    # Define cores e opacidade
-    goias_color = 'rgba(34, 152, 70, 1)'
-    other_color = 'rgba(34, 152, 70, 0.2)'
-
-    # Cria o gráfico de ranking com go.Figure e go.Bar
-    fig_ranking_updated = go.Figure()
-    for _, row in df_ranking_ano.iterrows():
-        uf = row['DESC_UND_FED']
-        valor = row['VLR_VAR']
-        und_med = row.get('DESC_UND_MED', 'N/D') # Usa .get() para segurança
-        bar_color = goias_color if uf == 'Goiás' else other_color
-        # Modificado: Usa a função format_br
-        text_value = format_br(valor)
-
-        fig_ranking_updated.add_trace(go.Bar(
-            y=[uf], # Estados no eixo Y
-            x=[valor], # Valores no eixo X
-            name=uf,
-            orientation='h', # Barras horizontais
-            marker_color=bar_color,
-            text=text_value,
-            textposition='outside', # Texto fora da barra
-            hovertemplate=(
-                f"<b>{uf}</b><br>"
-                f"Valor: {text_value}<br>" # Usa o texto formatado
-                f"Unidade: {und_med}<extra></extra>"
-            )
-        ))
-
-    max_x_ranking = df_ranking_ano['VLR_VAR'].max() if not df_ranking_ano.empty else 0
-    x_range_ranking = [0, max_x_ranking * 1.15]
-
-    # Atualiza layout para gráfico de barras horizontal
-    fig_ranking_updated.update_layout(
-        xaxis_title=None, yaxis_title=None,
-        yaxis=dict(showgrid=False, tickfont=dict(size=12, color='black'), categoryorder='array', categoryarray=df_ranking_ano['DESC_UND_FED'].tolist()),
-        xaxis=dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), range=x_range_ranking, tickformat='d'),
-        showlegend=False, margin=dict(l=150, r=20, t=30, b=30), bargap=0.1
-    )
-
-    return fig_ranking_updated
-
-
-# Callback para atualizar o mapa quando o ano é alterado
-@app.callback(
-    Output({'type': 'choropleth-map', 'index': MATCH}, 'figure'),
-    [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
-    [
-        State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
-        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
-    ],
-    prevent_initial_call=True
-)
-def update_map_on_year_change(selected_year, chart_id, store_data):
-    """Atualiza o mapa quando o ano é alterado"""
-    if not selected_year or not store_data:
-        raise PreventUpdate
-    
-    indicador_id = chart_id['index']
-    
-    # Extrai filtros do store
-    selected_var = store_data.get('selected_var')
-    selected_filters = store_data.get('selected_filters', {})
-    
-    # Carrega os dados do indicador
-    df_map_base = load_dados_indicador_cache(indicador_id)
-    if df_map_base is None or df_map_base.empty or ('CODG_UND_FED' not in df_map_base.columns and 'DESC_UND_FED' not in df_map_base.columns):
-        # Retorna figura vazia com aviso se não houver dados ou UF
-        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para mapa.', 
-                                        xaxis={'visible': False}, yaxis={'visible': False})
-    
-    # Aplica filtros (Variável principal e dinâmicos)
-    df_filtered_map = df_map_base.copy()
-    
-    # Filtro Variável Principal
-    if 'CODG_VAR' in df_filtered_map.columns and selected_var:
-        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
-        selected_var_str = str(selected_var).strip()
-        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
-    
-    # Filtros Dinâmicos
-    if selected_filters:
-        for col_code, selected_value in selected_filters.items():
-            if selected_value is not None and col_code in df_filtered_map.columns:
-                df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
-                selected_value_str = str(selected_value).strip()
-                df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
-    
-    df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
-    df_filtered_map = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()]
-    
-    # Se não houver dados após filtrar por ano, retorna uma figura vazia
-    if df_filtered_map.empty:
-        return go.Figure().update_layout(title=f'Nenhum dado disponível para o ano {selected_year}', 
+    if df_boxplot_ano.empty:
+         return go.Figure().update_layout(title=f'Boxplot não disponível para {selected_year} com filtros aplicados.',
                                          xaxis={'visible': False}, yaxis={'visible': False})
-   
-    # Cria o mapa coroplético
+
+    # --- Criação da Figura Atualizada ---
     try:
-        # Adiciona coluna formatada para hover
-        df_filtered_map['VLR_VAR_FORMATADO'] = df_filtered_map['VLR_VAR'].apply(format_br)
-        
-        # Tenta obter unidade de medida de forma segura (mesma lógica do ranking e gráficos)
-        und_med_map = ''
-        
-        # Primeiro tenta obter da coluna CODG_UND_MED se existir
-        if 'CODG_UND_MED' in df_filtered_map.columns:
-            codg_und_med_values = df_filtered_map['CODG_UND_MED'].dropna().unique()
-            if len(codg_und_med_values) > 0:
-                df_unidade_medida_loaded = load_unidade_medida()
-                if not df_unidade_medida_loaded.empty:
-                    codg_und_med = str(codg_und_med_values[0])
-                    df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
-                    match_rows = df_unidade_medida_loaded[df_unidade_medida_loaded['CODG_UND_MED'] == codg_und_med]
-                    if not match_rows.empty:
-                        und_med_map = match_rows['DESC_UND_MED'].iloc[0]
-        
-        # Se não encontrou pelo código, tenta pela coluna DESC_UND_MED se existir
-        if not und_med_map and 'DESC_UND_MED' in df_filtered_map.columns:
-            und_med_series = df_filtered_map['DESC_UND_MED'].dropna()
-            if not und_med_series.empty:
-                und_med_map = und_med_series.iloc[0]
-        
-        # Carrega GeoJSON
-        with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
-            geojson = json.load(f)
-        
-        fig_map = px.choropleth(
-            df_filtered_map,
-            geojson=geojson,
-            locations='DESC_UND_FED',
-            featureidkey='properties.name',
-            color='VLR_VAR',
-            color_continuous_scale=[ # Escala baseada no Ranking
-                [0.0, 'rgba(34, 152, 70, 0.2)'],
-                [1.0, 'rgba(34, 152, 70, 1)']
-            ],
-            # scope="south america" # Removido para usar 'center'
-        )
-        
-        # --- Atualizar Geos com Centroide FIXO 
-        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
-        geos_update = dict(
-            visible=False, showcoastlines=True, coastlinecolor="White",
-            showland=True, landcolor="white", showframe=False,
-            projection=dict(type='mercator', scale=15),
-            center=map_center
-        )
+        df_boxplot_ano = df_boxplot_ano.sort_values('DESC_UND_FED')
+        # Adiciona colunas de descrição e formatação necessárias
+        if 'DESC_UND_MED' not in df_boxplot_ano.columns and 'CODG_UND_MED' in df_boxplot_ano.columns:
+            df_um = load_unidade_medida()
+            if not df_um.empty:
+                 df_um['CODG_UND_MED'] = df_um['CODG_UND_MED'].astype(str)
+                 df_boxplot_ano['CODG_UND_MED'] = df_boxplot_ano['CODG_UND_MED'].astype(str)
+                 df_boxplot_ano = pd.merge(df_boxplot_ano, df_um[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+                 df_boxplot_ano['DESC_UND_MED'] = df_boxplot_ano['DESC_UND_MED'].fillna('N/D')
+            else:
+                 df_boxplot_ano['DESC_UND_MED'] = 'N/D'
+        elif 'DESC_UND_MED' not in df_boxplot_ano.columns:
+            df_boxplot_ano['DESC_UND_MED'] = 'N/D'
 
-        # Aplica a atualização geo
-        fig_map.update_geos(**geos_update)
-        # ----------------------------------
+        df_boxplot_ano['VLR_VAR_FORMATADO'] = df_boxplot_ano['VLR_VAR'].apply(format_br)
 
-        fig_map.update_traces(
-            marker_line_color='white', marker_line_width=1,
-            customdata=df_filtered_map[['VLR_VAR_FORMATADO']],
-            hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+        fig_boxplot_updated = px.box(
+            df_boxplot_ano, x='DESC_UND_FED', y='VLR_VAR', points="all",
+            color='DESC_UND_FED',
+            hover_data={
+                'DESC_UND_FED': True, 'VLR_VAR': False,
+                'VLR_VAR_FORMATADO': True, 'DESC_UND_MED': True
+            }
         )
+        fig_boxplot_updated.update_traces(
+            hovertemplate="<b>%{x}</b><br>Valor: %{customdata[0]}<br>Unidade: %{customdata[1]}<extra></extra>",
+            customdata=np.column_stack((
+                df_boxplot_ano['VLR_VAR_FORMATADO'].values,
+                df_boxplot_ano['DESC_UND_MED'].values
+            ))
+        )
+        # Layout
+        layout_updates_boxplot = DEFAULT_LAYOUT.copy()
+        layout_updates_boxplot.update({
+            'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d'),
+            'xaxis': dict(showgrid=False, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=sorted(df_boxplot_ano['DESC_UND_FED'].unique())),
+            'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
+        })
+        all_ufs_box_updated = sorted(df_boxplot_ano['DESC_UND_FED'].unique())
+        x_ticktext_box_updated = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in all_ufs_box_updated]
+        layout_updates_boxplot['xaxis']['ticktext'] = x_ticktext_box_updated
+        layout_updates_boxplot['xaxis']['tickvals'] = all_ufs_box_updated
+        fig_boxplot_updated.update_layout(layout_updates_boxplot)
 
-        # --- Remove o título da barra de cores ---
-        fig_map.update_layout(coloraxis_colorbar_title_text='')
-        # -----------------------------------------
-        
-        return fig_map
+        return fig_boxplot_updated
+
     except Exception as e:
-        logging.exception("Erro ao criar mapa para %s", indicador_id)
-        empty_fig = go.Figure()
-        empty_fig.update_layout(
-            title=f"Erro ao criar mapa: {str(e)}",
-            xaxis={'visible': False},
-            yaxis={'visible': False}
-        )
-        return empty_fig
-
+        logging.exception("Erro ao gerar Boxplot atualizado para %s, ano %s:", indicador_id, selected_year)
+        return go.Figure().update_layout(title=f'Erro ao gerar Boxplot para {selected_year}.',
+                                        xaxis={'visible': False}, yaxis={'visible': False})
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe

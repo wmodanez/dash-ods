@@ -88,10 +88,22 @@ async def get_sidra_data(session: aiohttp.ClientSession, url: str, indicador_nam
 
 @lru_cache(maxsize=1)
 def load_indicadores() -> pd.DataFrame:
-    df = pd.read_csv(
-        Path(__file__).parent / 'db/indicadores.csv', sep=';'
-    )
-    return df
+    try: # Adicionado try-except para capturar o erro de leitura
+        df = pd.read_csv(
+            Path(__file__).parent / 'db/indicadores.csv', sep=';',
+            on_bad_lines='skip' # Ignora linhas com número incorreto de colunas
+        )
+        # Log após leitura bem-sucedida (ou com linhas puladas)
+        logging.info("Arquivo db/indicadores.csv carregado com sucesso (linhas mal formatadas podem ter sido ignoradas).")
+        return df
+    except FileNotFoundError:
+        logging.error("Erro: Arquivo db/indicadores.csv não encontrado.")
+        # Retorna um DataFrame vazio ou levanta a exceção, dependendo do comportamento desejado
+        return pd.DataFrame() # Exemplo: retorna DF vazio
+    except Exception as e:
+        # Log do erro específico que ocorreu durante a leitura/processamento
+        logging.error(f"Erro inesperado ao carregar db/indicadores.csv: {e}", exc_info=True) # exc_info=True adiciona traceback ao log
+        return pd.DataFrame() # Retorna DF vazio em caso de outros erros
 
 
 def filter_indicadores(list_indicadores: Dict[str, Any], indicadores_ids: List[str]) -> Dict[str, Any]:
