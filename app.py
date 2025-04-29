@@ -1178,7 +1178,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             locations='DESC_UND_FED',
                             featureidkey='properties.name',
                             color='VLR_VAR',
-                            color_continuous_scale='Greens_r',
+                            color_continuous_scale=[ # Escala baseada no Ranking
+                                [0.0, 'rgba(34, 152, 70, 0.2)'],
+                                [1.0, 'rgba(34, 152, 70, 1)']
+                            ],
                             # scope="south america" # Removido para usar 'center'
                         )
 
@@ -1187,7 +1190,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         geos_update = dict(
                             visible=False, showcoastlines=True, coastlinecolor="White",
                             showland=True, landcolor="white", showframe=False,
-                            projection=dict(type='mercator', scale=10),
+                            projection=dict(type='mercator', scale=15),
                             center=map_center
                         )
 
@@ -1200,6 +1203,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             customdata=df_map_data_initial[['VLR_VAR_FORMATADO']],
                             hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
                         )
+
+                        # --- Remove o título da barra de cores ---
+                        fig_map.update_layout(coloraxis_colorbar_title_text='')
+                        # -----------------------------------------
 
                         # Define o conteúdo do mapa como o dropdown e o gráfico
                         map_content = html.Div([
@@ -2253,7 +2260,10 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
             locations='DESC_UND_FED',
             featureidkey='properties.name',
             color='VLR_VAR',
-            color_continuous_scale='Greens_r',
+            color_continuous_scale=[ # Escala baseada no Ranking
+                [0.0, 'rgba(34, 152, 70, 0.2)'],
+                [1.0, 'rgba(34, 152, 70, 1)']
+            ],
             # scope="south america" # Removido para usar 'center'
         )
         
@@ -2262,7 +2272,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
         geos_update = dict(
             visible=False, showcoastlines=True, coastlinecolor="White",
             showland=True, landcolor="white", showframe=False,
-            projection=dict(type='mercator', scale=10),
+            projection=dict(type='mercator', scale=15),
             center=map_center
         )
 
@@ -2275,6 +2285,10 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
             customdata=df_filtered_map[['VLR_VAR_FORMATADO']],
             hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
         )
+
+        # --- Remove o título da barra de cores ---
+        fig_map.update_layout(coloraxis_colorbar_title_text='')
+        # -----------------------------------------
         
         return fig_map
     except Exception as e:
