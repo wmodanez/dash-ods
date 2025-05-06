@@ -776,175 +776,79 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         if not pd.isna(ranking_ordem_val): ranking_ordem = int(ranking_ordem_val)
                     except (ValueError, TypeError): pass # Mantém padrão 0
 
-        # Define o número mínimo de anos para gráficos temporais
-        min_years_for_temporal = 5
-
         # --- Criação do Gráfico Principal baseado na lógica existente ---
-        if serie_temporal_flag == 1 and num_anos >= min_years_for_temporal:
-            if grafico_linha_flag == 1:
-                # --- Lógica do Gráfico de Linha (Refatorado com go.Figure) ---
-                main_fig = go.Figure() # Reinicializa para garantir que está vazia
-                if 'DESC_UND_FED' in df_filtered.columns:
-                    df_line_data = df_filtered.sort_values(['DESC_UND_FED', 'CODG_ANO'])
-                    if not df_line_data.empty:
-                        for uf in df_line_data['DESC_UND_FED'].unique():
-                            df_state = df_line_data[df_line_data['DESC_UND_FED'] == uf]
-                            # Adiciona verificação se df_state não está vazio
-                            if df_state.empty: continue
-                            # Modificado: Adiciona valor formatado ao customdata
-                            customdata_state = np.column_stack((
-                                np.full(len(df_state), uf),
-                                df_state['DESC_UND_MED'].values,
-                                df_state['VLR_VAR'].values, # Original value
-                                df_state['VLR_VAR'].apply(format_br).values # Formatted value
-                            ))
-                            # Modificado: Usa a função format_br
-                            text_values = df_state['VLR_VAR'].apply(format_br)
-                            trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
-                            color_map = {
-                                'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
-                                'Mato Grosso': '#ab63fa', 'Mato Grosso do Sul': '#ffa15a', 'Rondônia': '#19d3f3',
-                                'Tocantins': '#ff6692', 'Brasil': '#FF0000' # Adiciona Brasil
-                            }
-                            line_color = color_map.get(uf)
-                            line_width = 6 if uf == 'Goiás' else 2
-
-                            main_fig.add_trace(go.Scatter(
-                                x=df_state['CODG_ANO'], y=df_state['VLR_VAR'], name=trace_name,
-                                customdata=customdata_state, text=text_values, mode='lines+markers+text',
-                                texttemplate='%{text}', textposition='top center', textfont=dict(size=10),
-                                marker=dict(size=10, symbol='circle', line=dict(width=1, color='white')),
-                                line=dict(width=line_width, color=line_color),
-                                hovertemplate=(
-                                    "<b>%{customdata[0]}</b><br>" # UF do customdata
-                                    "Ano: %{x}<br>"
-                                    "Valor: %{customdata[3]}<br>" # Modificado: Usa customdata[3] (pré-formatado)
-                                    "Unidade: %{customdata[1]}<extra></extra>"
-                                )
-                            ))
-
-                        max_y_line = df_line_data['VLR_VAR'].max()
-                        y_range_line = [0, max_y_line * 1.15]
-
-                        layout_updates_line = DEFAULT_LAYOUT.copy()
-                        layout_updates_line.update({
-                            'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
-                            'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line)
-                        })
-                        unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
-                        layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
-                        layout_updates_line['xaxis']['tickvals'] = unique_years_line
-                        main_fig.update_layout(layout_updates_line)
-                    else:
-                        main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de linha.', xaxis={'visible': False}, yaxis={'visible': False})
-
-                else: # Gráfico de linha sem UF (e.g., só 'Brasil')
-                    df_line_data = df_filtered.sort_values('CODG_ANO')
-                    if not df_line_data.empty:
-                         # Adapta customdata para não ter UF, adiciona valor formatado
-                         customdata_line_no_uf = np.column_stack((
-                             df_line_data['DESC_UND_MED'].values,
-                             df_line_data['VLR_VAR'].values, # Original value
-                             df_line_data['VLR_VAR'].apply(format_br).values # Formatted value
-                         ))
-                         # Modificado: Usa a função format_br
-                         text_values = df_line_data['VLR_VAR'].apply(format_br)
-                         main_fig.add_trace(go.Scatter(
-                             x=df_line_data['CODG_ANO'], y=df_line_data['VLR_VAR'], name='Valor',
-                             customdata=customdata_line_no_uf, text=text_values, mode='lines+markers+text',
-                             line=dict(color='#229846', width=3), # Cor padrão ou específica
-                             hovertemplate=(
-                                 "Ano: %{x}<br>"
-                                 "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
-                                 "Unidade: %{customdata[0]}<extra></extra>"
-                             )
-                         ))
-
-                         max_y_line_no_uf = df_line_data['VLR_VAR'].max()
-                         y_range_line_no_uf = [0, max_y_line_no_uf * 1.15]
-
-                         layout_updates_line_no_uf = DEFAULT_LAYOUT.copy()
-                         layout_updates_line_no_uf.update({
-                             'showlegend': False,
-                             'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
-                             'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line_no_uf)
-                         })
-                         unique_years_line_no_uf = sorted(df_line_data['CODG_ANO'].unique())
-                         layout_updates_line_no_uf['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line_no_uf]
-                         layout_updates_line_no_uf['xaxis']['tickvals'] = unique_years_line_no_uf
-                         main_fig.update_layout(layout_updates_line_no_uf)
-                    else:
-                         main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de linha.', xaxis={'visible': False}, yaxis={'visible': False})
-
-            else: # grafico_linha_flag == 0
-                # --- Lógica do Gráfico de Barras AGRUPADO POR ANO (Refatorado com go.Figure) ---
-                main_fig = go.Figure()
-                if 'DESC_UND_FED' in df_filtered.columns and 'CODG_ANO' in df_filtered.columns:
-                    df_bar_grouped_data = df_filtered.sort_values(['CODG_ANO', 'DESC_UND_FED'])
-                    if not df_bar_grouped_data.empty:
+        if grafico_linha_flag == 1:
+            # --- Lógica do Gráfico de Linha (Refatorado com go.Figure) ---
+            main_fig = go.Figure() # Reinicializa para garantir que está vazia
+            if 'DESC_UND_FED' in df_filtered.columns:
+                df_line_data = df_filtered.sort_values(['DESC_UND_FED', 'CODG_ANO'])
+                if not df_line_data.empty:
+                    for uf in df_line_data['DESC_UND_FED'].unique():
+                        df_state = df_line_data[df_line_data['DESC_UND_FED'] == uf]
+                        # Adiciona verificação se df_state não está vazio
+                        if df_state.empty: continue
+                        # Modificado: Adiciona valor formatado ao customdata
+                        customdata_state = np.column_stack((
+                            np.full(len(df_state), uf),
+                            df_state['DESC_UND_MED'].values,
+                            df_state['VLR_VAR'].values, # Original value
+                            df_state['VLR_VAR'].apply(format_br).values # Formatted value
+                        ))
+                        # Modificado: Usa a função format_br
+                        text_values = df_state['VLR_VAR'].apply(format_br)
+                        trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                         color_map = {
                             'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
                             'Mato Grosso': '#ab63fa', 'Mato Grosso do Sul': '#ffa15a', 'Rondônia': '#19d3f3',
                             'Tocantins': '#ff6692', 'Brasil': '#FF0000' # Adiciona Brasil
                         }
-                        for uf in df_bar_grouped_data['DESC_UND_FED'].unique():
-                            df_state = df_bar_grouped_data[df_bar_grouped_data['DESC_UND_FED'] == uf]
-                            if df_state.empty: continue # Pula UF sem dados
-                            # Modificado: Adiciona valor formatado ao customdata
-                            customdata_state = np.column_stack((
-                                np.full(len(df_state), uf),
-                                df_state['DESC_UND_MED'].values,
-                                df_state['VLR_VAR'].values, # Original value
-                                df_state['VLR_VAR'].apply(format_br).values # Formatted value
-                            ))
-                            # Modificado: Usa a função format_br
-                            text_values = df_state['VLR_VAR'].apply(format_br)
-                            trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
-                            bar_color = color_map.get(uf)
+                        line_color = color_map.get(uf)
+                        line_width = 6 if uf == 'Goiás' else 2
 
-                            main_fig.add_trace(go.Bar(
-                                x=df_state['CODG_ANO'], y=df_state['VLR_VAR'], name=trace_name,
-                                customdata=customdata_state, text=text_values, texttemplate='%{text}',
-                                textposition='outside', marker_color=bar_color, marker_line_width=1.5,
-                                hovertemplate=(
-                                    "<b>%{customdata[0]}</b><br>" # UF do customdata
-                                    "Ano: %{x}<br>"
-                                    "Valor: %{customdata[3]}<br>" # Modificado: Usa customdata[3] (pré-formatado)
-                                    "Unidade: %{customdata[1]}<extra></extra>"
-                                )
-                            ))
+                        main_fig.add_trace(go.Scatter(
+                            x=df_state['CODG_ANO'], y=df_state['VLR_VAR'], name=trace_name,
+                            customdata=customdata_state, text=text_values, mode='lines+markers+text',
+                            texttemplate='%{text}', textposition='top center', textfont=dict(size=10),
+                            marker=dict(size=10, symbol='circle', line=dict(width=1, color='white')),
+                            line=dict(width=line_width, color=line_color),
+                            hovertemplate=(
+                                "<b>%{customdata[0]}</b><br>" # UF do customdata
+                                "Ano: %{x}<br>"
+                                "Valor: %{customdata[3]}<br>" # Modificado: Usa customdata[3] (pré-formatado)
+                                "Unidade: %{customdata[1]}<extra></extra>"
+                            )
+                        ))
 
-                        max_y_grouped = df_bar_grouped_data['VLR_VAR'].max()
-                        y_range_grouped = [0, max_y_grouped * 1.15]
+                    max_y_line = df_line_data['VLR_VAR'].max()
+                    y_range_line = [0, max_y_line * 1.15]
 
-                        layout_updates_bar_grouped = DEFAULT_LAYOUT.copy()
-                        layout_updates_bar_grouped.update({
-                            'barmode': 'group',
-                            'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
-                            'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_grouped)
-                        })
-                        unique_years_bar = sorted(df_bar_grouped_data['CODG_ANO'].unique())
-                        layout_updates_bar_grouped['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar]
-                        layout_updates_bar_grouped['xaxis']['tickvals'] = unique_years_bar
-                        main_fig.update_layout(layout_updates_bar_grouped)
-                    else:
-                        main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de barras agrupado.', xaxis={'visible': False}, yaxis={'visible': False})
+                    layout_updates_line = DEFAULT_LAYOUT.copy()
+                    layout_updates_line.update({
+                        'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
+                        'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line)
+                    })
+                    unique_years_line = sorted(df_line_data['CODG_ANO'].unique())
+                    layout_updates_line['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line]
+                    layout_updates_line['xaxis']['tickvals'] = unique_years_line
+                    main_fig.update_layout(layout_updates_line)
                 else:
-                    # Caso sem UF mas com série temporal -> Barras simples por ano
-                    df_bar_no_uf = df_filtered.sort_values('CODG_ANO')
-                    if not df_bar_no_uf.empty:
-                        # Modificado: Adiciona valor formatado ao customdata
-                        customdata_bar_no_uf = np.column_stack((
-                            df_bar_no_uf['DESC_UND_MED'].values,
-                            df_bar_no_uf['VLR_VAR'].values, # Original value
-                            df_bar_no_uf['VLR_VAR'].apply(format_br).values # Formatted value
+                    main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de linha.', xaxis={'visible': False}, yaxis={'visible': False})
+
+            else: # Gráfico de linha sem UF (e.g., só 'Brasil')
+                df_line_data = df_filtered.sort_values('CODG_ANO')
+                if not df_line_data.empty:
+                        # Adapta customdata para não ter UF, adiciona valor formatado
+                        customdata_line_no_uf = np.column_stack((
+                            df_line_data['DESC_UND_MED'].values,
+                            df_line_data['VLR_VAR'].values, # Original value
+                            df_line_data['VLR_VAR'].apply(format_br).values # Formatted value
                         ))
                         # Modificado: Usa a função format_br
-                        text_values = df_bar_no_uf['VLR_VAR'].apply(format_br)
-                        main_fig.add_trace(go.Bar(
-                            x=df_bar_no_uf['CODG_ANO'],
-                            y=df_bar_no_uf['VLR_VAR'],
-                            marker_color='#229846', # Cor padrão ou específica
+                        text_values = df_line_data['VLR_VAR'].apply(format_br)
+                        main_fig.add_trace(go.Scatter(
+                            x=df_line_data['CODG_ANO'], y=df_line_data['VLR_VAR'], name='Valor',
+                            customdata=customdata_line_no_uf, text=text_values, mode='lines+markers+text',
+                            line=dict(color='#229846', width=3), # Cor padrão ou específica
                             hovertemplate=(
                                 "Ano: %{x}<br>"
                                 "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
@@ -952,113 +856,112 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                             )
                         ))
 
-                        max_y_bar_no_uf = df_bar_no_uf['VLR_VAR'].max()
-                        y_range_bar_no_uf = [0, max_y_bar_no_uf * 1.15]
-                        layout_updates_bar_no_uf = DEFAULT_LAYOUT.copy()
-                        layout_updates_bar_no_uf.update({
+                        max_y_line_no_uf = df_line_data['VLR_VAR'].max()
+                        y_range_line_no_uf = [0, max_y_line_no_uf * 1.15]
+
+                        layout_updates_line_no_uf = DEFAULT_LAYOUT.copy()
+                        layout_updates_line_no_uf.update({
                             'showlegend': False,
-                            'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
-                            'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_bar_no_uf)
+                            'xaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), tickangle=45),
+                            'yaxis': dict(showgrid=True, zeroline=False, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_line_no_uf)
                         })
-                        unique_years_bar_no_uf = sorted(df_bar_no_uf['CODG_ANO'].unique())
-                        layout_updates_bar_no_uf['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar_no_uf]
-                        layout_updates_bar_no_uf['xaxis']['tickvals'] = unique_years_bar_no_uf
-                        main_fig.update_layout(layout_updates_bar_no_uf)
-                    else:
-                        main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de barras.', xaxis={'visible': False}, yaxis={'visible': False})
-        else: # serie_temporal_flag == 0 OR num_anos < min_years_for_temporal
-            # --- Lógica do Gráfico de Barras SIMPLES (Último Ano) (Refatorado com go.Figure) ---
+                        unique_years_line_no_uf = sorted(df_line_data['CODG_ANO'].unique())
+                        layout_updates_line_no_uf['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_line_no_uf]
+                        layout_updates_line_no_uf['xaxis']['tickvals'] = unique_years_line_no_uf
+                        main_fig.update_layout(layout_updates_line_no_uf)
+                else:
+                        main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de linha.', xaxis={'visible': False}, yaxis={'visible': False})
+
+        else: # grafico_linha_flag == 0
+            # --- Lógica do Gráfico de Barras AGRUPADO POR ANO (Refatorado com go.Figure) ---
             main_fig = go.Figure()
-            if 'DESC_UND_FED' in df_filtered.columns and ano_default:
-                df_bar_simple_data = df_filtered[df_filtered['CODG_ANO'] == ano_default]
-                if not df_bar_simple_data.empty:
-                    # Ordenação baseada no valor (descendente)
-                    df_bar_simple_data = df_bar_simple_data.sort_values('VLR_VAR', ascending=False)
-                    color_map = { # Reutiliza color map
+            if 'DESC_UND_FED' in df_filtered.columns and 'CODG_ANO' in df_filtered.columns:
+                df_bar_grouped_data = df_filtered.sort_values(['CODG_ANO', 'DESC_UND_FED'])
+                if not df_bar_grouped_data.empty:
+                    color_map = {
                         'Goiás': '#229846', 'Maranhão': '#D2B48C', 'Distrito Federal': '#636efa',
                         'Mato Grosso': '#ab63fa', 'Mato Grosso do Sul': '#ffa15a', 'Rondônia': '#19d3f3',
                         'Tocantins': '#ff6692', 'Brasil': '#FF0000' # Adiciona Brasil
                     }
-                    all_ufs = df_bar_simple_data['DESC_UND_FED'].unique() # Pega UFs ordenadas
-                    for uf in all_ufs:
-                        df_state = df_bar_simple_data[df_bar_simple_data['DESC_UND_FED'] == uf]
-                        if df_state.empty: continue # Pula se não houver dados para o estado
+                    for uf in df_bar_grouped_data['DESC_UND_FED'].unique():
+                        df_state = df_bar_grouped_data[df_bar_grouped_data['DESC_UND_FED'] == uf]
+                        if df_state.empty: continue # Pula UF sem dados
                         # Modificado: Adiciona valor formatado ao customdata
                         customdata_state = np.column_stack((
+                            np.full(len(df_state), uf),
                             df_state['DESC_UND_MED'].values,
                             df_state['VLR_VAR'].values, # Original value
                             df_state['VLR_VAR'].apply(format_br).values # Formatted value
                         ))
                         # Modificado: Usa a função format_br
-                        text_values = df_state['VLR_VAR'].apply(format_br).values
+                        text_values = df_state['VLR_VAR'].apply(format_br)
                         trace_name = f"<b>{uf}</b>" if uf == 'Goiás' else uf
                         bar_color = color_map.get(uf)
-                        opacity = 1.0 if uf == 'Goiás' else 0.85
-                        line_color = '#0a6b28' if uf == 'Goiás' else None
-                        line_width = 2 if uf == 'Goiás' else 1.5
 
                         main_fig.add_trace(go.Bar(
-                            x=[uf], y=df_state['VLR_VAR'], name=trace_name,
+                            x=df_state['CODG_ANO'], y=df_state['VLR_VAR'], name=trace_name,
                             customdata=customdata_state, text=text_values, texttemplate='%{text}',
-                            textposition='outside', marker_color=bar_color, marker_opacity=opacity,
-                            marker_line_width=line_width, marker_line_color=line_color,
+                            textposition='outside', marker_color=bar_color, marker_line_width=1.5,
                             hovertemplate=(
-                                "<b>%{x}</b><br>" # UF do eixo X
-                                "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
-                                "Unidade: %{customdata[0]}<extra></extra>" # Unidade
+                                "<b>%{customdata[0]}</b><br>" # UF do customdata
+                                "Ano: %{x}<br>"
+                                "Valor: %{customdata[3]}<br>" # Modificado: Usa customdata[3] (pré-formatado)
+                                "Unidade: %{customdata[1]}<extra></extra>"
                             )
                         ))
 
-                    max_y_value = df_bar_simple_data['VLR_VAR'].max()
-                    y_axis_range = [0, max_y_value * 1.15] # 15% de espaço extra
+                    max_y_grouped = df_bar_grouped_data['VLR_VAR'].max()
+                    y_range_grouped = [0, max_y_grouped * 1.15]
 
-                    layout_updates_bar_simple = DEFAULT_LAYOUT.copy()
-                    layout_updates_bar_simple.update({
-                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None, categoryorder='array', categoryarray=all_ufs), # Ordena pelo DataFrame
-                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_axis_range),
-                        'showlegend': False, 'margin': dict(l=60, r=50, t=50, b=120)
+                    layout_updates_bar_grouped = DEFAULT_LAYOUT.copy()
+                    layout_updates_bar_grouped.update({
+                        'barmode': 'group',
+                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_grouped)
                     })
-                    x_ticktext = [f"<b>{label}</b>" if label == 'Goiás' else f"{label}" for label in all_ufs] # Usa all_ufs
-                    layout_updates_bar_simple['xaxis']['ticktext'] = x_ticktext
-                    layout_updates_bar_simple['xaxis']['tickvals'] = all_ufs # Usa os nomes das UFs como tickvals
-                    main_fig.update_layout(layout_updates_bar_simple)
+                    unique_years_bar = sorted(df_bar_grouped_data['CODG_ANO'].unique())
+                    layout_updates_bar_grouped['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar]
+                    layout_updates_bar_grouped['xaxis']['tickvals'] = unique_years_bar
+                    main_fig.update_layout(layout_updates_bar_grouped)
                 else:
-                     main_fig = go.Figure().update_layout(title=f'Dados insuficientes para o ano {ano_default}.', xaxis={'visible': False}, yaxis={'visible': False})
+                    main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de barras agrupado.', xaxis={'visible': False}, yaxis={'visible': False})
             else:
-                # Caso sem UF e sem série temporal -> Barra simples do último ano sem UF
-                df_bar_simple_no_uf = df_filtered[df_filtered['CODG_ANO'] == ano_default]
-                if not df_bar_simple_no_uf.empty:
+                # Caso sem UF mas com série temporal -> Barras simples por ano
+                df_bar_no_uf = df_filtered.sort_values('CODG_ANO')
+                if not df_bar_no_uf.empty:
                     # Modificado: Adiciona valor formatado ao customdata
-                    customdata_bar_simple_no_uf = np.column_stack((
-                        df_bar_simple_no_uf['DESC_UND_MED'].values,
-                        df_bar_simple_no_uf['VLR_VAR'].values, # Original value
-                        df_bar_simple_no_uf['VLR_VAR'].apply(format_br).values # Formatted value
+                    customdata_bar_no_uf = np.column_stack((
+                        df_bar_no_uf['DESC_UND_MED'].values,
+                        df_bar_no_uf['VLR_VAR'].values, # Original value
+                        df_bar_no_uf['VLR_VAR'].apply(format_br).values # Formatted value
                     ))
                     # Modificado: Usa a função format_br
-                    text_values = df_bar_simple_no_uf['VLR_VAR'].apply(format_br).values
+                    text_values = df_bar_no_uf['VLR_VAR'].apply(format_br)
                     main_fig.add_trace(go.Bar(
-                        x=['Valor'], # Categoria genérica
-                        y=df_bar_simple_no_uf['VLR_VAR'],
-                        marker_color='#229846', # Cor padrão
+                        x=df_bar_no_uf['CODG_ANO'],
+                        y=df_bar_no_uf['VLR_VAR'],
+                        marker_color='#229846', # Cor padrão ou específica
                         hovertemplate=(
-                            "<b>Valor</b><br>"
+                            "Ano: %{x}<br>"
                             "Valor: %{customdata[2]}<br>" # Modificado: Usa customdata[2] (pré-formatado)
                             "Unidade: %{customdata[0]}<extra></extra>"
                         )
                     ))
 
-                    max_y_bar_simple_no_uf = df_bar_simple_no_uf['VLR_VAR'].max()
-                    y_range_bar_simple_no_uf = [0, max_y_bar_simple_no_uf * 1.15]
-                    layout_updates_bar_simple_no_uf = DEFAULT_LAYOUT.copy()
-                    layout_updates_bar_simple_no_uf.update({
-                        'xaxis': dict(showgrid=False, tickfont=dict(size=12, color='black'), title=None),
-                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_bar_simple_no_uf),
-                        'showlegend': False
+                    max_y_bar_no_uf = df_bar_no_uf['VLR_VAR'].max()
+                    y_range_bar_no_uf = [0, max_y_bar_no_uf * 1.15]
+                    layout_updates_bar_no_uf = DEFAULT_LAYOUT.copy()
+                    layout_updates_bar_no_uf.update({
+                        'showlegend': False,
+                        'xaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), tickangle=45, title=None),
+                        'yaxis': dict(showgrid=True, tickfont=dict(size=12, color='black'), title=None, type='linear', tickformat='d', range=y_range_bar_no_uf)
                     })
-                    main_fig.update_layout(layout_updates_bar_simple_no_uf)
+                    unique_years_bar_no_uf = sorted(df_bar_no_uf['CODG_ANO'].unique())
+                    layout_updates_bar_no_uf['xaxis']['ticktext'] = [f"<b>{x}</b>" for x in unique_years_bar_no_uf]
+                    layout_updates_bar_no_uf['xaxis']['tickvals'] = unique_years_bar_no_uf
+                    main_fig.update_layout(layout_updates_bar_no_uf)
                 else:
-                    main_fig = go.Figure().update_layout(title=f'Dados insuficientes para o ano {ano_default}.', xaxis={'visible': False}, yaxis={'visible': False})
-        # --- Fim da Lógica do Gráfico Principal ---
+                    main_fig = go.Figure().update_layout(title='Dados insuficientes para o gráfico de barras.', xaxis={'visible': False}, yaxis={'visible': False})
 
         # --- Criação do Gráfico de Ranking (se houver UF e ano) ---
         ranking_content = dbc.Alert("Ranking não disponível (requer dados por Unidade Federativa).", color="info", className="textCenter p-3")
