@@ -14,7 +14,7 @@ import time
 import warnings
 from datetime import datetime
 import numpy as np
-from dash.exceptions import PreventUpdate 
+from dash.exceptions import PreventUpdate
 from config import *
 import secrets
 from dotenv import load_dotenv
@@ -25,7 +25,7 @@ import bcrypt
 from generate_password import generate_password_hash, generate_secret_key, update_env_file, check_password
 from flask_cors import CORS
 import constants  # Importar constantes
-import logging 
+import logging
 import math
 
 # Carrega as variáveis de ambiente primeiro
@@ -368,7 +368,7 @@ def load_indicadores():
         return df_ind.loc[df_ind['RBC'] == 1]
     except Exception as e:
         # Retorna DataFrame vazio com as colunas esperadas em caso de erro
-        return pd.DataFrame(columns=['ID_INDICADOR', 'ID_META', 'ID_OBJETIVO', 'DESC_INDICADOR', 'VARIAVEIS', 'GRAFICO_LINHA', 'SERIE_TEMPORAL', 'RBC', 'RANKING_ORDEM'])
+        return pd.DataFrame(columns=['ID_INDICADOR', 'ID_META', 'ID_OBJETIVO', 'DESC_INDICADOR', 'VARIAVEIS', 'GRAFICO_LINHA', 'RBC', 'RANKING_ORDEM'])
 
 
 @lru_cache(maxsize=1)
@@ -744,17 +744,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
         # --- Criação das Figuras dos Gráficos ---
         main_fig = go.Figure() # Inicializa a figura principal
-        fig_ranking = go.Figure() # Inicializa a figura do ranking
         fig_map = go.Figure()  # Inicializa a figura do mapa
 
         # Obter anos únicos e ano padrão
         anos_unicos = sorted(df_filtered['CODG_ANO'].unique())
-        num_anos = len(anos_unicos)
         ano_default = anos_unicos[-1] if anos_unicos else None
 
         # Lê as flags do indicador e RANKING_ORDEM
         grafico_linha_flag = 1 # Padrão
-        serie_temporal_flag = 1 # Padrão
         ranking_ordem = 0 # Padrão (0 = maior para menor, 1 = menor para maior)
         if indicador_id and not df_indicadores.empty:
             indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
@@ -763,12 +760,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     try:
                         grafico_linha_val = pd.to_numeric(indicador_info['GRAFICO_LINHA'].iloc[0], errors='coerce')
                         if not pd.isna(grafico_linha_val): grafico_linha_flag = int(grafico_linha_val)
-                    except (ValueError, TypeError): pass # Mantém padrão
-                if 'SERIE_TEMPORAL' in indicador_info.columns:
-                    try:
-                        serie_temporal_val = pd.to_numeric(indicador_info['SERIE_TEMPORAL'].iloc[0], errors='coerce')
-                        if not pd.isna(serie_temporal_val): serie_temporal_flag = int(serie_temporal_val)
-                    except (ValueError, TypeError): pass # Mantém padrão
+                    except (ValueError, TypeError): pass # Mantém padr
                 # --- Adicionado: Lê RANKING_ORDEM ---
                 if 'RANKING_ORDEM' in indicador_info.columns:
                     try:
@@ -1156,7 +1148,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         # Adiciona aba de Mapa se o conteúdo foi gerado (não é apenas a mensagem de erro inicial)
         # Ou seja, se 'DESC_UND_FED' existe
         if 'DESC_UND_FED' in df_filtered.columns:
-            tabs_content.append(dbc.Tab(map_content, label="Mapa Coroplético", tab_id=f'tab-map-{indicador_id}', id={'type': 'tab-map', 'index': indicador_id}))
+            tabs_content.append(dbc.Tab(map_content, label="Mapa", tab_id=f'tab-map-{indicador_id}', id={'type': 'tab-map', 'index': indicador_id}))
 
         # Container para as abas (se existirem)
         tabs_container = html.Div() # Vazio por padrão
@@ -1273,32 +1265,35 @@ app.layout = dbc.Container([
     prevent_initial_call=True
 )
 def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FUNÇÃO
-    # Só carrega se a aba estiver ativa
+    # Verificações iniciais
     if not active_tab or not container_id:
         raise PreventUpdate
 
     # Obtém o ID do indicador
     indicador_id = container_id['index']
-    logging.debug("Tentando carregar indicador sob demanda: %s (Aba ativa: %s)", indicador_id, active_tab)
-
+    
     # Ignora o placeholder
     if indicador_id == 'placeholder':
         raise PreventUpdate
-
-    # Verifica se a aba ativa corresponde a este indicador
-    if active_tab != f"tab-{indicador_id}":
+    
+    # Verifica EXATAMENTE se a aba ativa corresponde a este indicador
+    expected_tab_id = f"tab-{indicador_id}"
+    if active_tab != expected_tab_id:
+        # Não gera logs - apenas previne a atualização silenciosamente
         raise PreventUpdate
+    
+    # Se chegou aqui, é porque este indicador DEVE ser carregado
+    logging.debug("Carregando indicador: %s (Aba ativa: %s)", indicador_id, active_tab)
 
     # --- INÍCIO DO BLOCO TRY...EXCEPT ---
     try:
         # Carrega os dados do indicador
-        logging.debug("Carregando dados para %s", indicador_id)
         df_dados = load_dados_indicador_cache(indicador_id)
 
         # Busca informações do indicador (descrição, etc.)
         indicador_info = df_indicadores[df_indicadores['ID_INDICADOR'] == indicador_id]
         if indicador_info.empty:
-            logging.error("Informações não encontradas para indicador %s", indicador_id)
+            logging.error("Erro: Configuração não encontrada para indicador %s", indicador_id)
             # Oculta spinner, mostra erro
             return [dbc.Alert(f"Informações de configuração não encontradas para o indicador {indicador_id}.", color="danger")], {'display': 'none'}
 
@@ -1307,7 +1302,7 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
 
         # Verifica se os dados foram carregados
         if df_dados is None or df_dados.empty:
-            logging.warning("Dados não disponíveis para %s em load_indicator_on_demand.", indicador_id)
+            logging.warning("Dados não disponíveis para indicador %s", indicador_id)
             # Retorna descrição + alerta de dados não disponíveis
             return [desc_p, dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning")], {'display': 'none'} # Oculta spinner
 
@@ -1318,7 +1313,6 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
         initial_dynamic_filters = {} # Dicionário para filtros iniciais
 
         # --- Geração de Filtros Dinâmicos ---
-        logging.debug("Gerando filtros dinâmicos para %s", indicador_id)
         filter_cols = identify_filter_columns(df_dados)
         for idx, filter_col_code in enumerate(filter_cols):
             desc_col_code = 'DESC_' + filter_col_code[5:]
@@ -1346,7 +1340,6 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
             ], md=md_width, xs=12))
 
         # --- Geração do Dropdown de Variável Principal ---
-        logging.debug("Verificando dropdown de variável para %s", indicador_id)
         has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
         if has_variable_dropdown:
             df_variavel_loaded = load_variavel()
@@ -1368,7 +1361,6 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
                         ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': indicador_id})]
 
         # --- Geração da Visualização ---
-        logging.debug("Gerando visualização para %s", indicador_id)
         initial_visualization = create_visualization(
             df_dados, indicador_id, valor_inicial_variavel, initial_dynamic_filters
         )
@@ -1380,16 +1372,14 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
             dynamic_content.append(dbc.Row(dynamic_filters_div))
         dynamic_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
 
-        # Retorna descrição + conteúdo dinâmico e oculta o spinner
-        logging.debug("Conteúdo carregado com sucesso para %s", indicador_id)
-        # Modificado: Retorna APENAS o conteúdo dinâmico
+        # Retorna conteúdo dinâmico e oculta o spinner
         return dynamic_content, {'display': 'none'}
 
     # --- FIM DO BLOCO TRY...EXCEPT ---
     except Exception as e_load:
-        logging.exception("Erro CRÍTICO ao carregar conteúdo sob demanda para %s", indicador_id)
-        # Modificado: Retorna APENAS o alerta de erro
-        return [dbc.Alert(f"Erro ao carregar dados para {indicador_id}. Consulte os logs do servidor.", color="danger")], {'display': 'none'} # Oculta spinner, mostra erro
+        logging.exception("Erro ao carregar conteúdo para %s", indicador_id)
+        # Retorna apenas o alerta de erro
+        return [dbc.Alert(f"Erro ao carregar dados para {indicador_id}.", color="danger")], {'display': 'none'}
 
 
 # Callback para atualizar o conteúdo do card principal (metas, indicadores)
