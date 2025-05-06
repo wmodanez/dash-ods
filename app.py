@@ -1931,34 +1931,55 @@ def update_visualization_direct(var_value, filter_values, filter_ids, container_
     [Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value')],
     [
         State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
-        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
+        State({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
+        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id')
     ],
     prevent_initial_call=True
 )
-def update_ranking_chart(selected_year, chart_id, store_data):
+def update_ranking_chart(selected_year, chart_id, current_var_value, filter_values, filter_ids):
+    """Atualiza o gráfico de ranking quando o ano é alterado"""
     ctx = callback_context
-    if not ctx.triggered or not selected_year or not store_data:
+    if not ctx.triggered or not selected_year:
         raise PreventUpdate
 
+    # Identificar o indicador a partir do ID do gráfico
     indicador_id = chart_id['index']
+    
+    # Log para debugging
+    logging.debug(f"Atualizando ranking para {indicador_id}, Ano: {selected_year}")
 
-    # Extrai filtros do store
-    selected_var = store_data.get('selected_var')
-    selected_filters = store_data.get('selected_filters', {})
-
+    # Coletar os filtros atuais
+    selected_filters = {}
+    if filter_ids and filter_values:
+        for i, filter_id in enumerate(filter_ids):
+            if i < len(filter_values):  # Evita IndexError
+                filter_col = filter_id.get('filter_col')
+                if filter_col:
+                    selected_filters[filter_col] = filter_values[i]
+    
     # Carrega os dados do indicador
     df_ranking_base = load_dados_indicador_cache(indicador_id)
-    if df_ranking_base is None or df_ranking_base.empty or ('DESC_UND_FED' not in df_ranking_base.columns and 'CODG_UND_FED' not in df_ranking_base.columns):
-        # Retorna figura vazia com aviso se não houver dados ou UF
-        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
+    if df_ranking_base is None or df_ranking_base.empty:
+        logging.warning(f"Dados não disponíveis para o ranking de {indicador_id}")
+        # Retorna figura vazia com aviso se não houver dados
+        return go.Figure().update_layout(title='Dados não disponíveis para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # Verificar se temos dados de UF
+    if 'DESC_UND_FED' not in df_ranking_base.columns and 'CODG_UND_FED' not in df_ranking_base.columns:
+        logging.warning(f"Colunas de UF não encontradas para o ranking de {indicador_id}")
+        return go.Figure().update_layout(title='Dados não incluem informações por UF.', xaxis={'visible': False}, yaxis={'visible': False})
 
     # --- Aplica filtros (Variável principal e dinâmicos) ---
     df_filtered_ranking = df_ranking_base.copy()
+    
     # Filtro Variável Principal
-    if 'CODG_VAR' in df_filtered_ranking.columns and selected_var:
+    if 'CODG_VAR' in df_filtered_ranking.columns and current_var_value:
         df_filtered_ranking['CODG_VAR'] = df_filtered_ranking['CODG_VAR'].astype(str).str.strip()
-        selected_var_str = str(selected_var).strip()
+        selected_var_str = str(current_var_value).strip()
         df_filtered_ranking = df_filtered_ranking[df_filtered_ranking['CODG_VAR'] == selected_var_str]
+        logging.debug(f"Após filtro de variável {selected_var_str} - Registros: {len(df_filtered_ranking)}")
+    
     # Filtros Dinâmicos
     if selected_filters:
         for col_code, selected_value in selected_filters.items():
@@ -1966,33 +1987,62 @@ def update_ranking_chart(selected_year, chart_id, store_data):
                 df_filtered_ranking[col_code] = df_filtered_ranking[col_code].astype(str).fillna('').str.strip()
                 selected_value_str = str(selected_value).strip()
                 df_filtered_ranking = df_filtered_ranking[df_filtered_ranking[col_code] == selected_value_str]
+                logging.debug(f"Após filtro {col_code}={selected_value_str} - Registros: {len(df_filtered_ranking)}")
+
+    # IMPORTANTE: Primeiro filtra pelo ANO selecionado, depois verifica unicidade
+    df_filtered_ranking['CODG_ANO'] = df_filtered_ranking['CODG_ANO'].astype(str).str.strip()
+    df_ranking_ano = df_filtered_ranking[df_filtered_ranking['CODG_ANO'] == str(selected_year).strip()].copy()
+    
+    if df_ranking_ano.empty:
+        logging.warning(f"Sem dados para o ano {selected_year} com os filtros aplicados")
+        return go.Figure().update_layout(
+            title=f'Sem dados para o ano {selected_year} com os filtros aplicados.', 
+            xaxis={'visible': False}, yaxis={'visible': False}
+        )
 
     # Adiciona DESC_UND_FED se necessário
-    if 'DESC_UND_FED' not in df_filtered_ranking.columns and 'CODG_UND_FED' in df_filtered_ranking.columns:
-        df_filtered_ranking['DESC_UND_FED'] = df_filtered_ranking['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
-        df_filtered_ranking = df_filtered_ranking.dropna(subset=['DESC_UND_FED'])
+    if 'DESC_UND_FED' not in df_ranking_ano.columns and 'CODG_UND_FED' in df_ranking_ano.columns:
+        df_ranking_ano['DESC_UND_FED'] = df_ranking_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        df_ranking_ano = df_ranking_ano.dropna(subset=['DESC_UND_FED'])
 
-    # Adiciona DESC_UND_MED se necessário
-    if 'DESC_UND_MED' not in df_filtered_ranking.columns and 'CODG_UND_MED' in df_filtered_ranking.columns:
-        df_unidade_medida_loaded = load_unidade_medida()
-        if not df_unidade_medida_loaded.empty:
-            df_filtered_ranking['CODG_UND_MED'] = df_filtered_ranking['CODG_UND_MED'].astype(str)
-            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
-            df_filtered_ranking = pd.merge(df_filtered_ranking, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df_filtered_ranking['DESC_UND_MED'] = df_filtered_ranking['DESC_UND_MED'].fillna('N/D')
-        else:
-            df_filtered_ranking['DESC_UND_MED'] = 'N/D'
-
-    # Filtra pelo ANO selecionado
-    df_ranking_ano = df_filtered_ranking[df_filtered_ranking['CODG_ANO'] == selected_year].copy()
-
-    if df_ranking_ano.empty or 'DESC_UND_FED' not in df_ranking_ano.columns:
-         return go.Figure().update_layout(title=f'Ranking não disponível para {selected_year} com filtros aplicados.', xaxis={'visible': False}, yaxis={'visible': False})
+    # Agora verifica unicidade por UF APÓS filtrar pelo ano selecionado
+    if 'DESC_UND_FED' not in df_ranking_ano.columns or df_ranking_ano.empty:
+        logging.warning(f"Dados de UF não encontrados para o ano {selected_year}")
+        return go.Figure().update_layout(
+            title=f'Ranking não disponível para {selected_year}.', 
+            xaxis={'visible': False}, yaxis={'visible': False}
+        )
 
     # Verifica unicidade por UF para o ano selecionado
     counts_per_uf_ranking = df_ranking_ano['DESC_UND_FED'].value_counts()
-    if (counts_per_uf_ranking > 1).any():
-         return go.Figure().update_layout(title='Ranking não gerado: múltiplos valores por UF.', xaxis={'visible': False}, yaxis={'visible': False})
+    has_duplicates = (counts_per_uf_ranking > 1).any()
+    
+    if has_duplicates:
+        # Se tiver duplicatas, tenta uma abordagem alternativa - agrupar por UF e usar a média
+        logging.warning(f"Múltiplos valores por UF no ano {selected_year}, tentando agrupar")
+        try:
+            df_ranking_ano = df_ranking_ano.groupby('DESC_UND_FED').agg({
+                'VLR_VAR': 'mean',
+                'DESC_UND_MED': 'first'  # Mantém a primeira unidade de medida
+            }).reset_index()
+            logging.info(f"Agrupamento bem-sucedido. Prosseguindo com {len(df_ranking_ano)} UFs")
+        except Exception as agg_err:
+            logging.error(f"Erro ao agrupar: {agg_err}")
+            return go.Figure().update_layout(
+                title=f'Múltiplos valores por UF no ano {selected_year}. Não foi possível agrupar.', 
+                xaxis={'visible': False}, yaxis={'visible': False}
+            )
+
+    # Adiciona DESC_UND_MED se necessário
+    if 'DESC_UND_MED' not in df_ranking_ano.columns and 'CODG_UND_MED' in df_ranking_ano.columns:
+        df_unidade_medida_loaded = load_unidade_medida()
+        if not df_unidade_medida_loaded.empty:
+            df_ranking_ano['CODG_UND_MED'] = df_ranking_ano['CODG_UND_MED'].astype(str)
+            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+            df_ranking_ano = pd.merge(df_ranking_ano, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df_ranking_ano['DESC_UND_MED'] = df_ranking_ano['DESC_UND_MED'].fillna('N/D')
+        else:
+            df_ranking_ano['DESC_UND_MED'] = 'N/D'
 
     # Lê a ordem do ranking do indicador
     ranking_ordem = 0 # Padrão
@@ -2004,9 +2054,8 @@ def update_ranking_chart(selected_year, chart_id, store_data):
         except (ValueError, TypeError): pass
 
     # Ordena baseado em VLR_VAR e RANKING_ORDEM
-    ascending_rank = (ranking_ordem == 0) # True se for maior para menor
-
-    df_ranking_ano = df_ranking_ano.sort_values('VLR_VAR', ascending=ascending_rank)
+    ascending = (ranking_ordem == 1)  # True se for menor para maior (1)
+    df_ranking_ano = df_ranking_ano.sort_values('VLR_VAR', ascending=ascending)
 
     # Define cores e opacidade
     goias_color = 'rgba(34, 152, 70, 1)'
@@ -2057,36 +2106,55 @@ def update_ranking_chart(selected_year, chart_id, store_data):
     [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
     [
         State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
-        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
+        State({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
+        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id')
     ],
     prevent_initial_call=True
 )
-def update_map_on_year_change(selected_year, chart_id, store_data):
+def update_map_on_year_change(selected_year, chart_id, current_var_value, filter_values, filter_ids):
     """Atualiza o mapa quando o ano é alterado"""
-    if not selected_year or not store_data:
+    if not selected_year:
         raise PreventUpdate
     
+    # Identificar o indicador a partir do ID do gráfico
     indicador_id = chart_id['index']
     
-    # Extrai filtros do store
-    selected_var = store_data.get('selected_var')
-    selected_filters = store_data.get('selected_filters', {})
+    # Log para debugging
+    logging.debug(f"Atualizando mapa para {indicador_id}, Ano: {selected_year}")
+    
+    # Coletar os filtros atuais
+    selected_filters = {}
+    if filter_ids and filter_values:
+        for i, filter_id in enumerate(filter_ids):
+            if i < len(filter_values):  # Evita IndexError
+                filter_col = filter_id.get('filter_col')
+                if filter_col:
+                    selected_filters[filter_col] = filter_values[i]
     
     # Carrega os dados do indicador
     df_map_base = load_dados_indicador_cache(indicador_id)
-    if df_map_base is None or df_map_base.empty or ('CODG_UND_FED' not in df_map_base.columns and 'DESC_UND_FED' not in df_map_base.columns):
-        # Retorna figura vazia com aviso se não houver dados ou UF
-        return go.Figure().update_layout(title='Dados não disponíveis ou incompletos para mapa.', 
+    if df_map_base is None or df_map_base.empty:
+        logging.warning(f"Dados não disponíveis para o mapa de {indicador_id}")
+        # Retorna figura vazia com aviso se não houver dados
+        return go.Figure().update_layout(title='Dados não disponíveis para mapa.', 
                                         xaxis={'visible': False}, yaxis={'visible': False})
+    
+    # Verificar se temos dados de UF
+    if 'CODG_UND_FED' not in df_map_base.columns and 'DESC_UND_FED' not in df_map_base.columns:
+        logging.warning(f"Colunas de UF não encontradas para o mapa de {indicador_id}")
+        return go.Figure().update_layout(title='Dados não incluem informações por UF.', 
+                                         xaxis={'visible': False}, yaxis={'visible': False})
     
     # Aplica filtros (Variável principal e dinâmicos)
     df_filtered_map = df_map_base.copy()
     
     # Filtro Variável Principal
-    if 'CODG_VAR' in df_filtered_map.columns and selected_var:
+    if 'CODG_VAR' in df_filtered_map.columns and current_var_value:
         df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
-        selected_var_str = str(selected_var).strip()
+        selected_var_str = str(current_var_value).strip()
         df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
+        logging.debug(f"Após filtro de variável {selected_var_str} - Registros: {len(df_filtered_map)}")
     
     # Filtros Dinâmicos
     if selected_filters:
@@ -2095,26 +2163,64 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
                 df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
                 selected_value_str = str(selected_value).strip()
                 df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
+                logging.debug(f"Após filtro {col_code}={selected_value_str} - Registros: {len(df_filtered_map)}")
     
+    # IMPORTANTE: Primeiro filtra pelo ANO selecionado
     df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
-    df_filtered_map = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()]
+    df_map_ano = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()].copy()
     
     # Se não houver dados após filtrar por ano, retorna uma figura vazia
-    if df_filtered_map.empty:
-        return go.Figure().update_layout(title=f'Nenhum dado disponível para o ano {selected_year}', 
-                                         xaxis={'visible': False}, yaxis={'visible': False})
+    if df_map_ano.empty:
+        logging.warning(f"Sem dados para o ano {selected_year} com os filtros aplicados")
+        return go.Figure().update_layout(
+            title=f'Sem dados para o ano {selected_year} com os filtros aplicados.', 
+            xaxis={'visible': False}, yaxis={'visible': False}
+        )
    
+    # Adiciona DESC_UND_FED se necessário
+    if 'DESC_UND_FED' not in df_map_ano.columns and 'CODG_UND_FED' in df_map_ano.columns:
+        df_map_ano['DESC_UND_FED'] = df_map_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        df_map_ano = df_map_ano.dropna(subset=['DESC_UND_FED'])
+    
+    # Agora verifica unicidade por UF APÓS filtrar pelo ano selecionado
+    if 'DESC_UND_FED' not in df_map_ano.columns or df_map_ano.empty:
+        logging.warning(f"Dados de UF não encontrados para o ano {selected_year}")
+        return go.Figure().update_layout(
+            title=f'Mapa não disponível para {selected_year}.', 
+            xaxis={'visible': False}, yaxis={'visible': False}
+        )
+    
+    # Verifica unicidade por UF para o ano selecionado e, se necessário, agrupa
+    counts_per_uf_map = df_map_ano['DESC_UND_FED'].value_counts()
+    has_duplicates = (counts_per_uf_map > 1).any()
+    
+    if has_duplicates:
+        # Se tiver duplicatas, tenta uma abordagem alternativa - agrupar por UF e usar a média
+        logging.warning(f"Múltiplos valores por UF no ano {selected_year} para o mapa, tentando agrupar")
+        try:
+            df_map_ano = df_map_ano.groupby('DESC_UND_FED').agg({
+                'VLR_VAR': 'mean',
+                'DESC_UND_MED': 'first'  # Mantém a primeira unidade de medida
+            }).reset_index()
+            logging.info(f"Agrupamento para mapa bem-sucedido. Prosseguindo com {len(df_map_ano)} UFs")
+        except Exception as agg_err:
+            logging.error(f"Erro ao agrupar para mapa: {agg_err}")
+            return go.Figure().update_layout(
+                title=f'Múltiplos valores por UF no ano {selected_year}. Não foi possível agrupar.', 
+                xaxis={'visible': False}, yaxis={'visible': False}
+            )
+    
     # Cria o mapa coroplético
     try:
         # Adiciona coluna formatada para hover
-        df_filtered_map['VLR_VAR_FORMATADO'] = df_filtered_map['VLR_VAR'].apply(format_br)
+        df_map_ano['VLR_VAR_FORMATADO'] = df_map_ano['VLR_VAR'].apply(format_br)
         
         # Tenta obter unidade de medida de forma segura (mesma lógica do ranking e gráficos)
         und_med_map = ''
         
         # Primeiro tenta obter da coluna CODG_UND_MED se existir
-        if 'CODG_UND_MED' in df_filtered_map.columns:
-            codg_und_med_values = df_filtered_map['CODG_UND_MED'].dropna().unique()
+        if 'CODG_UND_MED' in df_map_ano.columns:
+            codg_und_med_values = df_map_ano['CODG_UND_MED'].dropna().unique()
             if len(codg_und_med_values) > 0:
                 df_unidade_medida_loaded = load_unidade_medida()
                 if not df_unidade_medida_loaded.empty:
@@ -2125,8 +2231,8 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
                         und_med_map = match_rows['DESC_UND_MED'].iloc[0]
         
         # Se não encontrou pelo código, tenta pela coluna DESC_UND_MED se existir
-        if not und_med_map and 'DESC_UND_MED' in df_filtered_map.columns:
-            und_med_series = df_filtered_map['DESC_UND_MED'].dropna()
+        if not und_med_map and 'DESC_UND_MED' in df_map_ano.columns:
+            und_med_series = df_map_ano['DESC_UND_MED'].dropna()
             if not und_med_series.empty:
                 und_med_map = und_med_series.iloc[0]
         
@@ -2135,7 +2241,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
             geojson = json.load(f)
         
         fig_map = px.choropleth(
-            df_filtered_map,
+            df_map_ano,
             geojson=geojson,
             locations='DESC_UND_FED',
             featureidkey='properties.name',
@@ -2162,7 +2268,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
 
         fig_map.update_traces(
             marker_line_color='white', marker_line_width=1,
-            customdata=df_filtered_map[['VLR_VAR_FORMATADO']],
+            customdata=df_map_ano[['VLR_VAR_FORMATADO']],
             hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
         )
 
@@ -2172,7 +2278,7 @@ def update_map_on_year_change(selected_year, chart_id, store_data):
         
         return fig_map
     except Exception as e:
-        logging.exception("Erro ao criar mapa para %s", indicador_id)
+        logging.exception(f"Erro ao criar mapa para {indicador_id}: {e}")
         empty_fig = go.Figure()
         empty_fig.update_layout(
             title=f"Erro ao criar mapa: {str(e)}",
