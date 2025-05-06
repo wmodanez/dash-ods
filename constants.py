@@ -286,7 +286,7 @@ LIST_COLUNAS = {
     'Biênio': 'DESC_BIENIO',
     'Definição do gasto com com saúde (Código)': 'CODG_DEF_GAST_SAUDE',
     'Definição do gasto com com saúde': 'DESC_DEF_GAST_SAUDE',
-    'Grupos de idade e nível de ensino (Código)': 'COD_GRU_IDADE_NIV_ENS',
+    'Grupos de idade e nível de ensino (Código)': 'CODG_GRU_IDADE_NIV_ENS',
     'Grupos de idade e nível de ensino': 'DESC_GRU_IDADE_NIV_ENS',
     'Situação do domicílio (Código)': 'CODG_SIT_DOM',
     'Situação do domicílio': 'DESC_SIT_DOM',
@@ -454,7 +454,10 @@ COLUMN_NAMES = {
     'CODG_FONT_EMIS_GAS_EFEITO_EST': 'Fonte de Emissão de Gases de Efeito Estufa',
     'CODG_BIOMA': 'Bioma',
     'CODG_KAPOS': 'Classificação de Montanha (Kapos)',
-    'CODG_SIT_SEG_ALI_DOM': 'Situação de Segurança Alimentar no Domicílio'
+    'CODG_SIT_SEG_ALI_DOM': 'Situação de Segurança Alimentar no Domicílio',
+    'CODG_DOM': 'Situação do Domicílio',
+    'CODG_INST': 'Nível de Instrução',
+    'CODG_GRU_IDADE_NIV_ENS': 'Grupo de Idade e Nível de Ensino'
 }
 
 # Mapeamento de códigos de unidades federativas para seus nomes
