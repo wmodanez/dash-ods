@@ -1316,38 +1316,12 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
         dynamic_filters_div = []
         variable_dropdown_div = []
         valor_inicial_variavel = None
+        df_variavel_filtrado = pd.DataFrame()  # Inicializa vazio
         
-        # Modificação: Apenas cria initial_dynamic_filters se for necessário
-        initial_dynamic_filters = {}
-
-        # --- Geração de Filtros Dinâmicos ---
+        # --- Identificação das colunas de filtro dinâmico ---
         filter_cols = identify_filter_columns(df_dados)
-        for idx, filter_col_code in enumerate(filter_cols):
-            desc_col_code = 'DESC_' + filter_col_code[5:]
-            code_to_desc = {}
-            if desc_col_code in df_dados.columns:
-                try:
-                    mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
-                    code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
-                                             index=mapping_df[filter_col_code].astype(str)).to_dict()
-                except Exception as map_err:
-                    logging.error("Erro ao mapear código/descrição para filtro %s em %s: %s", filter_col_code, indicador_id, map_err)
-            unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
-            col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
-            filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
-            md_width = 7 if idx % 2 == 0 else 5
-            initial_value = unique_codes[0] if unique_codes else None
-            if initial_value is not None:
-                 initial_dynamic_filters[filter_col_code] = initial_value
-            dynamic_filters_div.append(dbc.Col([
-                html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
-                dcc.Dropdown(
-                    id={'type': 'dynamic-filter-dropdown', 'index': indicador_id, 'filter_col': filter_col_code},
-                    options=col_options, value=initial_value, style={'marginBottom': '10px', 'width': '100%'}
-                )
-            ], md=md_width, xs=12))
-
-        # --- Geração do Dropdown de Variável Principal ---
+        
+        # --- Geração do Dropdown de Variável Principal (PRIMEIRO, pois afeta os filtros) ---
         has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and indicador_info['VARIAVEIS'].iloc[0] == '1'
         if has_variable_dropdown:
             df_variavel_loaded = load_variavel()
@@ -1356,7 +1330,9 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
                 if not df_variavel_loaded.empty:
                     df_variavel_filtrado = df_variavel_loaded[df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
                     if not df_variavel_filtrado.empty:
-                        valor_inicial_variavel = df_variavel_filtrado['CODG_VAR'].iloc[0]
+                        # Usa a função de busca de melhor variável
+                        valor_inicial_variavel = find_best_initial_var(df_dados, df_variavel_filtrado)
+                        
                         variable_dropdown_div = [html.Div([
                             html.Label("Selecione uma Variável:",
                                      style={'fontWeight': 'bold','display': 'block','marginBottom': '5px'},
@@ -1367,6 +1343,50 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
                                 value=valor_inicial_variavel, style={'width': '100%'}
                             )
                         ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': indicador_id})]
+        
+        # --- Busca a melhor combinação de filtros (usando a variável selecionada) ---
+        best_filters = find_valid_filter_combination(df_dados, filter_cols, valor_inicial_variavel)
+        initial_dynamic_filters = best_filters.copy()
+        
+        # --- Geração de Filtros Dinâmicos ---
+        for idx, filter_col_code in enumerate(filter_cols):
+            desc_col_code = 'DESC_' + filter_col_code[5:]
+            code_to_desc = {}
+            if desc_col_code in df_dados.columns:
+                try:
+                    mapping_df = df_dados[[filter_col_code, desc_col_code]].dropna().drop_duplicates()
+                    code_to_desc = pd.Series(mapping_df[desc_col_code].astype(str).values,
+                                             index=mapping_df[filter_col_code].astype(str)).to_dict()
+                except Exception as map_err:
+                    logging.error("Erro ao mapear código/descrição para filtro %s em %s: %s", filter_col_code, indicador_id, map_err)
+            
+            unique_codes = sorted(df_dados[filter_col_code].dropna().astype(str).unique())
+            col_options = [{'label': str(code_to_desc.get(code, code)), 'value': code} for code in unique_codes]
+            filter_label = constants.COLUMN_NAMES.get(filter_col_code, filter_col_code)
+            md_width = 7 if idx % 2 == 0 else 5
+            
+            # Usa o valor da combinação encontrada ou o melhor valor para este filtro
+            initial_value = best_filters.get(filter_col_code)
+            if initial_value is None and unique_codes:
+                # Se não tiver na melhor combinação, usa um valor padrão inteligente
+                prefs = {
+                    'CODG_DOM': ['Urbana', 'Rural', 'Total'],  # Situação do domicílio
+                    'CODG_SEXO': ['Total', '4'],  # Prefere "Total" ou código 4 (ambos os sexos)
+                    'CODG_RACA': ['Total', '6'],  # Prefere "Total" ou código 6 (todas as raças)
+                    'CODG_IDADE': ['Total', '1140'],  # Prefere "Total" ou código 1140 (todas as idades)
+                    'CODG_INST': ['Total']  # Prefere "Total" para nível de instrução
+                }.get(filter_col_code, ['Total', 'Todos', 'Todas'])
+                
+                initial_value = find_best_initial_value(unique_codes, prefs)
+                initial_dynamic_filters[filter_col_code] = initial_value
+            
+            dynamic_filters_div.append(dbc.Col([
+                html.Label(f"{filter_label}:", style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'}),
+                dcc.Dropdown(
+                    id={'type': 'dynamic-filter-dropdown', 'index': indicador_id, 'filter_col': filter_col_code},
+                    options=col_options, value=initial_value, style={'marginBottom': '10px', 'width': '100%'}
+                )
+            ], md=md_width, xs=12))
 
         # Adiciona log para debug dos filtros iniciais
         logging.debug(f"Indicador {indicador_id}: Filtros iniciais definidos como {initial_dynamic_filters}")
@@ -2288,6 +2308,137 @@ def update_map_on_year_change(selected_year, chart_id, current_var_value, filter
             yaxis={'visible': False}
         )
         return empty_fig
+
+
+def find_best_initial_value(filter_values, preference_list=None):
+    """
+    Encontra o melhor valor inicial para um filtro com base em uma lista de preferências.
+    
+    Args:
+        filter_values: Lista de valores disponíveis para o filtro
+        preference_list: Lista de termos preferenciais ordenados por prioridade
+        
+    Returns:
+        O melhor valor encontrado ou o primeiro valor se nenhuma preferência corresponder
+    """
+    if not filter_values:
+        return None
+    
+    # Lista padrão de termos preferenciais se nenhuma for fornecida
+    if preference_list is None:
+        preference_list = ['Total', 'Todos', 'Todas', 'Geral', 'Ambos', 'Ambas']
+    
+    # Converte tudo para string para comparação
+    filter_values_str = [str(val).strip().lower() for val in filter_values]
+    
+    # Primeiro tenta encontrar correspondências exatas
+    for pref in preference_list:
+        pref_lower = pref.lower()
+        if pref_lower in filter_values_str:
+            idx = filter_values_str.index(pref_lower)
+            return filter_values[idx]
+    
+    # Depois tenta encontrar valores que contenham os termos preferenciais
+    for pref in preference_list:
+        pref_lower = pref.lower()
+        for i, val in enumerate(filter_values_str):
+            if pref_lower in val:
+                return filter_values[i]
+    
+    # Se não encontrar nada, retorna o primeiro valor
+    return filter_values[0]
+
+# Função para testar diferentes combinações de filtros até encontrar uma que retorne dados
+def find_valid_filter_combination(df_dados, filter_cols, var_value=None):
+    """
+    Tenta diferentes combinações de filtros até encontrar uma que retorne dados válidos.
+    
+    Args:
+        df_dados: DataFrame com os dados do indicador
+        filter_cols: Lista de colunas que são filtros dinâmicos
+        var_value: Valor da variável principal, se aplicável
+        
+    Returns:
+        Dicionário com a melhor combinação de filtros encontrada
+    """
+    logging.debug(f"Buscando combinação válida de filtros para {len(filter_cols)} filtros")
+    
+    # Verificar se há variável principal
+    if var_value is not None and 'CODG_VAR' in df_dados.columns:
+        df_test = df_dados[df_dados['CODG_VAR'].astype(str).str.strip() == str(var_value).strip()].copy()
+        if df_test.empty:
+            # Se a variável selecionada não retornar dados, não adianta testar filtros
+            logging.debug(f"Variável {var_value} não retorna dados, não testando filtros")
+            return {}
+    else:
+        df_test = df_dados.copy()
+    
+    # Se não houver filtros, não há o que testar
+    if not filter_cols:
+        return {}
+    
+    # Preferências de valores por tipo de filtro
+    preference_map = {
+        'CODG_DOM': ['Urbana', 'Rural', 'Total'],  # Situação do domicílio
+        'CODG_SEXO': ['Total', '4'],  # Prefere "Total" ou código 4 (ambos os sexos)
+        'CODG_RACA': ['Total', '6'],  # Prefere "Total" ou código 6 (todas as raças)
+        'CODG_IDADE': ['Total', '1140'],  # Prefere "Total" ou código 1140 (todas as idades)
+        'CODG_INST': ['Total']  # Prefere "Total" para nível de instrução
+    }
+    
+    # Primeiro tenta valores preferenciais para cada filtro
+    best_filters = {}
+    for col in filter_cols:
+        unique_values = sorted(df_test[col].dropna().astype(str).unique())
+        if not unique_values:
+            continue
+            
+        # Usa preferências específicas para o filtro, se disponíveis
+        prefs = preference_map.get(col, None)
+        best_value = find_best_initial_value(unique_values, prefs)
+        best_filters[col] = best_value
+    
+    # Verifica se a combinação de filtros retorna dados não-zeros
+    df_filtered = df_test.copy()
+    for col, val in best_filters.items():
+        df_filtered = df_filtered[df_filtered[col].astype(str).str.strip() == str(val).strip()]
+    
+    # Se não restar nenhum registro, tenta filtros um a um
+    if df_filtered.empty or (df_filtered['VLR_VAR'] == 0).all():
+        logging.debug("Combinação inicial resultou em dados vazios, tentando filtros individuais")
+        best_filters = {}
+        
+        # Testa cada filtro isoladamente (um por vez)
+        for col in filter_cols:
+            unique_values = sorted(df_test[col].dropna().astype(str).unique())
+            for val in unique_values:
+                df_test_single = df_test[df_test[col].astype(str).str.strip() == str(val).strip()]
+                if not df_test_single.empty and not (df_test_single['VLR_VAR'] == 0).all():
+                    best_filters[col] = val
+                    break
+    
+    logging.debug(f"Melhor combinação de filtros encontrada: {best_filters}")
+    return best_filters
+    
+# Adicione a seguinte função para selecionar a melhor variável inicial
+def find_best_initial_var(df_dados, df_variavel_filtrado):
+    """
+    Encontra a melhor variável inicial baseado nos dados disponíveis
+    """
+    if df_variavel_filtrado.empty or 'CODG_VAR' not in df_dados.columns:
+        return None
+    
+    # Tenta encontrar uma variável que tenha dados não-zeros
+    for _, row in df_variavel_filtrado.iterrows():
+        var_cod = row['CODG_VAR']
+        df_test = df_dados[df_dados['CODG_VAR'].astype(str).str.strip() == str(var_cod).strip()]
+        
+        if not df_test.empty and not (df_test['VLR_VAR'] == 0).all():
+            logging.debug(f"Encontrada variável com dados válidos: {var_cod}")
+            return var_cod
+    
+    # Se não encontrar, usa a primeira variável
+    return df_variavel_filtrado['CODG_VAR'].iloc[0]
 
 
 if __name__ == '__main__':
