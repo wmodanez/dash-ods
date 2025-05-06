@@ -532,6 +532,9 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
         return dbc.Alert("Nenhum dado disponível para este indicador.", color="warning", className="textCenter p-3")
 
     try:
+        # Log para debug dos filtros recebidos
+        logging.debug(f"create_visualization para {indicador_id} - Var: {selected_var}, Filtros: {selected_filters}")
+        
         colunas_necessarias = ['CODG_ANO', 'VLR_VAR']
         if not all(col in df.columns for col in colunas_necessarias):
             missing = [col for col in colunas_necessarias if col not in df.columns]
@@ -544,6 +547,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             df_filtered['CODG_VAR'] = df_filtered['CODG_VAR'].astype(str).str.strip()
             selected_var_str = str(selected_var).strip()
             df_filtered = df_filtered[df_filtered['CODG_VAR'] == selected_var_str]
+            logging.debug(f"Aplicando filtro de variável {selected_var_str} - Registros restantes: {len(df_filtered)}")
             if df_filtered.empty:
                 var_name = selected_var_str
                 df_var_desc = load_variavel()
@@ -561,9 +565,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     selected_value_str = str(selected_value).strip()
                     # Compare using string representation of the column, without changing its type
                     # Convert column to string *before* filling NA and stripping
+                    logging.debug(f"Aplicando filtro {col_code}={selected_value_str}")
                     df_filtered = df_filtered[
                         df_filtered[col_code].astype(str).fillna('').str.strip() == selected_value_str
                     ]
+                    logging.debug(f"Após filtro {col_code} - Registros restantes: {len(df_filtered)}")
                     if df_filtered.empty:
                         filter_name = constants.COLUMN_NAMES.get(col_code, col_code)
                         return dbc.Alert(f"Nenhum dado encontrado para o filtro '{filter_name}' = '{selected_value_str}'.", color="warning")
@@ -1283,7 +1289,7 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
         raise PreventUpdate
     
     # Se chegou aqui, é porque este indicador DEVE ser carregado
-    logging.debug("Carregando indicador: %s (Aba ativa: %s)", indicador_id, active_tab)
+    logging.debug(f"Carregando indicador: {indicador_id} (Aba ativa: {active_tab})")
 
     # --- INÍCIO DO BLOCO TRY...EXCEPT ---
     try:
@@ -1310,7 +1316,9 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
         dynamic_filters_div = []
         variable_dropdown_div = []
         valor_inicial_variavel = None
-        initial_dynamic_filters = {} # Dicionário para filtros iniciais
+        
+        # Modificação: Apenas cria initial_dynamic_filters se for necessário
+        initial_dynamic_filters = {}
 
         # --- Geração de Filtros Dinâmicos ---
         filter_cols = identify_filter_columns(df_dados)
@@ -1360,17 +1368,27 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
                             )
                         ], style={'paddingBottom': '20px', 'paddingTop': '20px'}, id={'type': 'var-dropdown-container', 'index': indicador_id})]
 
-        # --- Geração da Visualização ---
+        # Adiciona log para debug dos filtros iniciais
+        logging.debug(f"Indicador {indicador_id}: Filtros iniciais definidos como {initial_dynamic_filters}")
+        logging.debug(f"Indicador {indicador_id}: Variável inicial definida como {valor_inicial_variavel}")
+        
+        # Gera a visualização inicial com os filtros definidos
         initial_visualization = create_visualization(
             df_dados, indicador_id, valor_inicial_variavel, initial_dynamic_filters
         )
 
         # --- Monta o conteúdo dinâmico final ---
         dynamic_content = []
+        dynamic_content.append(desc_p)  # Adiciona descrição do indicador
         dynamic_content.extend(variable_dropdown_div)
         if dynamic_filters_div:
             dynamic_content.append(dbc.Row(dynamic_filters_div))
-        dynamic_content.append(html.Div(id={'type': 'graph-container', 'index': indicador_id}, children=initial_visualization))
+        
+        # Adiciona o container do gráfico com a visualização inicial
+        dynamic_content.append(html.Div(
+            id={'type': 'graph-container', 'index': indicador_id}, 
+            children=initial_visualization
+        ))
 
         # Retorna conteúdo dinâmico e oculta o spinner
         return dynamic_content, {'display': 'none'}
@@ -1856,85 +1874,54 @@ def update_card_content(*args):
         return initial_header, initial_content, [], "Ocorreu um erro.", []
 
 
-# Callback para atualizar o store quando a variável ou filtros são alterados
+# Callback direto para atualizar visualizações quando filtros ou variáveis mudam
 @app.callback(
-    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
     [
         Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
         Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value')
     ],
     [
         State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
-        State({'type': 'visualization-state-store', 'index': MATCH}, 'data')
+        State({'type': 'graph-container', 'index': MATCH}, 'id')
     ],
     prevent_initial_call=True
 )
-def update_store_on_filter_change(var_value, filter_values, filter_ids, current_data):
-    """Atualiza o store quando variável ou filtros são alterados"""
+def update_visualization_direct(var_value, filter_values, filter_ids, container_id):
+    """Atualiza diretamente a visualização quando filtros ou variáveis são alterados"""
     ctx = callback_context
     if not ctx.triggered:
         raise PreventUpdate
     
-    # Inicializa o store se não existir
-    if current_data is None:
-        current_data = {'selected_var': None, 'selected_filters': {}}
-    
-    # Cria uma cópia para não modificar o original
-    updated_data = dict(current_data)
-    
-    # Identifica qual input foi alterado
-    trigger_id = ctx.triggered[0]['prop_id']
-    
-    # Se foi o dropdown de variável
-    if 'var-dropdown' in trigger_id:
-        updated_data['selected_var'] = var_value
-    
-    # Se foi algum filtro dinâmico
-    elif 'dynamic-filter-dropdown' in trigger_id:
-        # Inicializa dicionário de filtros se não existir
-        if not updated_data.get('selected_filters'):
-            updated_data['selected_filters'] = {}
-        
-        # Mapeia valores para ids correspondentes
-        for i, filter_id in enumerate(filter_ids):
-            filter_col = filter_id.get('filter_col')
-            if filter_col:
-                updated_data['selected_filters'][filter_col] = filter_values[i]
-    
-    return updated_data
-
-
-# Callback para atualizar visualizações quando o store é alterado
-@app.callback(
-    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
-    Input({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
-    State({'type': 'graph-container', 'index': MATCH}, 'id'),
-    prevent_initial_call=True
-)
-def update_visualization_on_store_change(store_data, container_id):
-    """Atualiza todas as visualizações quando o store é alterado"""
-    if not store_data:
-        raise PreventUpdate
-    
     indicador_id = container_id['index']
     
-    # Carrega dados do indicador
-    df_dados = load_dados_indicador_cache(indicador_id)
-    if df_dados is None or df_dados.empty:
-        return dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning")
+    # Monta o dicionário de filtros a partir dos valores e IDs
+    selected_filters = {}
+    if filter_ids and filter_values:
+        for i, filter_id in enumerate(filter_ids):
+            if i < len(filter_values):  # Evita IndexError
+                filter_col = filter_id.get('filter_col')
+                if filter_col:
+                    selected_filters[filter_col] = filter_values[i]
     
-    # Extrai variáveis e filtros do store
-    selected_var = store_data.get('selected_var')
-    selected_filters = store_data.get('selected_filters', {})
+    # Log para debug
+    trigger_id = ctx.triggered[0]['prop_id']
+    logging.debug(f"Atualizando visualização diretamente para {indicador_id}. Trigger: {trigger_id}")
+    logging.debug(f"Valores - Var: {var_value}, Filtros: {selected_filters}")
     
-    # Gera nova visualização
     try:
+        # Carrega dados do indicador
+        df_dados = load_dados_indicador_cache(indicador_id)
+        if df_dados is None or df_dados.empty:
+            return dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning")
+        
+        # Gera nova visualização
         visualization = create_visualization(
-            df_dados, indicador_id, selected_var, selected_filters
+            df_dados, indicador_id, var_value, selected_filters
         )
         return visualization
     except Exception as e:
-        logging.exception("Erro ao atualizar visualização para %s", indicador_id)
+        logging.exception(f"Erro ao atualizar visualização para {indicador_id}: {str(e)}")
         return dbc.Alert(f"Erro ao atualizar visualização: {str(e)}", color="danger")
 
 
