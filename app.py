@@ -1303,7 +1303,7 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
             # Oculta spinner, mostra erro
             return [dbc.Alert(f"Informações de configuração não encontradas para o indicador {indicador_id}.", color="danger")], {'display': 'none'}
 
-        # Adiciona a descrição do indicador (será retornada junto com o conteúdo ou erro)
+        # Obtém a descrição do indicador (será retornada junto com o conteúdo ou erro, quando necessário)
         desc_p = html.P(indicador_info.iloc[0]['DESC_INDICADOR'], className="textJustify p-3")
 
         # Verifica se os dados foram carregados
@@ -1379,7 +1379,9 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
 
         # --- Monta o conteúdo dinâmico final ---
         dynamic_content = []
-        dynamic_content.append(desc_p)  # Adiciona descrição do indicador
+        # Nota: A descrição do indicador já está presente na tab, não precisamos adicioná-la novamente aqui
+        # Removendo esta linha para evitar duplicação
+        # dynamic_content.append(desc_p)  # Adiciona descrição do indicador
         dynamic_content.extend(variable_dropdown_div)
         if dynamic_filters_div:
             dynamic_content.append(dbc.Row(dynamic_filters_div))
