@@ -1953,13 +1953,12 @@ def update_visualization_direct(var_value, filter_values, filter_ids, container_
     [Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value')],
     [
         State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
-        State({'type': 'var-dropdown', 'index': MATCH}, 'value'),
         State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
         State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id')
     ],
     prevent_initial_call=True
 )
-def update_ranking_chart(selected_year, chart_id, current_var_value, filter_values, filter_ids):
+def update_ranking_chart(selected_year, chart_id, filter_values, filter_ids):
     """Atualiza o gráfico de ranking quando o ano é alterado"""
     ctx = callback_context
     if not ctx.triggered or not selected_year:
@@ -1994,13 +1993,6 @@ def update_ranking_chart(selected_year, chart_id, current_var_value, filter_valu
 
     # --- Aplica filtros (Variável principal e dinâmicos) ---
     df_filtered_ranking = df_ranking_base.copy()
-    
-    # Filtro Variável Principal
-    if 'CODG_VAR' in df_filtered_ranking.columns and current_var_value:
-        df_filtered_ranking['CODG_VAR'] = df_filtered_ranking['CODG_VAR'].astype(str).str.strip()
-        selected_var_str = str(current_var_value).strip()
-        df_filtered_ranking = df_filtered_ranking[df_filtered_ranking['CODG_VAR'] == selected_var_str]
-        logging.debug(f"Após filtro de variável {selected_var_str} - Registros: {len(df_filtered_ranking)}")
     
     # Filtros Dinâmicos
     if selected_filters:
@@ -2122,63 +2114,44 @@ def update_ranking_chart(selected_year, chart_id, current_var_value, filter_valu
     return fig_ranking_updated
 
 
-# Callback para atualizar o mapa quando o ano é alterado
 @app.callback(
     Output({'type': 'choropleth-map', 'index': MATCH}, 'figure'),
     [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
     [
         State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
-        State({'type': 'var-dropdown', 'index': MATCH}, 'value'),
         State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
         State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id')
     ],
     prevent_initial_call=True
 )
-def update_map_on_year_change(selected_year, chart_id, current_var_value, filter_values, filter_ids):
-    """Atualiza o mapa quando o ano é alterado"""
-    if not selected_year:
+def update_map_on_year_change(selected_year, chart_id, filter_values, filter_ids):
+    """Atualiza o mapa coroplético quando o ano é alterado"""
+    import plotly.express as px
+    ctx = callback_context
+    if not ctx.triggered or not selected_year:
         raise PreventUpdate
-    
-    # Identificar o indicador a partir do ID do gráfico
+
     indicador_id = chart_id['index']
-    
-    # Log para debugging
     logging.debug(f"Atualizando mapa para {indicador_id}, Ano: {selected_year}")
-    
-    # Coletar os filtros atuais
+
     selected_filters = {}
     if filter_ids and filter_values:
         for i, filter_id in enumerate(filter_ids):
-            if i < len(filter_values):  # Evita IndexError
+            if i < len(filter_values):
                 filter_col = filter_id.get('filter_col')
                 if filter_col:
                     selected_filters[filter_col] = filter_values[i]
-    
-    # Carrega os dados do indicador
+
     df_map_base = load_dados_indicador_cache(indicador_id)
     if df_map_base is None or df_map_base.empty:
         logging.warning(f"Dados não disponíveis para o mapa de {indicador_id}")
-        # Retorna figura vazia com aviso se não houver dados
-        return go.Figure().update_layout(title='Dados não disponíveis para mapa.', 
-                                        xaxis={'visible': False}, yaxis={'visible': False})
-    
-    # Verificar se temos dados de UF
-    if 'CODG_UND_FED' not in df_map_base.columns and 'DESC_UND_FED' not in df_map_base.columns:
+        return go.Figure().update_layout(title='Dados não disponíveis para mapa.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    if 'DESC_UND_FED' not in df_map_base.columns and 'CODG_UND_FED' not in df_map_base.columns:
         logging.warning(f"Colunas de UF não encontradas para o mapa de {indicador_id}")
-        return go.Figure().update_layout(title='Dados não incluem informações por UF.', 
-                                         xaxis={'visible': False}, yaxis={'visible': False})
-    
-    # Aplica filtros (Variável principal e dinâmicos)
+        return go.Figure().update_layout(title='Dados não incluem informações por UF.', xaxis={'visible': False}, yaxis={'visible': False})
+
     df_filtered_map = df_map_base.copy()
-    
-    # Filtro Variável Principal
-    if 'CODG_VAR' in df_filtered_map.columns and current_var_value:
-        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
-        selected_var_str = str(current_var_value).strip()
-        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
-        logging.debug(f"Após filtro de variável {selected_var_str} - Registros: {len(df_filtered_map)}")
-    
-    # Filtros Dinâmicos
     if selected_filters:
         for col_code, selected_value in selected_filters.items():
             if selected_value is not None and col_code in df_filtered_map.columns:
@@ -2186,128 +2159,111 @@ def update_map_on_year_change(selected_year, chart_id, current_var_value, filter
                 selected_value_str = str(selected_value).strip()
                 df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
                 logging.debug(f"Após filtro {col_code}={selected_value_str} - Registros: {len(df_filtered_map)}")
-    
-    # IMPORTANTE: Primeiro filtra pelo ANO selecionado
+
     df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
     df_map_ano = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()].copy()
-    
-    # Se não houver dados após filtrar por ano, retorna uma figura vazia
+
     if df_map_ano.empty:
         logging.warning(f"Sem dados para o ano {selected_year} com os filtros aplicados")
         return go.Figure().update_layout(
             title=f'Sem dados para o ano {selected_year} com os filtros aplicados.', 
             xaxis={'visible': False}, yaxis={'visible': False}
         )
-   
-    # Adiciona DESC_UND_FED se necessário
+
     if 'DESC_UND_FED' not in df_map_ano.columns and 'CODG_UND_FED' in df_map_ano.columns:
         df_map_ano['DESC_UND_FED'] = df_map_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
         df_map_ano = df_map_ano.dropna(subset=['DESC_UND_FED'])
-    
-    # Agora verifica unicidade por UF APÓS filtrar pelo ano selecionado
+
     if 'DESC_UND_FED' not in df_map_ano.columns or df_map_ano.empty:
         logging.warning(f"Dados de UF não encontrados para o ano {selected_year}")
         return go.Figure().update_layout(
             title=f'Mapa não disponível para {selected_year}.', 
             xaxis={'visible': False}, yaxis={'visible': False}
         )
-    
-    # Verifica unicidade por UF para o ano selecionado e, se necessário, agrupa
+
     counts_per_uf_map = df_map_ano['DESC_UND_FED'].value_counts()
     has_duplicates = (counts_per_uf_map > 1).any()
-    
     if has_duplicates:
-        # Se tiver duplicatas, tenta uma abordagem alternativa - agrupar por UF e usar a média
-        logging.warning(f"Múltiplos valores por UF no ano {selected_year} para o mapa, tentando agrupar")
+        logging.warning(f"Múltiplos valores por UF no ano {selected_year}, tentando agrupar")
         try:
             df_map_ano = df_map_ano.groupby('DESC_UND_FED').agg({
                 'VLR_VAR': 'mean',
-                'DESC_UND_MED': 'first'  # Mantém a primeira unidade de medida
+                'DESC_UND_MED': 'first'
             }).reset_index()
-            logging.info(f"Agrupamento para mapa bem-sucedido. Prosseguindo com {len(df_map_ano)} UFs")
+            logging.info(f"Agrupamento bem-sucedido. Prosseguindo com {len(df_map_ano)} UFs")
         except Exception as agg_err:
-            logging.error(f"Erro ao agrupar para mapa: {agg_err}")
+            logging.error(f"Erro ao agrupar: {agg_err}")
             return go.Figure().update_layout(
                 title=f'Múltiplos valores por UF no ano {selected_year}. Não foi possível agrupar.', 
                 xaxis={'visible': False}, yaxis={'visible': False}
             )
+
+    if 'DESC_UND_MED' not in df_map_ano.columns and 'CODG_UND_MED' in df_map_ano.columns:
+        df_unidade_medida_loaded = load_unidade_medida()
+        if not df_unidade_medida_loaded.empty:
+            df_map_ano['CODG_UND_MED'] = df_map_ano['CODG_UND_MED'].astype(str)
+            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+            df_map_ano = pd.merge(df_map_ano, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+            df_map_ano['DESC_UND_MED'] = df_map_ano['DESC_UND_MED'].fillna('N/D')
+        else:
+            df_map_ano['DESC_UND_MED'] = 'N/D'
+
+    # Formata os valores para o hover
+    df_map_ano['VLR_VAR_FORMATADO'] = df_map_ano['VLR_VAR'].apply(format_br)
     
-    # Cria o mapa coroplético
+    # Tenta obter unidade de medida de forma segura
+    und_med_map = df_map_ano['DESC_UND_MED'].dropna().iloc[0] if not df_map_ano['DESC_UND_MED'].dropna().empty else ''
+
+    # Carrega o GeoJSON do arquivo
     try:
-        # Adiciona coluna formatada para hover
-        df_map_ano['VLR_VAR_FORMATADO'] = df_map_ano['VLR_VAR'].apply(format_br)
-        
-        # Tenta obter unidade de medida de forma segura (mesma lógica do ranking e gráficos)
-        und_med_map = ''
-        
-        # Primeiro tenta obter da coluna CODG_UND_MED se existir
-        if 'CODG_UND_MED' in df_map_ano.columns:
-            codg_und_med_values = df_map_ano['CODG_UND_MED'].dropna().unique()
-            if len(codg_und_med_values) > 0:
-                df_unidade_medida_loaded = load_unidade_medida()
-                if not df_unidade_medida_loaded.empty:
-                    codg_und_med = str(codg_und_med_values[0])
-                    df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
-                    match_rows = df_unidade_medida_loaded[df_unidade_medida_loaded['CODG_UND_MED'] == codg_und_med]
-                    if not match_rows.empty:
-                        und_med_map = match_rows['DESC_UND_MED'].iloc[0]
-        
-        # Se não encontrou pelo código, tenta pela coluna DESC_UND_MED se existir
-        if not und_med_map and 'DESC_UND_MED' in df_map_ano.columns:
-            und_med_series = df_map_ano['DESC_UND_MED'].dropna()
-            if not und_med_series.empty:
-                und_med_map = und_med_series.iloc[0]
-        
-        # Carrega GeoJSON
         with open('db/br_geojson.json', 'r', encoding='utf-8') as f:
             geojson = json.load(f)
-        
-        fig_map = px.choropleth(
-            df_map_ano,
-            geojson=geojson,
-            locations='DESC_UND_FED',
-            featureidkey='properties.name',
-            color='VLR_VAR',
-            color_continuous_scale=[ # Escala baseada no Ranking
-                [0.0, 'rgba(34, 152, 70, 0.2)'],
-                [1.0, 'rgba(34, 152, 70, 1)']
-            ],
-            # scope="south america" # Removido para usar 'center'
-        )
-        
-        # --- Atualizar Geos com Centroide FIXO 
-        map_center = {'lat': -12.95984198, 'lon': -53.27299730}
-        geos_update = dict(
-            visible=False, showcoastlines=True, coastlinecolor="White",
-            showland=True, landcolor="white", showframe=False,
-            projection=dict(type='mercator', scale=15),
-            center=map_center
-        )
-
-        # Aplica a atualização geo
-        fig_map.update_geos(**geos_update)
-        # ----------------------------------
-
-        fig_map.update_traces(
-            marker_line_color='white', marker_line_width=1,
-            customdata=df_map_ano[['VLR_VAR_FORMATADO']],
-            hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
-        )
-
-        # --- Remove o título da barra de cores ---
-        fig_map.update_layout(coloraxis_colorbar_title_text='')
-        # -----------------------------------------
-        
-        return fig_map
     except Exception as e:
-        logging.exception(f"Erro ao criar mapa para {indicador_id}: {e}")
-        empty_fig = go.Figure()
-        empty_fig.update_layout(
-            title=f"Erro ao criar mapa: {str(e)}",
-            xaxis={'visible': False},
-            yaxis={'visible': False}
+        logging.error(f"Erro ao carregar GeoJSON: {e}")
+        return go.Figure().update_layout(
+            title='Erro ao carregar dados do mapa.', 
+            xaxis={'visible': False}, yaxis={'visible': False}
         )
-        return empty_fig
+
+    # Cria o mapa usando px.choropleth exatamente como na função create_visualization
+    fig_map = px.choropleth(
+        df_map_ano,
+        geojson=geojson,
+        locations='DESC_UND_FED',
+        featureidkey='properties.name',
+        color='VLR_VAR',
+        color_continuous_scale=[
+            [0.0, 'rgba(34, 152, 70, 0.2)'],
+            [1.0, 'rgba(34, 152, 70, 1)']
+        ]
+    )
+
+    # Atualiza as configurações de GEO (igual à função create_visualization)
+    map_center = {'lat': -12.95984198, 'lon': -53.27299730}
+    geos_update = dict(
+        visible=False,
+        showcoastlines=True,
+        coastlinecolor="White",
+        showland=True,
+        landcolor="white",
+        showframe=False,
+        projection=dict(type='mercator', scale=15),
+        center=map_center
+    )
+    fig_map.update_geos(**geos_update)
+
+    # Atualiza os traces para usar linhas brancas (igual à função create_visualization)
+    fig_map.update_traces(
+        marker_line_color='white',
+        marker_line_width=1,
+        customdata=df_map_ano[['VLR_VAR_FORMATADO']],
+        hovertemplate="<b>%{location}</b><br>Valor: %{customdata[0]}" + (f" {und_med_map}" if und_med_map else "") + "<extra></extra>"
+    )
+
+    # Remove o título da barra de cores (igual à função create_visualization)
+    fig_map.update_layout(coloraxis_colorbar_title_text='')
+
+    return fig_map
 
 
 def find_best_initial_value(filter_values, preference_list=None):
