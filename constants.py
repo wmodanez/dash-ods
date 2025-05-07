@@ -19,10 +19,9 @@ LIST_INDICADORES = {
     'Objetivo 3': {
         'Meta 3.1': {
             'Indicador 3.1.1': '/t/6694/n3/11,21,17,51,52,53,50/v/all/p/all/d/v9730%201',
-            'Indicador 3.1.2': '/t/7498/n3/all/v/9431,9432/p/all'
+            'Indicador 3.1.2': '/t/7498/n3/11,21,17,51,52,53,50/v/all/p/all/d/v11598%201'
         },
         'Meta 3.2': {
-            # Multiplas unidades de medida para o mesmo indicador
             'Indicador 3.2.1': '/t/6695/n3/11,21,17,51,52,53,50/v/all/p/last%205/d/v9731%201',
             'Indicador 3.2.2': '/t/6696/n3/11,21,17,51,52,53,50/v/all/p/last%205/d/v9732%201'
         },

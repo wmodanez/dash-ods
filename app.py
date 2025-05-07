@@ -1379,6 +1379,23 @@ def load_indicator_on_demand(active_tab, container_id):  # <--- DEFINIÇÃO DA F
                             )
                         ], style={'paddingBottom': '20px', 'paddingTop': '20px'},
                             id={'type': 'var-dropdown-container', 'index': indicador_id})]
+                    else:
+                        # Se não há variáveis válidas ou o dropdown não é necessário,
+                        # renderiza um dropdown oculto para satisfazer o State da callback de filtros
+                        variable_dropdown_div = [html.Div([
+                            dcc.Dropdown(
+                                id={'type': 'var-dropdown', 'index': indicador_id},
+                                options=[], value=None, style={'display': 'none'}, disabled=True
+                            )
+                        ], id={'type': 'var-dropdown-container', 'index': indicador_id}, style={'display': 'none'})]
+            else:
+                # Se VARIAVEIS não é '1', renderiza um dropdown oculto
+                variable_dropdown_div = [html.Div([
+                    dcc.Dropdown(
+                        id={'type': 'var-dropdown', 'index': indicador_id},
+                        options=[], value=None, style={'display': 'none'}, disabled=True
+                    )
+                ], id={'type': 'var-dropdown-container', 'index': indicador_id}, style={'display': 'none'})]
 
         # --- Busca a melhor combinação de filtros (usando a variável selecionada) ---
         best_filters = find_valid_filter_combination(df_dados, filter_cols, valor_inicial_variavel)
@@ -1657,6 +1674,14 @@ def update_card_content(*args):
                                                         style={'width': '100%', 'marginBottom': '15px'}
                                                     )
                                                 ])]
+                                            else: # df_variavel_filtrado está vazio
+                                                variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': indicador_id_atual}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
+                                        else: # df_variavel_loaded está vazio
+                                            variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': indicador_id_atual}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
+                                    else: # 'CODG_VAR' não está em df_dados
+                                        variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': indicador_id_atual}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
+                                else: # has_variable_dropdown é False
+                                    variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': indicador_id_atual}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
 
                                 # Cria a visualização inicial PASSANDO OS FILTROS INICIAIS
                                 initial_visualization = create_visualization(
@@ -1699,9 +1724,10 @@ def update_card_content(*args):
                     initial_filters_for_store = {}
                     if is_first_indicator:
                         initial_filters_for_store = initial_dynamic_filters  # Usa os filtros coletados
+                    
                     store_data = {
                         'selected_var': valor_inicial_variavel_primeira_aba if is_first_indicator else None,
-                        'selected_filters': initial_filters_for_store  # Usa o dict de filtros iniciais
+                        'selected_filters': initial_filters_for_store 
                     }
                     tab_content.append(dcc.Store(id={'type': 'visualization-state-store', 'index': indicador_id_atual},
                                                  data=store_data))
@@ -1906,6 +1932,14 @@ def update_card_content(*args):
                                                         style={'width': '100%', 'marginBottom': '15px'}
                                                     )
                                                 ])]
+                                            else: # df_variavel_filtrado está vazio
+                                                variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': row_ind['ID_INDICADOR']}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
+                                        else: # df_variavel_loaded está vazio
+                                            variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': row_ind['ID_INDICADOR']}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
+                                    else: # 'CODG_VAR' não está em df_dados
+                                        variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': row_ind['ID_INDICADOR']}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
+                                else: # has_variable_dropdown é False
+                                    variable_dropdown_div = [html.Div([dcc.Dropdown(id={'type': 'var-dropdown', 'index': row_ind['ID_INDICADOR']}, options=[], value=None, style={'display': 'none'}, disabled=True)], style={'display': 'none'})]
 
                                 # Cria a visualização inicial PASSANDO OS FILTROS INICIAIS
                                 initial_visualization = create_visualization(
@@ -1947,10 +1981,18 @@ def update_card_content(*args):
                         ]
 
                     # Adiciona Store para esta aba
+                    # Para o primeiro indicador (is_first_indicator = True), valor_inicial_variavel e 
+                    # initial_dynamic_filters já foram calculados.
+                    # Para os outros (lazy-loaded), o store é inicializado com None/vazio,
+                    # e a callback load_indicator_on_demand preencherá os valores corretos.
+                    current_indicador_store_data = {
+                        'selected_var': valor_inicial_variavel if is_first_indicator else None,
+                        'selected_filters': initial_dynamic_filters if is_first_indicator else {} # Garante um dict vazio
+                    }
                     tab_content.append(
                         dcc.Store(id={'type': 'visualization-state-store', 'index': row_ind['ID_INDICADOR']},
-                                  data={'selected_var': valor_inicial_variavel if is_first_indicator else None,
-                                        'selected_filters': initial_dynamic_filters}))  # Usa o dict de filtros iniciais
+                                  data=current_indicador_store_data)
+                    )
 
                     # Adiciona a aba ao conjunto de abas
                     tabs_indicadores.append(dbc.Tab(tab_content,
@@ -1984,22 +2026,35 @@ def update_card_content(*args):
 @app.callback(
     Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
     Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+    State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'), # <-- ADICIONADO STATE DOS FILTROS
+    State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),    # <-- ADICIONADO STATE DOS IDs DOS FILTROS
     State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
     prevent_initial_call=True
 )
-def update_store_from_variable(selected_var, current_store_data):
-    """Atualiza a chave 'selected_var' no store quando o var-dropdown muda."""
+def update_store_from_variable(selected_var, current_filter_values, current_filter_ids, current_store_data):
+    """Atualiza o store com a variável selecionada e os filtros atuais dos dropdowns."""
     if not callback_context.triggered:
         raise PreventUpdate
 
-    store_data = current_store_data or {'selected_var': None, 'selected_filters': {}}
+    # Constrói o dicionário de filtros atuais a partir dos valores e IDs dos dropdowns de filtro
+    actual_current_filters = {}
+    if current_filter_ids and current_filter_values:
+        for i, filter_id_dict in enumerate(current_filter_ids):
+            if i < len(current_filter_values) and filter_id_dict: 
+                filter_col = filter_id_dict.get('filter_col')
+                if filter_col:
+                    actual_current_filters[filter_col] = current_filter_values[i]
 
-    # Verifica se o valor realmente mudou para evitar loops desnecessários (embora Input já faça isso)
-    if selected_var != store_data.get('selected_var'):
-        store_data['selected_var'] = selected_var
+    new_store_data = {
+        'selected_var': selected_var,
+        'selected_filters': actual_current_filters  # Usa os filtros lidos diretamente dos dropdowns
+    }
+
+    # Só atualiza se o novo estado combinado for diferente do armazenado
+    if new_store_data != (current_store_data or {}):
         logging.debug(
-            f"Store Update (Var): Indicador {callback_context.inputs_list[0]['id']['index']} - selected_var: {selected_var}")
-        return store_data
+            f"Store Update (Var): Indicador {callback_context.inputs_list[0]['id']['index']} - Novo Store: {new_store_data}")
+        return new_store_data
     else:
         raise PreventUpdate
 
@@ -2009,34 +2064,37 @@ def update_store_from_variable(selected_var, current_store_data):
     Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
     Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
     State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
+    State({'type': 'var-dropdown', 'index': MATCH}, 'value'), # <-- ADICIONADO STATE DA VARIÁVEL
     State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
     prevent_initial_call=True
 )
-def update_store_from_filters(filter_values, filter_ids, current_store_data):
-    """Atualiza a chave 'selected_filters' no store quando um dynamic-filter-dropdown muda."""
+def update_store_from_filters(filter_values, filter_ids, current_var_value, current_store_data):
+    """Atualiza o store com os filtros selecionados e a variável atual do dropdown."""
     if not callback_context.triggered:
         raise PreventUpdate
 
-    store_data = current_store_data or {'selected_var': None, 'selected_filters': {}}
-
     # Remonta o dicionário de filtros a partir dos inputs atuais
-    current_filters = {}
+    actual_current_filters = {}
     if filter_ids and filter_values:
         for i, filter_id_dict in enumerate(filter_ids):
-            if i < len(filter_values) and filter_id_dict:  # Checa se filter_id_dict não é None
+            if i < len(filter_values) and filter_id_dict: 
                 filter_col = filter_id_dict.get('filter_col')
                 if filter_col:
-                    current_filters[filter_col] = filter_values[i]
+                    actual_current_filters[filter_col] = filter_values[i]
+    
+    new_store_data = {
+        'selected_var': current_var_value, # Usa a variável lida diretamente do dropdown
+        'selected_filters': actual_current_filters
+    }
 
-    # Verifica se o dicionário de filtros realmente mudou
-    if current_filters != store_data.get('selected_filters'):
-        store_data['selected_filters'] = current_filters
+    # Só atualiza se o novo estado combinado for diferente do armazenado
+    if new_store_data != (current_store_data or {}):
         try:
-            indicador_id_str = callback_context.inputs_list[0][0]['id']['index']  # ID pode estar aninhado
+            indicador_id_str = callback_context.inputs_list[0][0]['id']['index'] 
         except (IndexError, KeyError, TypeError):
             indicador_id_str = "Desconhecido"
-        logging.debug(f"Store Update (Filters): Indicador {indicador_id_str} - selected_filters: {current_filters}")
-        return store_data
+        logging.debug(f"Store Update (Filters): Indicador {indicador_id_str} - Novo Store: {new_store_data}")
+        return new_store_data
     else:
         raise PreventUpdate
 
@@ -2674,7 +2732,7 @@ def find_best_initial_var(df_dados, df_variavel_filtrado):
     return df_variavel_filtrado['CODG_VAR'].iloc[0]
 
 
-server = app.server  # <--- Adicionar esta linha
+server = app.server
 
 if __name__ == '__main__':
     # Verifica se o arquivo .env existe
