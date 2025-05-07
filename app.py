@@ -1896,55 +1896,119 @@ def update_card_content(*args):
         return initial_header, initial_content, [], "Ocorreu um erro.", []
 
 
-# Callback direto para atualizar visualizações quando filtros ou variáveis mudam
+# --- Novas Callbacks para Atualizar o Store ---
+
+# Callback para atualizar o store quando a VARIÁVEL PRINCIPAL muda
 @app.callback(
-    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
-    [
-        Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
-        Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value')
-    ],
-    [
-        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
-        State({'type': 'graph-container', 'index': MATCH}, 'id')
-    ],
+    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
+    Input({'type': 'var-dropdown', 'index': MATCH}, 'value'),
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
     prevent_initial_call=True
 )
-def update_visualization_direct(var_value, filter_values, filter_ids, container_id):
-    """Atualiza diretamente a visualização quando filtros ou variáveis são alterados"""
+def update_store_from_variable(selected_var, current_store_data):
+    """Atualiza a chave 'selected_var' no store quando o var-dropdown muda."""
+    if not callback_context.triggered:
+        raise PreventUpdate
+    
+    store_data = current_store_data or {'selected_var': None, 'selected_filters': {}}
+    
+    # Verifica se o valor realmente mudou para evitar loops desnecessários (embora Input já faça isso)
+    if selected_var != store_data.get('selected_var'):
+        store_data['selected_var'] = selected_var
+        logging.debug(f"Store Update (Var): Indicador {callback_context.inputs_list[0]['id']['index']} - selected_var: {selected_var}")
+        return store_data
+    else:
+        raise PreventUpdate
+
+# Callback para atualizar o store quando os FILTROS DINÂMICOS mudam
+@app.callback(
+    Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
+    Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
+    State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
+    State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
+    prevent_initial_call=True
+)
+def update_store_from_filters(filter_values, filter_ids, current_store_data):
+    """Atualiza a chave 'selected_filters' no store quando um dynamic-filter-dropdown muda."""
+    if not callback_context.triggered:
+        raise PreventUpdate
+
+    store_data = current_store_data or {'selected_var': None, 'selected_filters': {}}
+    
+    # Remonta o dicionário de filtros a partir dos inputs atuais
+    current_filters = {}
+    if filter_ids and filter_values:
+        for i, filter_id_dict in enumerate(filter_ids):
+            if i < len(filter_values) and filter_id_dict: # Checa se filter_id_dict não é None
+                filter_col = filter_id_dict.get('filter_col')
+                if filter_col:
+                    current_filters[filter_col] = filter_values[i]
+                    
+    # Verifica se o dicionário de filtros realmente mudou
+    if current_filters != store_data.get('selected_filters'):
+        store_data['selected_filters'] = current_filters
+        try:
+            indicador_id_str = callback_context.inputs_list[0][0]['id']['index'] # ID pode estar aninhado
+        except (IndexError, KeyError, TypeError):
+            indicador_id_str = "Desconhecido"
+        logging.debug(f"Store Update (Filters): Indicador {indicador_id_str} - selected_filters: {current_filters}")
+        return store_data
+    else:
+        raise PreventUpdate
+
+# --- Fim das Novas Callbacks ---
+
+# Callback ATUALIZADA para gerar visualização QUANDO O STORE MUDA
+@app.callback(
+    Output({'type': 'graph-container', 'index': MATCH}, 'children'),
+    # Output({'type': 'visualization-state-store', 'index': MATCH}, 'data')], # <-- REMOVIDO OUTPUT PARA STORE
+    [
+        # Input({'type': 'var-dropdown', 'index': MATCH}, 'value'), # REMOVIDO
+        # Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value') # REMOVIDO
+        Input({'type': 'visualization-state-store', 'index': MATCH}, 'data') # <-- INPUT AGORA É O STORE
+    ],
+    [
+        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'), # REMOVIDO
+        State({'type': 'graph-container', 'index': MATCH}, 'id'), # Mantém ID do container para logs
+        # State({'type': 'visualization-state-store', 'index': MATCH}, 'data') # REMOVIDO (agora é Input)
+    ],
+    prevent_initial_call=True # Mantém prevent_initial_call
+)
+def update_visualization_from_store(store_data, container_id): # <-- Argumentos modificados
+    """Atualiza diretamente a visualização lendo o estado (var/filtros) do store."""
     ctx = callback_context
-    if not ctx.triggered:
+    # Não precisa checar ctx.triggered explicitamente aqui, pois o Input do store garante trigger
+    if not store_data or not container_id:
+        logging.debug("Vis Update from Store: Preventido (sem store_data ou container_id)")
         raise PreventUpdate
     
     indicador_id = container_id['index']
     
-    # Monta o dicionário de filtros a partir dos valores e IDs
-    selected_filters = {}
-    if filter_ids and filter_values:
-        for i, filter_id in enumerate(filter_ids):
-            if i < len(filter_values):  # Evita IndexError
-                filter_col = filter_id.get('filter_col')
-                if filter_col:
-                    selected_filters[filter_col] = filter_values[i]
-    
-    # Log para debug
-    trigger_id = ctx.triggered[0]['prop_id']
-    logging.debug(f"Atualizando visualização diretamente para {indicador_id}. Trigger: {trigger_id}")
-    logging.debug(f"Valores - Var: {var_value}, Filtros: {selected_filters}")
-    
+    # ---- Obter filtros e variável do STORE (Input) ----
+    var_value = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {}) # Pega dict vazio se chave não existir
+    if selected_filters is None: # Garante que seja um dict
+        selected_filters = {}
+    # -------------------------------------------------
+
+    logging.debug(f"Atualizando visualização from store para {indicador_id}. Var: {var_value}, Filtros: {selected_filters}")
+
     try:
         # Carrega dados do indicador
         df_dados = load_dados_indicador_cache(indicador_id)
         if df_dados is None or df_dados.empty:
-            return dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning")
+            return dbc.Alert(f"Dados não disponíveis para {indicador_id}.", color="warning") # Não precisa retornar store
         
         # Gera nova visualização
         visualization = create_visualization(
             df_dados, indicador_id, var_value, selected_filters
         )
-        return visualization
+        
+        return visualization # <-- RETORNA APENAS VISUALIZAÇÃO
+        
     except Exception as e:
-        logging.exception(f"Erro ao atualizar visualização para {indicador_id}: {str(e)}")
-        return dbc.Alert(f"Erro ao atualizar visualização: {str(e)}", color="danger")
+        logging.exception(f"Erro ao atualizar visualização from store para {indicador_id}: {str(e)}")
+        return dbc.Alert(f"Erro ao atualizar visualização: {str(e)}", color="danger") # Não precisa retornar store
 
 
 # Callback para atualizar o ranking quando o ano é alterado
@@ -1953,31 +2017,42 @@ def update_visualization_direct(var_value, filter_values, filter_ids, container_
     [Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value')],
     [
         State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
-        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
-        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id')
+        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'), # REMOVIDO
+        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'), # REMOVIDO
+        # State({'type': 'var-dropdown', 'index': MATCH}, 'value') # REMOVIDO
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data') # <-- ADICIONADO ESTADO DO STORE
     ],
     prevent_initial_call=True
 )
-def update_ranking_chart(selected_year, chart_id, filter_values, filter_ids):
-    """Atualiza o gráfico de ranking quando o ano é alterado"""
+def update_ranking_chart(selected_year, chart_id, store_data): # <-- Argumentos modificados
+    """Atualiza o gráfico de ranking quando o ano é alterado, lendo filtros do store"""
     ctx = callback_context
-    if not ctx.triggered or not selected_year:
+    if not ctx.triggered or not selected_year or not store_data:
+        # Não atualiza se não houver ano ou dados no store
+        logging.debug("Ranking: Update preventido (sem ano ou store_data)")
         raise PreventUpdate
 
     # Identificar o indicador a partir do ID do gráfico
     indicador_id = chart_id['index']
     
-    # Log para debugging
-    logging.debug(f"Atualizando ranking para {indicador_id}, Ano: {selected_year}")
+    # ---- Obter filtros e variável do STORE ----
+    selected_var_value = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {}) # Pega dict vazio se chave não existir
+    if selected_filters is None: # Garante que seja um dict
+        selected_filters = {}
+    # -----------------------------------------
 
-    # Coletar os filtros atuais
-    selected_filters = {}
-    if filter_ids and filter_values:
-        for i, filter_id in enumerate(filter_ids):
-            if i < len(filter_values):  # Evita IndexError
-                filter_col = filter_id.get('filter_col')
-                if filter_col:
-                    selected_filters[filter_col] = filter_values[i]
+    # Log para debugging
+    logging.debug(f"Atualizando ranking para {indicador_id}, Ano: {selected_year}, Var Store: {selected_var_value}, Filtros Store: {selected_filters}")
+
+    # Coletar os filtros atuais (NÃO MAIS NECESSÁRIO, VEM DO STORE)
+    # selected_filters = {}
+    # if filter_ids and filter_values:
+    #     for i, filter_id in enumerate(filter_ids):
+    #         if i < len(filter_values):  # Evita IndexError
+    #             filter_col = filter_id.get('filter_col')
+    #             if filter_col:
+    #                 selected_filters[filter_col] = filter_values[i]
     
     # Carrega os dados do indicador
     df_ranking_base = load_dados_indicador_cache(indicador_id)
@@ -1985,30 +2060,69 @@ def update_ranking_chart(selected_year, chart_id, filter_values, filter_ids):
         logging.warning(f"Dados não disponíveis para o ranking de {indicador_id}")
         # Retorna figura vazia com aviso se não houver dados
         return go.Figure().update_layout(title='Dados não disponíveis para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
-
-    # Verificar se temos dados de UF
-    if 'DESC_UND_FED' not in df_ranking_base.columns and 'CODG_UND_FED' not in df_ranking_base.columns:
-        logging.warning(f"Colunas de UF não encontradas para o ranking de {indicador_id}")
-        return go.Figure().update_layout(title='Dados não incluem informações por UF.', xaxis={'visible': False}, yaxis={'visible': False})
-
-    # --- Aplica filtros (Variável principal e dinâmicos) ---
-    df_filtered_ranking = df_ranking_base.copy()
     
-    # Filtros Dinâmicos
+    logging.debug(f"Ranking - df_ranking_base inicial - Colunas: {df_ranking_base.columns.tolist()}, Registros: {len(df_ranking_base)}")
+
+    # --- INÍCIO: Aplicar filtro de VARIÁVEL PRINCIPAL ---
+    df_filtered_ranking = df_ranking_base.copy()
+    if selected_var_value and 'CODG_VAR' in df_filtered_ranking.columns:
+        selected_var_str = str(selected_var_value).strip()
+        df_filtered_ranking['CODG_VAR'] = df_filtered_ranking['CODG_VAR'].astype(str).str.strip()
+        df_filtered_ranking = df_filtered_ranking[df_filtered_ranking['CODG_VAR'] == selected_var_str]
+        logging.debug(f"Ranking - Após filtro de variável principal ({selected_var_str}) - Registros: {len(df_filtered_ranking)}")
+        if df_filtered_ranking.empty:
+            var_name = selected_var_str
+            df_var_desc = load_variavel()
+            if not df_var_desc.empty:
+                 var_info = df_var_desc[df_var_desc['CODG_VAR'] == selected_var_str]
+                 if not var_info.empty:
+                     var_name = var_info['DESC_VAR'].iloc[0]
+            return go.Figure().update_layout(title=f'Ranking: Nenhum dado para variável \'{var_name}\'.', xaxis={'visible': False}, yaxis={'visible': False})
+    # --- FIM: Aplicar filtro de VARIÁVEL PRINCIPAL ---
+
+    # Garante que a coluna DESC_UND_MED exista desde o início (AGORA EM df_filtered_ranking)
+    if 'DESC_UND_MED' not in df_filtered_ranking.columns:
+        logging.debug(f"Ranking - Adicionando coluna DESC_UND_MED ao df_filtered_ranking (não existia)")
+        if 'CODG_UND_MED' in df_filtered_ranking.columns:
+            df_unidade_medida_loaded = load_unidade_medida()
+            if not df_unidade_medida_loaded.empty:
+                df_filtered_ranking['CODG_UND_MED'] = df_filtered_ranking['CODG_UND_MED'].astype(str)
+                df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+                df_filtered_ranking = pd.merge(df_filtered_ranking, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+                df_filtered_ranking['DESC_UND_MED'] = df_filtered_ranking['DESC_UND_MED'].fillna('N/D')
+            else:
+                df_filtered_ranking['DESC_UND_MED'] = 'N/D'
+        else:
+            df_filtered_ranking['DESC_UND_MED'] = 'N/D'
+        logging.debug(f"Ranking - df_filtered_ranking após DESC_UND_MED - Colunas: {df_filtered_ranking.columns.tolist()}")
+    elif 'DESC_UND_MED' in df_filtered_ranking.columns: # Garante fillna se já existir
+        df_filtered_ranking['DESC_UND_MED'] = df_filtered_ranking['DESC_UND_MED'].fillna('N/D')
+
+    # Verificar se temos dados de UF (AGORA EM df_filtered_ranking)
+    if 'DESC_UND_FED' not in df_filtered_ranking.columns and 'CODG_UND_FED' not in df_filtered_ranking.columns:
+        logging.warning(f"Ranking - Colunas de UF (DESC_UND_FED ou CODG_UND_FED) não encontradas em df_filtered_ranking para {indicador_id}")
+        return go.Figure().update_layout(title='Dados não incluem informações por UF para ranking.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # Filtros Dinâmicos (AGORA EM df_filtered_ranking)
     if selected_filters:
         for col_code, selected_value in selected_filters.items():
             if selected_value is not None and col_code in df_filtered_ranking.columns:
                 df_filtered_ranking[col_code] = df_filtered_ranking[col_code].astype(str).fillna('').str.strip()
                 selected_value_str = str(selected_value).strip()
                 df_filtered_ranking = df_filtered_ranking[df_filtered_ranking[col_code] == selected_value_str]
-                logging.debug(f"Após filtro {col_code}={selected_value_str} - Registros: {len(df_filtered_ranking)}")
+        logging.debug(f"Ranking - df_filtered_ranking após filtros dinâmicos - Colunas: {df_filtered_ranking.columns.tolist()}, Registros: {len(df_filtered_ranking)}")
 
     # IMPORTANTE: Primeiro filtra pelo ANO selecionado, depois verifica unicidade
+    if 'CODG_ANO' not in df_filtered_ranking.columns:
+        logging.error(f"Ranking - Coluna CODG_ANO não encontrada em df_filtered_ranking para {indicador_id}. Colunas: {df_filtered_ranking.columns.tolist()}")
+        return go.Figure().update_layout(title='Erro interno: Coluna de Ano ausente.', xaxis={'visible': False}, yaxis={'visible': False})
+        
     df_filtered_ranking['CODG_ANO'] = df_filtered_ranking['CODG_ANO'].astype(str).str.strip()
     df_ranking_ano = df_filtered_ranking[df_filtered_ranking['CODG_ANO'] == str(selected_year).strip()].copy()
+    logging.debug(f"Ranking - df_ranking_ano após filtro de ano ({selected_year}) - Colunas: {df_ranking_ano.columns.tolist()}, Registros: {len(df_ranking_ano)}")
     
     if df_ranking_ano.empty:
-        logging.warning(f"Sem dados para o ano {selected_year} com os filtros aplicados")
+        logging.warning(f"Ranking - Sem dados para o ano {selected_year} com os filtros aplicados em {indicador_id}")
         return go.Figure().update_layout(
             title=f'Sem dados para o ano {selected_year} com os filtros aplicados.', 
             xaxis={'visible': False}, yaxis={'visible': False}
@@ -2016,47 +2130,64 @@ def update_ranking_chart(selected_year, chart_id, filter_values, filter_ids):
 
     # Adiciona DESC_UND_FED se necessário
     if 'DESC_UND_FED' not in df_ranking_ano.columns and 'CODG_UND_FED' in df_ranking_ano.columns:
+        logging.debug(f"Ranking - Adicionando DESC_UND_FED a df_ranking_ano para {indicador_id}")
         df_ranking_ano['DESC_UND_FED'] = df_ranking_ano['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        # Log antes do dropna
+        logging.debug(f"Ranking - df_ranking_ano ANTES de dropna DESC_UND_FED - Registros: {len(df_ranking_ano)}, NaNs em DESC_UND_FED: {df_ranking_ano['DESC_UND_FED'].isna().sum()}")
         df_ranking_ano = df_ranking_ano.dropna(subset=['DESC_UND_FED'])
+        logging.debug(f"Ranking - df_ranking_ano APÓS dropna DESC_UND_FED - Colunas: {df_ranking_ano.columns.tolist()}, Registros: {len(df_ranking_ano)}")
+
 
     # Agora verifica unicidade por UF APÓS filtrar pelo ano selecionado
     if 'DESC_UND_FED' not in df_ranking_ano.columns or df_ranking_ano.empty:
-        logging.warning(f"Dados de UF não encontrados para o ano {selected_year}")
+        logging.warning(f"Ranking - DESC_UND_FED não encontrada ou df_ranking_ano vazio após processamento para {indicador_id}, ano {selected_year}")
         return go.Figure().update_layout(
-            title=f'Ranking não disponível para {selected_year}.', 
+            title=f'Ranking não disponível para {selected_year} (dados de UF ausentes/inválidos).', 
             xaxis={'visible': False}, yaxis={'visible': False}
         )
 
     # Verifica unicidade por UF para o ano selecionado
     counts_per_uf_ranking = df_ranking_ano['DESC_UND_FED'].value_counts()
-    has_duplicates = (counts_per_uf_ranking > 1).any()
+    # ---- INÍCIO DA VERIFICAÇÃO DE UNICIDADE ----
+    if (counts_per_uf_ranking > 1).any():
+        logging.warning(f"Ranking - Múltiplos valores por UF para o ano {selected_year} e filtros aplicados. Indicador: {indicador_id}. Contagens: {counts_per_uf_ranking[counts_per_uf_ranking > 1]}")
+        alert_fig = go.Figure()
+        alert_fig.update_layout(
+            annotations=[
+                go.layout.Annotation(
+                    text="Ranking não pode ser gerado: múltiplos valores por UF para o ano e filtros selecionados.<br>Verifique os filtros ou a configuração do indicador.",
+                    showarrow=False,
+                    xref="paper", yref="paper",
+                    x=0.5, y=0.5,
+                    align="center",
+                    font=dict(size=12)
+                )
+            ],
+            xaxis={'visible': False}, yaxis={'visible': False},
+            margin=dict(t=20, b=20, l=20, r=20),
+            height=200 # Altura menor para o alerta
+        )
+        return alert_fig
+    # ---- FIM DA VERIFICAÇÃO DE UNICIDADE ----
     
-    if has_duplicates:
-        # Se tiver duplicatas, tenta uma abordagem alternativa - agrupar por UF e usar a média
-        logging.warning(f"Múltiplos valores por UF no ano {selected_year}, tentando agrupar")
-        try:
-            df_ranking_ano = df_ranking_ano.groupby('DESC_UND_FED').agg({
-                'VLR_VAR': 'mean',
-                'DESC_UND_MED': 'first'  # Mantém a primeira unidade de medida
-            }).reset_index()
-            logging.info(f"Agrupamento bem-sucedido. Prosseguindo com {len(df_ranking_ano)} UFs")
-        except Exception as agg_err:
-            logging.error(f"Erro ao agrupar: {agg_err}")
-            return go.Figure().update_layout(
-                title=f'Múltiplos valores por UF no ano {selected_year}. Não foi possível agrupar.', 
-                xaxis={'visible': False}, yaxis={'visible': False}
-            )
-
-    # Adiciona DESC_UND_MED se necessário
-    if 'DESC_UND_MED' not in df_ranking_ano.columns and 'CODG_UND_MED' in df_ranking_ano.columns:
-        df_unidade_medida_loaded = load_unidade_medida()
-        if not df_unidade_medida_loaded.empty:
-            df_ranking_ano['CODG_UND_MED'] = df_ranking_ano['CODG_UND_MED'].astype(str)
-            df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
-            df_ranking_ano = pd.merge(df_ranking_ano, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
-            df_ranking_ano['DESC_UND_MED'] = df_ranking_ano['DESC_UND_MED'].fillna('N/D')
+    # Adiciona DESC_UND_MED se necessário (agora em df_ranking_ano)
+    if 'DESC_UND_MED' not in df_ranking_ano.columns:
+        logging.debug(f"Ranking - Adicionando coluna DESC_UND_MED ao df_ranking_ano (não existia)")
+        if 'CODG_UND_MED' in df_ranking_ano.columns:
+            df_unidade_medida_loaded = load_unidade_medida()
+            if not df_unidade_medida_loaded.empty:
+                df_ranking_ano['CODG_UND_MED'] = df_ranking_ano['CODG_UND_MED'].astype(str)
+                df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+                df_ranking_ano = pd.merge(df_ranking_ano, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+                df_ranking_ano['DESC_UND_MED'] = df_ranking_ano['DESC_UND_MED'].fillna('N/D')
+            else:
+                df_ranking_ano['DESC_UND_MED'] = 'N/D'
         else:
             df_ranking_ano['DESC_UND_MED'] = 'N/D'
+        logging.debug(f"Ranking - df_ranking_ano após DESC_UND_MED - Colunas: {df_ranking_ano.columns.tolist()}")
+    elif 'DESC_UND_MED' in df_ranking_ano.columns: # Garante que não haja NaNs se a coluna já existir
+        df_ranking_ano['DESC_UND_MED'] = df_ranking_ano['DESC_UND_MED'].fillna('N/D')
+
 
     # Lê a ordem do ranking do indicador
     ranking_ordem = 0 # Padrão
@@ -2119,49 +2250,110 @@ def update_ranking_chart(selected_year, chart_id, filter_values, filter_ids):
     [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
     [
         State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
-        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
-        State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id')
+        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'), # REMOVIDO
+        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'), # REMOVIDO
+        # Falta adicionar State para var-dropdown aqui também, se necessário, mas vamos usar o Store
+        State({'type': 'visualization-state-store', 'index': MATCH}, 'data') # <-- ADICIONADO ESTADO DO STORE
     ],
     prevent_initial_call=True
 )
-def update_map_on_year_change(selected_year, chart_id, filter_values, filter_ids):
-    """Atualiza o mapa coroplético quando o ano é alterado"""
-    import plotly.express as px
+def update_map_on_year_change(selected_year, chart_id, store_data): # <-- Argumentos modificados
+    """Atualiza o mapa coroplético quando o ano é alterado, lendo filtros do store"""
+    import plotly.express as px # Import local para clareza
     ctx = callback_context
-    if not ctx.triggered or not selected_year:
+    if not ctx.triggered or not selected_year or not store_data:
+        logging.debug("Mapa: Update preventido (sem ano ou store_data)")
         raise PreventUpdate
 
     indicador_id = chart_id['index']
-    logging.debug(f"Atualizando mapa para {indicador_id}, Ano: {selected_year}")
+    
+    # ---- Obter filtros e variável do STORE ----
+    selected_var_value = store_data.get('selected_var')
+    selected_filters = store_data.get('selected_filters', {}) # Pega dict vazio se chave não existir
+    if selected_filters is None: # Garante que seja um dict
+        selected_filters = {}
+    # -----------------------------------------
 
-    selected_filters = {}
-    if filter_ids and filter_values:
-        for i, filter_id in enumerate(filter_ids):
-            if i < len(filter_values):
-                filter_col = filter_id.get('filter_col')
-                if filter_col:
-                    selected_filters[filter_col] = filter_values[i]
+    logging.debug(f"Atualizando mapa para {indicador_id}, Ano: {selected_year}, Var Store: {selected_var_value}, Filtros Store: {selected_filters}")
+
+    # selected_filters = {} # NÃO MAIS NECESSÁRIO
+    # if filter_ids and filter_values:
+    #     for i, filter_id in enumerate(filter_ids):
+    #         if i < len(filter_values):
+    #             filter_col = filter_id.get('filter_col')
+    #             if filter_col:
+    #                 selected_filters[filter_col] = filter_values[i]
 
     df_map_base = load_dados_indicador_cache(indicador_id)
     if df_map_base is None or df_map_base.empty:
         logging.warning(f"Dados não disponíveis para o mapa de {indicador_id}")
         return go.Figure().update_layout(title='Dados não disponíveis para mapa.', xaxis={'visible': False}, yaxis={'visible': False})
-
-    if 'DESC_UND_FED' not in df_map_base.columns and 'CODG_UND_FED' not in df_map_base.columns:
-        logging.warning(f"Colunas de UF não encontradas para o mapa de {indicador_id}")
-        return go.Figure().update_layout(title='Dados não incluem informações por UF.', xaxis={'visible': False}, yaxis={'visible': False})
-
+    
+    logging.debug(f"Mapa - df_map_base inicial - Colunas: {df_map_base.columns.tolist()}, Registros: {len(df_map_base)}")
+    
+    # --- INÍCIO: Aplicar filtro de VARIÁVEL PRINCIPAL ---
     df_filtered_map = df_map_base.copy()
+    if selected_var_value and 'CODG_VAR' in df_filtered_map.columns:
+        selected_var_str = str(selected_var_value).strip()
+        df_filtered_map['CODG_VAR'] = df_filtered_map['CODG_VAR'].astype(str).str.strip()
+        df_filtered_map = df_filtered_map[df_filtered_map['CODG_VAR'] == selected_var_str]
+        logging.debug(f"Mapa - Após filtro de variável principal ({selected_var_str}) - Registros: {len(df_filtered_map)}")
+        if df_filtered_map.empty:
+            var_name = selected_var_str
+            df_var_desc = load_variavel()
+            if not df_var_desc.empty:
+                 var_info = df_var_desc[df_var_desc['CODG_VAR'] == selected_var_str]
+                 if not var_info.empty:
+                     var_name = var_info['DESC_VAR'].iloc[0]
+            return go.Figure().update_layout(title=f'Mapa: Nenhum dado para variável \'{var_name}\'.', xaxis={'visible': False}, yaxis={'visible': False})
+    # --- FIM: Aplicar filtro de VARIÁVEL PRINCIPAL ---
+
+    # NOVO: Garante que a coluna DESC_UND_MED exista desde o início (AGORA EM df_filtered_map)
+    if 'DESC_UND_MED' not in df_filtered_map.columns:
+        logging.debug(f"Mapa - Adicionando coluna DESC_UND_MED ao df_filtered_map (não existia)")
+        if 'CODG_UND_MED' in df_filtered_map.columns:
+            df_unidade_medida_loaded = load_unidade_medida()
+            if not df_unidade_medida_loaded.empty:
+                df_filtered_map['CODG_UND_MED'] = df_filtered_map['CODG_UND_MED'].astype(str)
+                df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+                df_filtered_map = pd.merge(df_filtered_map, df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], on='CODG_UND_MED', how='left')
+                df_filtered_map['DESC_UND_MED'] = df_filtered_map['DESC_UND_MED'].fillna('N/D')
+            else:
+                df_filtered_map['DESC_UND_MED'] = 'N/D'
+        else:
+            df_filtered_map['DESC_UND_MED'] = 'N/D'
+        logging.debug(f"Mapa - df_filtered_map após DESC_UND_MED - Colunas: {df_filtered_map.columns.tolist()}")
+    elif 'DESC_UND_MED' in df_filtered_map.columns: # Garante fillna
+        df_filtered_map['DESC_UND_MED'] = df_filtered_map['DESC_UND_MED'].fillna('N/D')
+        
+    logging.debug(f"Mapa - df_filtered_map antes de filtros dinâmicos - Colunas: {df_filtered_map.columns.tolist()}, Registros: {len(df_filtered_map)}")
+    logging.debug(f"Mapa - 'DESC_UND_MED' está disponível antes de filtros dinâmicos? {'DESC_UND_MED' in df_filtered_map.columns}")
+
+    if 'DESC_UND_FED' not in df_filtered_map.columns and 'CODG_UND_FED' not in df_filtered_map.columns:
+        logging.warning(f"Mapa - Colunas de UF (DESC_UND_FED ou CODG_UND_FED) não encontradas em df_filtered_map para {indicador_id}")
+        return go.Figure().update_layout(title='Dados não incluem informações por UF para mapa.', xaxis={'visible': False}, yaxis={'visible': False})
+
+    # Aplica filtros dinâmicos (AGORA EM df_filtered_map)
     if selected_filters:
         for col_code, selected_value in selected_filters.items():
             if selected_value is not None and col_code in df_filtered_map.columns:
                 df_filtered_map[col_code] = df_filtered_map[col_code].astype(str).fillna('').str.strip()
                 selected_value_str = str(selected_value).strip()
                 df_filtered_map = df_filtered_map[df_filtered_map[col_code] == selected_value_str]
-                logging.debug(f"Após filtro {col_code}={selected_value_str} - Registros: {len(df_filtered_map)}")
-
+                # Removido log repetido aqui
+    logging.debug(f"Mapa - df_filtered_map após filtros dinâmicos - Colunas: {df_filtered_map.columns.tolist()}, Registros: {len(df_filtered_map)}")
+    logging.debug(f"Mapa - 'DESC_UND_MED' está disponível após filtros dinâmicos? {'DESC_UND_MED' in df_filtered_map.columns}")
+    
+    # Garante CODG_ANO existe antes de filtrar
+    if 'CODG_ANO' not in df_filtered_map.columns:
+        logging.error(f"Mapa - Coluna CODG_ANO não encontrada em df_filtered_map para {indicador_id}. Colunas: {df_filtered_map.columns.tolist()}")
+        return go.Figure().update_layout(title='Erro interno: Coluna de Ano ausente.', xaxis={'visible': False}, yaxis={'visible': False})
+        
     df_filtered_map['CODG_ANO'] = df_filtered_map['CODG_ANO'].astype(str).str.strip()
     df_map_ano = df_filtered_map[df_filtered_map['CODG_ANO'] == str(selected_year).strip()].copy()
+
+    logging.debug(f"Mapa - df_map_ano após filtro de ano ({selected_year}) - Colunas: {df_map_ano.columns.tolist()}, Registros: {len(df_map_ano)}")
+    logging.debug(f"Mapa - 'DESC_UND_MED' está disponível após filtro de ano? {'DESC_UND_MED' in df_map_ano.columns}")
 
     if df_map_ano.empty:
         logging.warning(f"Sem dados para o ano {selected_year} com os filtros aplicados")
@@ -2182,23 +2374,9 @@ def update_map_on_year_change(selected_year, chart_id, filter_values, filter_ids
         )
 
     counts_per_uf_map = df_map_ano['DESC_UND_FED'].value_counts()
-    has_duplicates = (counts_per_uf_map > 1).any()
-    if has_duplicates:
-        logging.warning(f"Múltiplos valores por UF no ano {selected_year}, tentando agrupar")
-        try:
-            df_map_ano = df_map_ano.groupby('DESC_UND_FED').agg({
-                'VLR_VAR': 'mean',
-                'DESC_UND_MED': 'first'
-            }).reset_index()
-            logging.info(f"Agrupamento bem-sucedido. Prosseguindo com {len(df_map_ano)} UFs")
-        except Exception as agg_err:
-            logging.error(f"Erro ao agrupar: {agg_err}")
-            return go.Figure().update_layout(
-                title=f'Múltiplos valores por UF no ano {selected_year}. Não foi possível agrupar.', 
-                xaxis={'visible': False}, yaxis={'visible': False}
-            )
 
     if 'DESC_UND_MED' not in df_map_ano.columns and 'CODG_UND_MED' in df_map_ano.columns:
+        logging.debug("Tentando obter DESC_UND_MED via CODG_UND_MED")
         df_unidade_medida_loaded = load_unidade_medida()
         if not df_unidade_medida_loaded.empty:
             df_map_ano['CODG_UND_MED'] = df_map_ano['CODG_UND_MED'].astype(str)
@@ -2207,6 +2385,10 @@ def update_map_on_year_change(selected_year, chart_id, filter_values, filter_ids
             df_map_ano['DESC_UND_MED'] = df_map_ano['DESC_UND_MED'].fillna('N/D')
         else:
             df_map_ano['DESC_UND_MED'] = 'N/D'
+    elif 'DESC_UND_MED' not in df_map_ano.columns:
+        logging.debug("DESC_UND_MED e CODG_UND_MED não estão disponíveis, criando com valor padrão")
+        # Se mesmo após tentar obter via CODG_UND_MED ainda não tiver a coluna, adiciona com valor padrão
+        df_map_ano['DESC_UND_MED'] = 'N/D'
 
     # Formata os valores para o hover
     df_map_ano['VLR_VAR_FORMATADO'] = df_map_ano['VLR_VAR'].apply(format_br)

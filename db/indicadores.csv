@@ -1,6 +1,8 @@
 ID_INDICADOR;DESC_INDICADOR;ID_META;RBC;VARIAVEIS;GRAFICO_LINHA;RANKING_ORDEM
 Indicador 1.1.1;Proporção da população vivendo abaixo da linha de pobreza internacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.1;1;0;0;1
+Indicador 1.1.1.a;Proporção da população ocupada de 14 anos ou mais de idade abaixo da linha de pobreza internacional;Meta 1.1;1;0;0;1
 Indicador 1.2.1;Proporção da população vivendo abaixo da linha de pobreza nacional, por sexo, idade, condição perante o trabalho e localização geográfica (urbano/rural);Meta 1.2;1;0;0;1
+Indicador 1.2.1.a;Proporção da população ocupada de 14 anos ou mais de idade abaixo da linha de pobreza nacional;Meta 1.2;1;0;0;1
 Indicador 1.5.1;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes;Meta 1.5;1;0;0;1
 Indicador 1.5.4;Proporção de governos locais que adotam e implementam estratégias locais de redução de risco de desastres em linha com as estratégias nacionais de redução de risco de desastres;Meta 1.5;1;0;0;1
 Indicador 3.1.1;Razão de mortalidade materna;Meta 3.1;1;1;1;1
@@ -23,7 +25,7 @@ Indicador 4.2.1;Proporção de crianças com idade entre 24-59 meses que estão 
 Indicador 4.2.1.2;Proporção das pessoas de 5 anos de idade que frequentam escola de acordo com a situação do domicílio;Meta 4.2;1;0;1;0
 Indicador 4.2.1.3;Proporção das pessoas de 5 anos de idade que frequentam escola em relação ao sexo;Meta 4.2;1;0;1;0
 Indicador 4.2.1.4;Proporção das pessoas de 5 anos de idade que frequentam escola, em relação ao percentual das pessoas em ordem crescente de rendimento domiciliar per capita;Meta 4.2;1;0;1;0
-Indicador 4.2.2;Taxa de participação no ensino organizado (um ano antes da idade oficial de ingresso no ensino fundamental), por sexo;Meta 4.2;1;1;1;0
+Indicador 4.2.2;Taxa de participação no ensino organizado (um ano antes da idade oficial de ingresso no ensino fundamental), por sexo;Meta 4.2;1;1;0;0
 Indicador 4.5.1;Índices de paridade (mulher/homem, rural/urbano, 1º/5º quintis de renda e outros como população com deficiência, populações indígenas e populações afetadas por conflitos, à medida que os dados estejam disponíveis) para todos os indicadores nesta lista que possam ser desagregados;Meta 4.5;1;1;0;1
 Indicador 4.a.1;"Proporção de escolas com acesso a: (a) eletricidade; (b) internet para fins pedagógicos; (c) computadores para fins pedagógicos; (d) infraestrutura e materiais adaptados para alunos com deficiência; (e) água potável; (f) instalações sanitárias separadas por sexo; e (g) instalações básicas para lavagem das mãos (de acordo com as definições dos indicadores WASH)";Meta 4.a;1;1;1;0
 Indicador 4.c.1;Proporção de professores que receberam a qualificação mínima exigida, por nível de ensino;Meta 4.c;1;0;0;0

@@ -33,6 +33,7 @@ CODG_VAR;DESC_VAR
 9610;Proporção de docentes com formação adequada
 9613;Número de casos novos de hepatite B
 9617;Proporção da população abaixo da linha de pobreza internacional
+9618;Proporção da população ocupada de 14 anos ou mais de idade abaixo da linha de pobreza internacional
 9619;Número de mortes, pessoas desaparecidas e pessoas diretamente afetadas atribuído a desastres por 100 mil habitantes
 9724;Número de assentos na Câmara dos Deputados
 9725;Número de assentos ocupados por mulheres na Câmara dos Deputados
@@ -47,6 +48,7 @@ CODG_VAR;DESC_VAR
 9734;Taxa de mortalidade por lesões de trânsito
 9737;Taxa de mortalidade atribuída a fontes de água inadequadas, saneamento inadequado e falta de higiene
 9948;Proporção da população abaixo da linha de pobreza nacional
+9962;Proporção da população ocupada vivendo abaixo da linha de pobreza nacional
 10004;Taxa de desocupação, na semana de referência, das pessoas de 15 anos ou mais de idade
 10107;Proporção da população que utiliza serviços de esgotamento sanitário geridos de forma segura, Incluindo instalações para lavar as mãos com água e sabão
 10137;Percentual de moradores em domicílios com energia elétrica
@@ -61,7 +63,6 @@ CODG_VAR;DESC_VAR
 11392;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses
 11393;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite inferior
 11394;Pessoas de 18 anos ou mais de idade que sofreram violência nos últimos 12 meses, considerando um intervalo de confiança de 95% - limite superior
-11598;Proporção de nascimentos assistidos por profissional de saúde qualificado
 11687;Número de nascidos vivos de mães adolescentes por 1000 mulheres
 11704;Taxa de mortalidade por suicídio (População com 5 anos ou mais)
 11725;Óbitos atribuídos a fontes de água inseguras, saneamento inseguro e falta de higiene
