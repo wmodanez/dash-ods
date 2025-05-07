@@ -28,14 +28,12 @@ import constants  # Importar constantes
 import logging
 import math
 
-# Carrega as variáveis de ambiente primeiro
 load_dotenv()
 
 # Configuração do tema do Plotly
 import plotly.io as pio # Movido para cá para evitar re-import
 pio.templates.default = "plotly_white"
 
-# Remove imports redundantes que estavam abaixo
 
 from config import (
     DEBUG, USE_RELOADER, PORT, HOST, DASH_CONFIG, SERVER_CONFIG,
@@ -45,16 +43,8 @@ from constants import COLUMN_NAMES, UF_NAMES
 
 # Configuração do Logging
 log_level = logging.DEBUG if DEBUG else logging.INFO
-# logging.basicConfig(
-#     level=log_level,
-#     format='%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-
-# --- Nova Configuração de Logging com Arquivo Timestamped ---
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
-# MODIFICADO: Nome do arquivo agora é baseado apenas na data (um arquivo por dia)
 log_filename = datetime.now().strftime(f'{log_dir}/app_log_%Y-%m-%d.log')
 
 log_formatter = logging.Formatter(
@@ -69,12 +59,6 @@ file_handler.setFormatter(log_formatter)
 root_logger = logging.getLogger()
 root_logger.setLevel(log_level)
 root_logger.addHandler(file_handler)
-
-# Opcional: Adiciona também um handler para o console se ainda quiser ver logs no terminal
-# console_handler = logging.StreamHandler()
-# console_handler.setFormatter(log_formatter)
-# root_logger.addHandler(console_handler)
-# --- Fim da Nova Configuração ---
 
 logging.info(f"Iniciando aplicação. Nível de log: {logging.getLevelName(log_level)}. Logando em: {log_filename}")
 
@@ -121,10 +105,10 @@ for key, value in SERVER_CONFIG.items():
 # Configura a chave secreta do Flask
 app.server.secret_key = SERVER_CONFIG['SECRET_KEY']
 
+
 @app.server.route('/assets/<path:path>')
 def serve_static(path):
     return send_from_directory('assets', path)
-
 
 CORS(app.server)
 
@@ -164,26 +148,18 @@ def _load_dados_indicador_original(indicador_id):
         nome_arquivo = indicador_id.lower().replace("indicador ", "")
         arquivo_parquet = f'db/resultados/indicador{nome_arquivo}.parquet'
         if not os.path.exists(arquivo_parquet):
-            # print(f"Aviso: Arquivo parquet não encontrado para {indicador_id}: {arquivo_parquet}")
-            # Usamos logging.warning para avisos
             logging.warning("Arquivo parquet não encontrado para %s: %s", indicador_id, arquivo_parquet)
             return pd.DataFrame()
         try:
             df_load = pd.read_parquet(arquivo_parquet)
             if df_load.empty:
-                # print(f"Aviso: Arquivo parquet vazio para {indicador_id}: {arquivo_parquet}")
-                # Usamos logging.warning para avisos
                 logging.warning("Arquivo parquet vazio para %s: %s", indicador_id, arquivo_parquet)
                 return pd.DataFrame()
         except Exception as e:
-            # print(f"Erro ao ler arquivo parquet para {indicador_id}: {e}")
-            # Usamos logging.exception para capturar o erro e o traceback
             logging.exception("Erro ao ler arquivo parquet para %s", indicador_id)
             return pd.DataFrame()
         return df_load
     except Exception as e:
-        # print(f"Erro geral em _load_dados_indicador_original para {indicador_id}: {e}")
-        # Usamos logging.exception para capturar o erro e o traceback
         logging.exception("Erro geral em _load_dados_indicador_original para %s", indicador_id)
         return pd.DataFrame()
 
@@ -210,7 +186,6 @@ def limpar_cache():
         limpar_cache_indicadores()
         return redirect('/')
     except Exception as e:
-        # Usamos logging.exception aqui também, embora redirecione
         logging.exception("Erro ao limpar cache:")
         return redirect('/')
 
@@ -494,7 +469,6 @@ def format_br(value):
     """
     if pd.isna(value) or value is None:
         return ""
-    # MODIFICADO: Lógica para tratar inteiros e remover zeros decimais
     try:
         f_value = float(value)
         # Check if it's effectively an integer
@@ -589,7 +563,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             if selected_filters:
                  for col_code, value in selected_filters.items():
                       col_name = constants.COLUMN_NAMES.get(col_code, col_code)
-                      # Tenta obter a descrição do valor se disponível
                       desc_col_code = 'DESC_' + col_code[5:]
                       value_desc = str(value)
                       if desc_col_code in df.columns:
@@ -600,7 +573,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                               if not matched_desc.empty:
                                   value_desc = matched_desc[desc_col_code].iloc[0]
                           except Exception:
-                              pass # Mantém o código se a descrição falhar
+                              pass 
                       filter_desc.append(f"{col_name}: '{value_desc}'")
             message = (
                 "A combinação selecionada " +
@@ -1074,7 +1047,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         df_map_data_initial['VLR_VAR_FORMATADO'] = df_map_data_initial['VLR_VAR'].apply(format_br)
 
                         fig_map = px.choropleth(
-                            df_map_data_initial, # Usa df_filtered_map diretamente (sem agregação)
+                            df_map_data_initial,
                             geojson=geojson,
                             locations='DESC_UND_FED',
                             featureidkey='properties.name',
@@ -1083,7 +1056,6 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                                 [0.0, 'rgba(34, 152, 70, 0.2)'],
                                 [1.0, 'rgba(34, 152, 70, 1)']
                             ],
-                            # scope="south america" # Removido para usar 'center'
                         )
 
                         # --- Atualizar Geos com Centroide FIXO 
@@ -1400,8 +1372,6 @@ def load_indicator_on_demand(active_tab, container_id): # <--- DEFINIÇÃO DA FU
         # --- Monta o conteúdo dinâmico final ---
         dynamic_content = []
         # Nota: A descrição do indicador já está presente na tab, não precisamos adicioná-la novamente aqui
-        # Removendo esta linha para evitar duplicação
-        # dynamic_content.append(desc_p)  # Adiciona descrição do indicador
         dynamic_content.extend(variable_dropdown_div)
         if dynamic_filters_div:
             dynamic_content.append(dbc.Row(dynamic_filters_div))
@@ -1848,7 +1818,6 @@ def update_card_content(*args):
                             except Exception as e_inner:
                                 logging.exception("Erro interno ao gerar conteúdo da aba %s (clique objetivo)", row_ind['ID_INDICADOR'])
                                 tab_content = [dbc.Alert(f"Erro ao gerar conteúdo para {row_ind['ID_INDICADOR']}.", color="danger")]
-                                # Usamos logging.exception aqui
                                 logging.exception("Erro interno ao gerar conteúdo da aba %s (clique objetivo)", row_ind['ID_INDICADOR'])
                         else:
                             tab_content = [dbc.Alert(f"Dados não disponíveis para {row_ind['ID_INDICADOR']}.", color="warning")]
@@ -1897,7 +1866,6 @@ def update_card_content(*args):
 
 
 # --- Novas Callbacks para Atualizar o Store ---
-
 # Callback para atualizar o store quando a VARIÁVEL PRINCIPAL muda
 @app.callback(
     Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
@@ -1956,21 +1924,14 @@ def update_store_from_filters(filter_values, filter_ids, current_store_data):
     else:
         raise PreventUpdate
 
-# --- Fim das Novas Callbacks ---
-
 # Callback ATUALIZADA para gerar visualização QUANDO O STORE MUDA
 @app.callback(
     Output({'type': 'graph-container', 'index': MATCH}, 'children'),
-    # Output({'type': 'visualization-state-store', 'index': MATCH}, 'data')], # <-- REMOVIDO OUTPUT PARA STORE
     [
-        # Input({'type': 'var-dropdown', 'index': MATCH}, 'value'), # REMOVIDO
-        # Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value') # REMOVIDO
         Input({'type': 'visualization-state-store', 'index': MATCH}, 'data') # <-- INPUT AGORA É O STORE
     ],
     [
-        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'), # REMOVIDO
         State({'type': 'graph-container', 'index': MATCH}, 'id'), # Mantém ID do container para logs
-        # State({'type': 'visualization-state-store', 'index': MATCH}, 'data') # REMOVIDO (agora é Input)
     ],
     prevent_initial_call=True # Mantém prevent_initial_call
 )
@@ -2017,9 +1978,6 @@ def update_visualization_from_store(store_data, container_id): # <-- Argumentos 
     [Input({'type': 'year-dropdown-ranking', 'index': MATCH}, 'value')],
     [
         State({'type': 'ranking-chart', 'index': MATCH}, 'id'),
-        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'), # REMOVIDO
-        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'), # REMOVIDO
-        # State({'type': 'var-dropdown', 'index': MATCH}, 'value') # REMOVIDO
         State({'type': 'visualization-state-store', 'index': MATCH}, 'data') # <-- ADICIONADO ESTADO DO STORE
     ],
     prevent_initial_call=True
@@ -2044,15 +2002,6 @@ def update_ranking_chart(selected_year, chart_id, store_data): # <-- Argumentos 
 
     # Log para debugging
     logging.debug(f"Atualizando ranking para {indicador_id}, Ano: {selected_year}, Var Store: {selected_var_value}, Filtros Store: {selected_filters}")
-
-    # Coletar os filtros atuais (NÃO MAIS NECESSÁRIO, VEM DO STORE)
-    # selected_filters = {}
-    # if filter_ids and filter_values:
-    #     for i, filter_id in enumerate(filter_ids):
-    #         if i < len(filter_values):  # Evita IndexError
-    #             filter_col = filter_id.get('filter_col')
-    #             if filter_col:
-    #                 selected_filters[filter_col] = filter_values[i]
     
     # Carrega os dados do indicador
     df_ranking_base = load_dados_indicador_cache(indicador_id)
@@ -2250,9 +2199,6 @@ def update_ranking_chart(selected_year, chart_id, store_data): # <-- Argumentos 
     [Input({'type': 'year-dropdown-map', 'index': MATCH}, 'value')],
     [
         State({'type': 'choropleth-map', 'index': MATCH}, 'id'),
-        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'), # REMOVIDO
-        # State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'), # REMOVIDO
-        # Falta adicionar State para var-dropdown aqui também, se necessário, mas vamos usar o Store
         State({'type': 'visualization-state-store', 'index': MATCH}, 'data') # <-- ADICIONADO ESTADO DO STORE
     ],
     prevent_initial_call=True
@@ -2275,14 +2221,6 @@ def update_map_on_year_change(selected_year, chart_id, store_data): # <-- Argume
     # -----------------------------------------
 
     logging.debug(f"Atualizando mapa para {indicador_id}, Ano: {selected_year}, Var Store: {selected_var_value}, Filtros Store: {selected_filters}")
-
-    # selected_filters = {} # NÃO MAIS NECESSÁRIO
-    # if filter_ids and filter_values:
-    #     for i, filter_id in enumerate(filter_ids):
-    #         if i < len(filter_values):
-    #             filter_col = filter_id.get('filter_col')
-    #             if filter_col:
-    #                 selected_filters[filter_col] = filter_values[i]
 
     df_map_base = load_dados_indicador_cache(indicador_id)
     if df_map_base is None or df_map_base.empty:
@@ -2387,7 +2325,6 @@ def update_map_on_year_change(selected_year, chart_id, store_data): # <-- Argume
             df_map_ano['DESC_UND_MED'] = 'N/D'
     elif 'DESC_UND_MED' not in df_map_ano.columns:
         logging.debug("DESC_UND_MED e CODG_UND_MED não estão disponíveis, criando com valor padrão")
-        # Se mesmo após tentar obter via CODG_UND_MED ainda não tiver a coluna, adiciona com valor padrão
         df_map_ano['DESC_UND_MED'] = 'N/D'
 
     # Formata os valores para o hover
