@@ -2040,7 +2040,7 @@ def update_store_from_variable(selected_var, current_filter_values, current_filt
     actual_current_filters = {}
     if current_filter_ids and current_filter_values:
         for i, filter_id_dict in enumerate(current_filter_ids):
-            if i < len(current_filter_values) and filter_id_dict: 
+            if filter_id_dict and i < len(current_filter_values) and current_filter_values[i] is not None: 
                 filter_col = filter_id_dict.get('filter_col')
                 if filter_col:
                     actual_current_filters[filter_col] = current_filter_values[i]
@@ -2064,11 +2064,11 @@ def update_store_from_variable(selected_var, current_filter_values, current_filt
     Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
     Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
     State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
-    State({'type': 'var-dropdown', 'index': MATCH}, 'value'), # <-- ADICIONADO STATE DA VARIÁVEL
+    # State({'type': 'var-dropdown', 'index': MATCH}, 'value'), # <-- REMOVIDO ESTE STATE
     State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
     prevent_initial_call=True
 )
-def update_store_from_filters(filter_values, filter_ids, current_var_value, current_store_data):
+def update_store_from_filters(filter_values, filter_ids, current_store_data): # current_var_value removido dos argumentos
     """Atualiza o store com os filtros selecionados e a variável atual do dropdown."""
     if not callback_context.triggered:
         raise PreventUpdate
@@ -2077,13 +2077,16 @@ def update_store_from_filters(filter_values, filter_ids, current_var_value, curr
     actual_current_filters = {}
     if filter_ids and filter_values:
         for i, filter_id_dict in enumerate(filter_ids):
-            if i < len(filter_values) and filter_id_dict: 
+            if filter_id_dict and i < len(filter_values) and filter_values[i] is not None: 
                 filter_col = filter_id_dict.get('filter_col')
                 if filter_col:
                     actual_current_filters[filter_col] = filter_values[i]
     
+    # Obtém a variável selecionada a partir do store atual
+    selected_var_from_store = current_store_data.get('selected_var') if current_store_data else None
+
     new_store_data = {
-        'selected_var': current_var_value, # Usa a variável lida diretamente do dropdown
+        'selected_var': selected_var_from_store, # Usa a variável do store
         'selected_filters': actual_current_filters
     }
 
