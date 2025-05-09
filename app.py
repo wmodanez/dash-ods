@@ -414,7 +414,11 @@ df_variavel = load_variavel()
 if not df.empty:
     row_objetivo_0 = df.iloc[(0,)]
     initial_header = row_objetivo_0['RES_OBJETIVO']
-    initial_content = row_objetivo_0['DESC_OBJETIVO']
+    # Substitui a descrição do objetivo 0 pelo texto personalizado
+    initial_content = html.Div([
+        html.P("Os Objetivos de Desenvolvimento Sustentável (ODS) constituem um compromisso global voltado à erradicação da pobreza, à proteção do meio ambiente e do clima, bem como à promoção da paz e da prosperidade para todas as pessoas, em todos os lugares. No Brasil, as Nações Unidas atuam de forma articulada com instituições públicas e privadas, além da sociedade civil, para viabilizar o cumprimento da Agenda 2030 e assegurar um desenvolvimento inclusivo, equitativo e sustentável."),
+        html.P("Nesse contexto, o Instituto Mauro Borges desenvolveu, para os estados que compõem a Região Brasil Central — Distrito Federal, Goiás, Maranhão, Mato Grosso, Mato Grosso do Sul, Rondônia e Tocantins —, um painel de monitoramento dos ODS. A ferramenta possibilita o acompanhamento da evolução tanto dos objetivos quanto de suas respectivas metas. É importante destacar que, para alguns objetivos e metas, ainda não há disponibilidade de dados que permitam a construção dos indicadores correspondentes. Diante disso, buscou-se maximizar a utilização das bases de dados existentes, de modo a produzir o maior número possível de indicadores com qualidade e consistência.")
+    ])
 else:
     initial_header = "Erro ao carregar dados"
     initial_content = "Não foi possível carregar dados dos objetivos."
@@ -1899,7 +1903,15 @@ def update_card_content(*args):
             logging.debug("Atualizando conteúdo - Clique no Objetivo ID: %s (Index: %d)", row_obj['ID_OBJETIVO'],
                           index)  # Log de Debug
             header = f"{row_obj['ID_OBJETIVO']} - {row_obj['RES_OBJETIVO']}" if index > 0 else row_obj['RES_OBJETIVO']
-            content = row_obj['DESC_OBJETIVO']
+            
+            # Usa o texto personalizado para o objetivo 0, caso contrário usa o texto do CSV
+            if index == 0:
+                content = html.Div([
+                    html.P("Os Objetivos de Desenvolvimento Sustentável (ODS) constituem um compromisso global voltado à erradicação da pobreza, à proteção do meio ambiente e do clima, bem como à promoção da paz e da prosperidade para todas as pessoas, em todos os lugares. No Brasil, as Nações Unidas atuam de forma articulada com instituições públicas e privadas, além da sociedade civil, para viabilizar o cumprimento da Agenda 2030 e assegurar um desenvolvimento inclusivo, equitativo e sustentável."),
+                    html.P("Nesse contexto, o Instituto Mauro Borges desenvolveu, para os estados que compõem a Região Brasil Central — Distrito Federal, Goiás, Maranhão, Mato Grosso, Mato Grosso do Sul, Rondônia e Tocantins —, um painel de monitoramento dos ODS. A ferramenta possibilita o acompanhamento da evolução tanto dos objetivos quanto de suas respectivas metas. É importante destacar que, para alguns objetivos e metas, ainda não há disponibilidade de dados que permitam a construção dos indicadores correspondentes. Diante disso, buscou-se maximizar a utilização das bases de dados existentes, de modo a produzir o maior número possível de indicadores com qualidade e consistência.")
+                ])
+            else:
+                content = row_obj['DESC_OBJETIVO']
 
             # Se for objetivo 0, limpa metas e indicadores
             if index == 0:
