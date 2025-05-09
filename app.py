@@ -88,6 +88,8 @@ app = dash.Dash(
         dbc.themes.MATERIA,
         "https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/styles/ag-grid.min.css",
         "https://cdn.jsdelivr.net/npm/ag-grid-community@30.2.1/styles/ag-theme-alpine.min.css",
+        "https://use.fontawesome.com/releases/v5.15.4/css/all.css",  # Adiciona Font Awesome para os ícones
+        "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"  # Adiciona Bootstrap Icons como alternativa
     ],
     assets_folder='assets',
     assets_url_path='/assets/',
@@ -1395,6 +1397,28 @@ app.layout = dbc.Container([
                     className="d-flex align-items-center justify-content-center justify-content-md-start p-2")
         ], className="align-items-center"))
     ], className="mb-4", style={'marginTop': '15px', 'marginLeft': '15px', 'marginRight': '15px'}))),
+    
+    # Botão de informações - agora entre o header e o card principal
+    dbc.Row([
+        dbc.Col([
+            html.Div([
+                dbc.Button(
+                    html.I(className="bi bi-info-circle", style={"fontSize": "20px"}),
+                    id="info-icon",
+                    color="light",
+                    outline=True,
+                    className="float-end me-3 mb-2 rounded-circle",
+                    style={"width": "40px", "height": "40px", "padding": "6px 0", "borderColor": "#229846", "color": "#229846"}
+                ),
+                dbc.Tooltip(
+                    "Informações sobre o painel",
+                    target="info-icon",
+                    placement="left"
+                )
+            ], className="d-flex justify-content-end")
+        ])
+    ]),
+    
     # Card Principal
     dbc.Row(dbc.Col(dbc.Card([
         dbc.CardBody(dbc.Row([
@@ -1420,8 +1444,58 @@ app.layout = dbc.Container([
                 ])
             ]), lg=10)
         ]))
-    ], className="border-0 shadow-none")))
+    ], className="border-0 shadow-none"))),
+    
+    # Modal de informações sobre o projeto
+    dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle("Sobre o Projeto")),
+        dbc.ModalBody([
+            html.H5("Instituto Mauro Borges - Painel ODS"),
+            html.Hr(),
+            html.H6("Sobre o Projeto", className="mt-3"),
+            html.P("O Painel ODS é uma iniciativa do Instituto Mauro Borges para monitoramento dos Objetivos de Desenvolvimento Sustentável na Região Brasil Central."),
+            
+            html.H6("Equipe de Desenvolvimento", className="mt-3"),
+            html.Ul([
+                html.Li("Coordenação: Instituto Mauro Borges (IMB)"),
+                html.Li("Desenvolvimento: Gerência de Dados e Estatísticas do IMB"),
+                html.Li("Análise de Dados: Gerência de Dados e Estatísticas do IMB")
+            ]),
+            
+            html.H6("Contato", className="mt-3"),
+            html.P([
+                html.Strong("E-mail: "), "imb@goias.gov.br",
+                html.Br(),
+                html.Strong("Telefone: "), "(62) 3270-8674",
+                html.Br(),
+                html.Strong("Site: "), html.A("www.imb.go.gov.br", href="https://www.imb.go.gov.br", target="_blank")
+            ]),
+            
+            html.H6("Tecnologias Utilizadas", className="mt-3"),
+            html.Ul([
+                html.Li("Python"),
+                html.Li("Dash & Plotly"),
+                html.Li("Bootstrap"),
+                html.Li("Pandas")
+            ])
+        ]),
+        dbc.ModalFooter(
+            dbc.Button("Fechar", id="close-info-modal", className="ms-auto", n_clicks=0)
+        ),
+    ], id="info-modal", is_open=False, size="lg")
 ], fluid=True)
+
+# Callback para abrir/fechar o modal de informações
+@app.callback(
+    Output("info-modal", "is_open"),
+    [Input("info-icon", "n_clicks"), Input("close-info-modal", "n_clicks")],
+    [State("info-modal", "is_open")],
+    prevent_initial_call=True
+)
+def toggle_info_modal(n1, n2, is_open):
+    if n1 or n2:
+        return not is_open
+    return is_open
 
 
 # Callback para carregar indicadores sob demanda quando uma aba é clicada
