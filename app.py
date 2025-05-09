@@ -1228,14 +1228,37 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 html.Div([
                     html.H5("Dados Detalhados", className="mt-4 d-inline-block", style={'marginLeft': '20px'}),
                     html.Div([
-                        dbc.Button("Baixar CSV", id={'type': 'btn-csv', 'index': indicador_id}, 
-                                  color="success", size="sm", className="me-2"),
-                        dbc.Button("Baixar Excel", id={'type': 'btn-excel', 'index': indicador_id}, 
-                                  color="primary", size="sm"),
+                        # Substitui os botões simples por dropdowns
+                        dbc.DropdownMenu(
+                            id={'type': 'dropdown-csv', 'index': indicador_id},
+                            label="Baixar CSV",
+                            color="success",
+                            size="sm",
+                            className="me-2 d-inline-block",
+                            children=[
+                                dbc.DropdownMenuItem("Dados filtrados", 
+                                                    id={'type': 'btn-csv-filtered', 'index': indicador_id}),
+                                dbc.DropdownMenuItem("Dados completos", 
+                                                    id={'type': 'btn-csv-full', 'index': indicador_id}),
+                            ]
+                        ),
+                        dbc.DropdownMenu(
+                            id={'type': 'dropdown-excel', 'index': indicador_id},
+                            label="Baixar Excel",
+                            color="primary",
+                            size="sm",
+                            className="d-inline-block",
+                            children=[
+                                dbc.DropdownMenuItem("Dados filtrados", 
+                                                    id={'type': 'btn-excel-filtered', 'index': indicador_id}),
+                                dbc.DropdownMenuItem("Dados completos", 
+                                                    id={'type': 'btn-excel-full', 'index': indicador_id}),
+                            ]
+                        ),
                         # Componentes de download
                         dcc.Download(id={'type': 'download-csv', 'index': indicador_id}),
                         dcc.Download(id={'type': 'download-excel', 'index': indicador_id})
-                    ], className="float-end me-3 mt-4")
+                    ], className="float-end me-3 mt-4 d-flex")
                 ], className="d-flex justify-content-between w-100"),
                 dbc.CardBody([
                     dag.AgGrid(
@@ -2860,16 +2883,16 @@ def find_best_initial_var(df_dados, df_variavel_filtrado):
     return df_variavel_filtrado['CODG_VAR'].iloc[0]
 
 
-# Callback para download de CSV
+# Callback para download de CSV (DADOS FILTRADOS)
 @app.callback(
     Output({'type': 'download-csv', 'index': MATCH}, 'data'),
-    Input({'type': 'btn-csv', 'index': MATCH}, 'n_clicks'),
+    Input({'type': 'btn-csv-filtered', 'index': MATCH}, 'n_clicks'),
     State({'type': 'download-data', 'index': MATCH}, 'data'),
-    State({'type': 'btn-csv', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
+    State({'type': 'btn-csv-filtered', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
     prevent_initial_call=True
 )
-def download_csv(n_clicks, data_json, btn_id):
-    """Gera o arquivo CSV para download com os dados da tabela."""
+def download_csv_filtered(n_clicks, data_json, btn_id):
+    """Gera o arquivo CSV para download com os dados filtrados da tabela."""
     if n_clicks is None or data_json is None:
         raise PreventUpdate
     
@@ -2893,19 +2916,124 @@ def download_csv(n_clicks, data_json, btn_id):
             filename=f'{indicador_formatado}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         )
     except Exception as e:
-        logging.exception("Erro ao gerar CSV: %s", str(e))
+        logging.exception("Erro ao gerar CSV filtrado: %s", str(e))
         return no_update
 
-# Callback para download de Excel
+# Callback para download de CSV (DADOS COMPLETOS)
 @app.callback(
-    Output({'type': 'download-excel', 'index': MATCH}, 'data'),
-    Input({'type': 'btn-excel', 'index': MATCH}, 'n_clicks'),
-    State({'type': 'download-data', 'index': MATCH}, 'data'),
-    State({'type': 'btn-excel', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
+    Output({'type': 'download-csv', 'index': MATCH}, 'data', allow_duplicate=True),
+    Input({'type': 'btn-csv-full', 'index': MATCH}, 'n_clicks'),
+    State({'type': 'btn-csv-full', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
     prevent_initial_call=True
 )
-def download_excel(n_clicks, data_json, btn_id):
-    """Gera o arquivo Excel para download com os dados da tabela."""
+def download_csv_full(n_clicks, btn_id):
+    """Gera o arquivo CSV para download com os dados completos do indicador."""
+    if n_clicks is None:
+        raise PreventUpdate
+    
+    try:
+        # Obtém o ID do indicador do botão
+        indicador_id = btn_id.get('index', '')
+        
+        # Formata o nome do arquivo: indicador sem espaços, pontos substituídos por underscores
+        indicador_formatado = str(indicador_id).replace(' ', '').replace('.', '_')
+        
+        # Carrega os dados completos do indicador sem filtros
+        df_full = load_dados_indicador_cache(indicador_id)
+        
+        if df_full is None or df_full.empty:
+            logging.warning(f"Dados completos não disponíveis para o indicador {indicador_id}")
+            return no_update
+        
+        # Prepara os dados para exportação, garantindo todas as colunas descritivas
+        # Adiciona descrições da unidade federativa
+        if 'CODG_UND_FED' in df_full.columns:
+            df_full['DESC_UND_FED'] = df_full['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        
+        # Adiciona descrições de variáveis
+        if 'CODG_VAR' in df_full.columns:
+            df_variavel_loaded = load_variavel()
+            if not df_variavel_loaded.empty:
+                df_full['CODG_VAR'] = df_full['CODG_VAR'].astype(str)
+                df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
+                df_full = df_full.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], 
+                                             on='CODG_VAR', how='left')
+        
+        # Adiciona descrições de unidade de medida
+        if 'CODG_UND_MED' in df_full.columns:
+            df_unidade_medida_loaded = load_unidade_medida()
+            if not df_unidade_medida_loaded.empty:
+                df_full['CODG_UND_MED'] = df_full['CODG_UND_MED'].astype(str)
+                df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+                df_full = df_full.merge(df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], 
+                                             on='CODG_UND_MED', how='left')
+        
+        # Adiciona ID_INDICADOR
+        if 'ID_INDICADOR' not in df_full.columns:
+            df_full['ID_INDICADOR'] = indicador_id
+        
+        # Reordena colunas para agrupá-las logicamente
+        all_columns = list(df_full.columns)
+        ordered_pairs = [
+            ['ID_INDICADOR'],
+            ['CODG_UND_FED', 'DESC_UND_FED'],
+            ['CODG_ANO'],
+            ['CODG_VAR', 'DESC_VAR'],
+            ['VLR_VAR'],
+            ['CODG_UND_MED', 'DESC_UND_MED']
+        ]
+        
+        # Campos dinâmicos
+        dynamic_pairs = []
+        for col in all_columns:
+            if col.startswith('CODG_') and col not in [item for sublist in ordered_pairs for item in sublist]:
+                desc_col = 'DESC_' + col[5:]
+                if desc_col in all_columns:
+                    dynamic_pairs.append([col, desc_col])
+                else:
+                    dynamic_pairs.append([col])
+        
+        # Constrói lista ordenada de colunas
+        ordered_columns = []
+        for pair in ordered_pairs + dynamic_pairs:
+            for col in pair:
+                if col in all_columns:
+                    ordered_columns.append(col)
+        
+        # Adiciona colunas restantes
+        for col in all_columns:
+            if col not in ordered_columns:
+                ordered_columns.append(col)
+        
+        # Reordena DataFrame
+        try:
+            df_full = df_full[ordered_columns]
+        except Exception as e:
+            logging.exception(f"Erro ao reordenar colunas para CSV completo: {e}")
+            # Continua com a ordem original se houver erro
+        
+        # Log para verificar os campos presentes na exportação
+        logging.info(f"Campos disponíveis na exportação CSV completa: {df_full.columns.tolist()}")
+        
+        # Retorna conteúdo CSV com nome de arquivo incluindo o indicador e sufixo 'full'
+        return dict(
+            content=df_full.to_csv(index=False, encoding='utf-8-sig'),
+            filename=f'{indicador_formatado}_full_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+    except Exception as e:
+        logging.exception("Erro ao gerar CSV completo: %s", str(e))
+        return no_update
+
+# Callback para download de Excel (DADOS FILTRADOS)
+@app.callback(
+    Output({'type': 'download-excel', 'index': MATCH}, 'data'),
+    Input({'type': 'btn-excel-filtered', 'index': MATCH}, 'n_clicks'),
+    State({'type': 'download-data', 'index': MATCH}, 'data'),
+    State({'type': 'btn-excel-filtered', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
+    prevent_initial_call=True
+)
+def download_excel_filtered(n_clicks, data_json, btn_id):
+    """Gera o arquivo Excel para download com os dados filtrados da tabela."""
     if n_clicks is None or data_json is None:
         raise PreventUpdate
     
@@ -2921,7 +3049,7 @@ def download_excel(n_clicks, data_json, btn_id):
         df = pd.read_json(StringIO(data_json), orient='split')
         
         # Log para verificar os campos presentes na exportação
-        logging.info(f"Campos disponíveis na exportação Excel: {df.columns.tolist()}")
+        logging.info(f"Campos disponíveis na exportação Excel filtrada: {df.columns.tolist()}")
         
         # Cria buffer de memória para o Excel
         output = io.BytesIO()
@@ -2954,7 +3082,137 @@ def download_excel(n_clicks, data_json, btn_id):
         # Retorna conteúdo Excel com nome de arquivo incluindo o indicador
         return dcc.send_bytes(output.read(), f'{indicador_formatado}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
     except Exception as e:
-        logging.exception("Erro ao gerar Excel: %s", str(e))
+        logging.exception("Erro ao gerar Excel filtrado: %s", str(e))
+        return no_update
+
+# Callback para download de Excel (DADOS COMPLETOS)
+@app.callback(
+    Output({'type': 'download-excel', 'index': MATCH}, 'data', allow_duplicate=True),
+    Input({'type': 'btn-excel-full', 'index': MATCH}, 'n_clicks'),
+    State({'type': 'btn-excel-full', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
+    prevent_initial_call=True
+)
+def download_excel_full(n_clicks, btn_id):
+    """Gera o arquivo Excel para download com os dados completos do indicador."""
+    if n_clicks is None:
+        raise PreventUpdate
+    
+    try:
+        # Obtém o ID do indicador do botão
+        indicador_id = btn_id.get('index', '')
+        
+        # Formata o nome do arquivo: indicador sem espaços, pontos substituídos por underscores
+        indicador_formatado = str(indicador_id).replace(' ', '').replace('.', '_')
+        
+        # Carrega os dados completos do indicador sem filtros
+        df_full = load_dados_indicador_cache(indicador_id)
+        
+        if df_full is None or df_full.empty:
+            logging.warning(f"Dados completos não disponíveis para o indicador {indicador_id}")
+            return no_update
+        
+        # Prepara os dados para exportação, garantindo todas as colunas descritivas
+        # Adiciona descrições da unidade federativa
+        if 'CODG_UND_FED' in df_full.columns:
+            df_full['DESC_UND_FED'] = df_full['CODG_UND_FED'].astype(str).map(constants.UF_NAMES)
+        
+        # Adiciona descrições de variáveis
+        if 'CODG_VAR' in df_full.columns:
+            df_variavel_loaded = load_variavel()
+            if not df_variavel_loaded.empty:
+                df_full['CODG_VAR'] = df_full['CODG_VAR'].astype(str)
+                df_variavel_loaded['CODG_VAR'] = df_variavel_loaded['CODG_VAR'].astype(str)
+                df_full = df_full.merge(df_variavel_loaded[['CODG_VAR', 'DESC_VAR']], 
+                                        on='CODG_VAR', how='left')
+        
+        # Adiciona descrições de unidade de medida
+        if 'CODG_UND_MED' in df_full.columns:
+            df_unidade_medida_loaded = load_unidade_medida()
+            if not df_unidade_medida_loaded.empty:
+                df_full['CODG_UND_MED'] = df_full['CODG_UND_MED'].astype(str)
+                df_unidade_medida_loaded['CODG_UND_MED'] = df_unidade_medida_loaded['CODG_UND_MED'].astype(str)
+                df_full = df_full.merge(df_unidade_medida_loaded[['CODG_UND_MED', 'DESC_UND_MED']], 
+                                        on='CODG_UND_MED', how='left')
+        
+        # Adiciona ID_INDICADOR
+        if 'ID_INDICADOR' not in df_full.columns:
+            df_full['ID_INDICADOR'] = indicador_id
+        
+        # Reordena colunas para agrupá-las logicamente
+        all_columns = list(df_full.columns)
+        ordered_pairs = [
+            ['ID_INDICADOR'],
+            ['CODG_UND_FED', 'DESC_UND_FED'],
+            ['CODG_ANO'],
+            ['CODG_VAR', 'DESC_VAR'],
+            ['VLR_VAR'],
+            ['CODG_UND_MED', 'DESC_UND_MED']
+        ]
+        
+        # Campos dinâmicos
+        dynamic_pairs = []
+        for col in all_columns:
+            if col.startswith('CODG_') and col not in [item for sublist in ordered_pairs for item in sublist]:
+                desc_col = 'DESC_' + col[5:]
+                if desc_col in all_columns:
+                    dynamic_pairs.append([col, desc_col])
+                else:
+                    dynamic_pairs.append([col])
+        
+        # Constrói lista ordenada de colunas
+        ordered_columns = []
+        for pair in ordered_pairs + dynamic_pairs:
+            for col in pair:
+                if col in all_columns:
+                    ordered_columns.append(col)
+        
+        # Adiciona colunas restantes
+        for col in all_columns:
+            if col not in ordered_columns:
+                ordered_columns.append(col)
+        
+        # Reordena DataFrame se possível
+        try:
+            df_full = df_full[ordered_columns]
+        except Exception as e:
+            logging.exception(f"Erro ao reordenar colunas para Excel completo: {e}")
+            # Continua com a ordem original se houver erro
+        
+        # Log para verificar os campos presentes na exportação
+        logging.info(f"Campos disponíveis na exportação Excel completa: {df_full.columns.tolist()}")
+        
+        # Cria buffer de memória para o Excel
+        output = io.BytesIO()
+        
+        # Tenta usar xlsxwriter, com fallback para openpyxl
+        try:
+            excel_engine = 'xlsxwriter'
+            with pd.ExcelWriter(output, engine=excel_engine) as writer:
+                df_full.to_excel(writer, sheet_name='Dados', index=False)
+                
+                # Auto-ajusta largura das colunas (apenas com xlsxwriter)
+                worksheet = writer.sheets['Dados']
+                for i, col in enumerate(df_full.columns):
+                    # Encontra a largura máxima da coluna
+                    column_len = max(
+                        df_full[col].astype(str).map(len).max(),
+                        len(str(col))
+                    ) + 2  # adiciona um espaço extra
+                    worksheet.set_column(i, i, column_len)
+        except ImportError:
+            # Fallback para openpyxl se xlsxwriter não estiver disponível
+            excel_engine = 'openpyxl'
+            with pd.ExcelWriter(output, engine=excel_engine) as writer:
+                df_full.to_excel(writer, sheet_name='Dados', index=False)
+                logging.info("Usando engine openpyxl para Excel (sem auto-ajuste de colunas)")
+        
+        # Coloca o ponteiro do buffer no início
+        output.seek(0)
+        
+        # Retorna conteúdo Excel com nome de arquivo incluindo o indicador e sufixo 'full'
+        return dcc.send_bytes(output.read(), f'{indicador_formatado}_full_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    except Exception as e:
+        logging.exception("Erro ao gerar Excel completo: %s", str(e))
         return no_update
 
 
