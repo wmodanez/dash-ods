@@ -18,22 +18,36 @@ spec:
         app: painel-ods
     spec:
       securityContext:
-        fsGroup: 1001
+        fsGroup: 1001070000
+        runAsNonRoot: true
+        runAsUser: 1001070000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
       - name: init-db
-        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshifthom_colocation-imb/painel-ods:latest
+        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshiftprod_colocation-imb/painel-ods:latest
         command: ["/bin/sh", "-c"]
         args:
           - |
             cp -r /app/db-init/* /app/db/
             chmod -R g+w /app/db
             rm -rf /app/db-init
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          runAsUser: 1001070000
         volumeMounts:
         - name: app-data
           mountPath: /app/db
       containers:
       - name: painel-ods
-        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshifthom_colocation-imb/painel-ods:latest
+        image: quay.apps.dc1openshiftadm.cloud.go.gov.br/dc1openshiftprod_colocation-imb/painel-ods:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          runAsUser: 1001070000
         ports:
         - containerPort: 8050
         resources:
