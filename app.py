@@ -1461,46 +1461,54 @@ def load_indicator_on_demand(active_tab, container_id):  # <--- DEFINIÇÃO DA F
         # --- Geração do Dropdown de Variável Principal (PRIMEIRO, pois afeta os filtros) ---
         has_variable_dropdown = not indicador_info.empty and 'VARIAVEIS' in indicador_info.columns and \
                                 indicador_info['VARIAVEIS'].iloc[0] == '1'
-        if has_variable_dropdown:
+        
+        # Verifica se o indicador tem variáveis e se a coluna CODG_VAR existe nos dados
+        if has_variable_dropdown and 'CODG_VAR' in df_dados.columns:
             df_variavel_loaded = load_variavel()
-            if 'CODG_VAR' in df_dados.columns:
-                variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
-                if not df_variavel_loaded.empty:
-                    df_variavel_filtrado = df_variavel_loaded[
-                        df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
-                    if not df_variavel_filtrado.empty:
-                        # Usa a função de busca de melhor variável
-                        valor_inicial_variavel = find_best_initial_var(df_dados, df_variavel_filtrado)
+            variaveis_indicador = df_dados['CODG_VAR'].astype(str).unique()
+            if not df_variavel_loaded.empty:
+                df_variavel_filtrado = df_variavel_loaded[
+                    df_variavel_loaded['CODG_VAR'].astype(str).isin(variaveis_indicador)]
+                if not df_variavel_filtrado.empty:
+                    # Usa a função de busca de melhor variável
+                    valor_inicial_variavel = find_best_initial_var(df_dados, df_variavel_filtrado)
 
-                        variable_dropdown_div = [html.Div([
-                            html.Label("Selecione uma Variável:",
-                                       style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'},
-                                       id={'type': 'var-label', 'index': indicador_id}),
-                            dcc.Dropdown(
-                                id={'type': 'var-dropdown', 'index': indicador_id},
-                                options=[{'label': desc, 'value': cod} for cod, desc in
-                                         zip(df_variavel_filtrado['CODG_VAR'], df_variavel_filtrado['DESC_VAR'])],
-                                value=valor_inicial_variavel, style={'width': '100%'}
-                            )
-                        ], style={'paddingBottom': '20px', 'paddingTop': '20px'},
-                            id={'type': 'var-dropdown-container', 'index': indicador_id})]
-                    else:
-                        # Se não há variáveis válidas ou o dropdown não é necessário,
-                        # renderiza um dropdown oculto para satisfazer o State da callback de filtros
-                        variable_dropdown_div = [html.Div([
-                            dcc.Dropdown(
-                                id={'type': 'var-dropdown', 'index': indicador_id},
-                                options=[], value=None, style={'display': 'none'}, disabled=True
-                            )
-                        ], id={'type': 'var-dropdown-container', 'index': indicador_id}, style={'display': 'none'})]
+                    variable_dropdown_div = [html.Div([
+                        html.Label("Selecione uma Variável:",
+                                   style={'fontWeight': 'bold', 'display': 'block', 'marginBottom': '5px'},
+                                   id={'type': 'var-label', 'index': indicador_id}),
+                        dcc.Dropdown(
+                            id={'type': 'var-dropdown', 'index': indicador_id},
+                            options=[{'label': desc, 'value': cod} for cod, desc in
+                                     zip(df_variavel_filtrado['CODG_VAR'], df_variavel_filtrado['DESC_VAR'])],
+                            value=valor_inicial_variavel, style={'width': '100%'}
+                        )
+                    ], style={'paddingBottom': '20px', 'paddingTop': '20px'},
+                        id={'type': 'var-dropdown-container', 'index': indicador_id})]
+                else:
+                    # Se não há variáveis válidas, renderiza um dropdown oculto
+                    variable_dropdown_div = [html.Div([
+                        dcc.Dropdown(
+                            id={'type': 'var-dropdown', 'index': indicador_id},
+                            options=[], value=None, style={'display': 'none'}, disabled=True
+                        )
+                    ], id={'type': 'var-dropdown-container', 'index': indicador_id}, style={'display': 'none'})]
             else:
-                # Se VARIAVEIS não é '1', renderiza um dropdown oculto
+                # Se df_variavel_loaded está vazio, renderiza um dropdown oculto
                 variable_dropdown_div = [html.Div([
                     dcc.Dropdown(
                         id={'type': 'var-dropdown', 'index': indicador_id},
                         options=[], value=None, style={'display': 'none'}, disabled=True
                     )
                 ], id={'type': 'var-dropdown-container', 'index': indicador_id}, style={'display': 'none'})]
+        else:
+            # Se o indicador não tem variáveis ou a coluna CODG_VAR não existe, renderiza um dropdown oculto
+            variable_dropdown_div = [html.Div([
+                dcc.Dropdown(
+                    id={'type': 'var-dropdown', 'index': indicador_id},
+                    options=[], value=None, style={'display': 'none'}, disabled=True
+                )
+            ], id={'type': 'var-dropdown-container', 'index': indicador_id}, style={'display': 'none'})]
 
         # --- Busca a melhor combinação de filtros (usando a variável selecionada) ---
         best_filters = find_valid_filter_combination(df_dados, filter_cols, valor_inicial_variavel)
@@ -2169,11 +2177,11 @@ def update_store_from_variable(selected_var, current_filter_values, current_filt
     Output({'type': 'visualization-state-store', 'index': MATCH}, 'data', allow_duplicate=True),
     Input({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'value'),
     State({'type': 'dynamic-filter-dropdown', 'index': MATCH, 'filter_col': ALL}, 'id'),
-    # State({'type': 'var-dropdown', 'index': MATCH}, 'value'), # <-- REMOVIDO ESTE STATE
+    State({'type': 'var-dropdown', 'index': MATCH}, 'value'),  # READICIONADO este state para preservar seleção de variável
     State({'type': 'visualization-state-store', 'index': MATCH}, 'data'),
     prevent_initial_call=True
 )
-def update_store_from_filters(filter_values, filter_ids, current_store_data): # current_var_value removido dos argumentos
+def update_store_from_filters(filter_values, filter_ids, var_value, current_store_data):
     """Atualiza o store com os filtros selecionados e a variável atual do dropdown."""
     if not callback_context.triggered:
         raise PreventUpdate
@@ -2187,12 +2195,19 @@ def update_store_from_filters(filter_values, filter_ids, current_store_data): # 
                 if filter_col:
                     actual_current_filters[filter_col] = filter_values[i]
     
-    # Obtém a variável selecionada a partir do store atual
+    # Prioriza variável do dropdown, mas mantém valor do store se dropdown retornar None
     selected_var_from_store = current_store_data.get('selected_var') if current_store_data else None
+    final_var_value = var_value if var_value is not None else selected_var_from_store
+    
+    # Preserva filtros existentes no store para quaisquer filtros não atualizados
+    previous_filters = current_store_data.get('selected_filters', {}) if current_store_data else {}
+    
+    # Combina os filtros atuais com os anteriores (atuais têm precedência)
+    combined_filters = {**previous_filters, **actual_current_filters}
 
     new_store_data = {
-        'selected_var': selected_var_from_store, # Usa a variável do store
-        'selected_filters': actual_current_filters
+        'selected_var': final_var_value,
+        'selected_filters': combined_filters  # Usa a combinação de filtros
     }
 
     # Só atualiza se o novo estado combinado for diferente do armazenado
@@ -2773,6 +2788,11 @@ def find_valid_filter_combination(df_dados, filter_cols, var_value=None):
 
     # Se não houver filtros, não há o que testar
     if not filter_cols:
+        return {}
+
+    # Verificar se há coluna VLR_VAR antes de continuar
+    if 'VLR_VAR' not in df_test.columns:
+        logging.debug("Coluna VLR_VAR não encontrada no DataFrame, não é possível testar filtros")
         return {}
 
     # Preferências de valores por tipo de filtro
