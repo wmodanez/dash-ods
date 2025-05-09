@@ -703,9 +703,12 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
 
         # --- Definição Dinâmica das Colunas da Tabela AG Grid ---
         base_col_defs = [
+            {"field": 'ID_INDICADOR', "headerName": 'ID Indicador', "hide": True},
             {"field": 'DESC_UND_FED', "headerName": 'Unidade Federativa'},
+            {"field": 'CODG_UND_FED', "headerName": 'Código UF', "hide": True},
             {"field": 'CODG_ANO', "headerName": 'Ano'},
             {"field": 'DESC_VAR', "headerName": 'Variável'},
+            {"field": 'CODG_VAR', "headerName": 'Código Variável', "hide": True},
         ]
         dynamic_desc_col_defs = []
         dynamic_desc_col_names = set()
@@ -719,9 +722,14 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                 if desc_col_code not in dynamic_desc_col_names:  # Evita duplicados
                     dynamic_desc_col_defs.append({"field": desc_col_code, "headerName": readable_name})
                     dynamic_desc_col_names.add(desc_col_code)
+                    # Adiciona também o código correspondente como coluna oculta, se existir
+                    if filter_col_code in present_columns_in_table:
+                        dynamic_desc_col_defs.append({"field": filter_col_code, "headerName": f"Código {readable_name}", "hide": True})
+        
         final_col_defs = base_col_defs + dynamic_desc_col_defs + [
             {"field": 'VLR_VAR', "headerName": 'Valor'},
-            {"field": 'DESC_UND_MED', "headerName": 'Unidade de Medida'}
+            {"field": 'DESC_UND_MED', "headerName": 'Unidade de Medida'},
+            {"field": 'CODG_UND_MED', "headerName": 'Código Unidade Medida', "hide": True}
         ]
         columnDefs = []
         for col_def in final_col_defs:
@@ -729,6 +737,11 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             if field_name in present_columns_in_table:  # Verifica novamente no DF da tabela
                 base_props = {"sortable": True, "filter": True, "minWidth": 100, "resizable": True, "wrapText": True,
                               "autoHeight": True, "cellStyle": {"whiteSpace": "normal"}}
+                
+                # Se a coluna deve ser oculta, adiciona essa propriedade
+                if col_def.get('hide', False):
+                    base_props["hide"] = True
+                
                 # Ajuste de flex baseado na coluna
                 if field_name == 'DESC_VAR':
                     flex_value = 3
@@ -738,6 +751,8 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     flex_value = 2  # Aumenta um pouco para descrições dinâmicas
                 elif field_name == 'CODG_ANO' or field_name == 'VLR_VAR':
                     flex_value = 1
+                elif field_name.startswith('CODG_'):  # Colunas de código têm menos flex
+                    flex_value = 1
                 else:
                     flex_value = 1
                 columnDefs.append(
@@ -746,6 +761,10 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             "minWidth": 100, "resizable": True, "wrapText": True, "autoHeight": True,
             "cellStyle": {"whiteSpace": "normal", 'textAlign': 'left'}
         }
+
+        # Adiciona o ID_INDICADOR ao DataFrame para exportação
+        if indicador_id and 'ID_INDICADOR' not in df_original_for_table.columns:
+            df_original_for_table['ID_INDICADOR'] = indicador_id
 
         # --- Criação das Figuras dos Gráficos ---
         main_fig = go.Figure()  # Inicializa a figura principal
@@ -1210,9 +1229,9 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                     html.H5("Dados Detalhados", className="mt-4 d-inline-block", style={'marginLeft': '20px'}),
                     html.Div([
                         dbc.Button("Baixar CSV", id={'type': 'btn-csv', 'index': indicador_id}, 
-                                   color="success", size="sm", className="me-2"),
+                                  color="success", size="sm", className="me-2"),
                         dbc.Button("Baixar Excel", id={'type': 'btn-excel', 'index': indicador_id}, 
-                                   color="primary", size="sm"),
+                                  color="primary", size="sm"),
                         # Componentes de download
                         dcc.Download(id={'type': 'download-csv', 'index': indicador_id}),
                         dcc.Download(id={'type': 'download-excel', 'index': indicador_id})
@@ -1233,12 +1252,81 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         },
                         style={"width": "100%"}
                     ),
-                    # Armazena dados da tabela para download
-                    dcc.Store(id={'type': 'download-data', 'index': indicador_id}, 
-                              data=df_original_for_table.to_json(date_format='iso', orient='split'))
                 ])
             ]), className="mt-4")
         ]))
+        
+        # Preparar dados para exportação - garantindo todos os campos CODG
+        export_data = df_original_for_table.copy()
+        
+        # Verificar campos CODG_ no DataFrame original e garantir que são incluídos na exportação
+        if df is not None and not df.empty:
+            codg_cols = [col for col in df.columns if col.startswith('CODG_')]
+            for col in codg_cols:
+                if col not in export_data.columns and col in df.columns:
+                    export_data[col] = df[col]
+        
+        # Adicionar ID_INDICADOR se ainda não existir
+        if indicador_id and 'ID_INDICADOR' not in export_data.columns:
+            export_data['ID_INDICADOR'] = indicador_id
+        
+        # Reordenar colunas para agrupar campos relacionados (CODG e DESC correspondentes)
+        # Primeiro identificamos todas as colunas disponíveis
+        all_columns = list(export_data.columns)
+        
+        # Definimos a ordem desejada de pares de colunas
+        ordered_pairs = [
+            # Primeiro o ID_INDICADOR
+            ['ID_INDICADOR'],
+            # Depois campos de UF
+            ['CODG_UND_FED', 'DESC_UND_FED'],
+            # Depois campos de ANO
+            ['CODG_ANO'],
+            # Depois campos de VAR
+            ['CODG_VAR', 'DESC_VAR'],
+            # Depois VLR_VAR 
+            ['VLR_VAR'],
+            # Depois campos de UND_MED
+            ['CODG_UND_MED', 'DESC_UND_MED']
+        ]
+        
+        # Campos dinâmicos (outros CODG_ e DESC_ correspondentes)
+        dynamic_pairs = []
+        for col in all_columns:
+            if col.startswith('CODG_') and col not in [item for sublist in ordered_pairs for item in sublist]:
+                # Verifica se há um DESC correspondente
+                desc_col = 'DESC_' + col[5:]
+                if desc_col in all_columns:
+                    dynamic_pairs.append([col, desc_col])
+                else:
+                    dynamic_pairs.append([col])
+        
+        # Construir a lista final de colunas na ordem desejada
+        ordered_columns = []
+        for pair in ordered_pairs + dynamic_pairs:
+            for col in pair:
+                if col in all_columns:
+                    ordered_columns.append(col)
+        
+        # Adicionar quaisquer colunas restantes que não foram incluídas
+        for col in all_columns:
+            if col not in ordered_columns:
+                ordered_columns.append(col)
+        
+        # Reordenar o DataFrame
+        export_data = export_data[ordered_columns]
+        
+        # Log para debug dos campos na exportação
+        logging.debug(f"Campos para exportação em {indicador_id} (reorganizados): {export_data.columns.tolist()}")
+        
+        # Adicionar Store para dados de download
+        graph_layout.append(html.Div([
+            dcc.Store(
+                id={'type': 'download-data', 'index': indicador_id}, 
+                data=export_data.to_json(date_format='iso', orient='split')
+            )
+        ], style={'display': 'none'}))
+        
         return graph_layout
 
     except Exception as e:
@@ -2299,7 +2387,7 @@ def update_ranking_chart(selected_year, chart_id, store_data):  # <-- Argumentos
         logging.debug(
             f"Ranking - df_ranking_ano APÓS dropna DESC_UND_FED - Colunas: {df_ranking_ano.columns.tolist()}, Registros: {len(df_ranking_ano)}")
 
-    # Agora verifica unicidade por UF APÓS filtrar pelo ano selecionado
+    # Agora verifica unicidade por UF para o ano selecionado
     if 'DESC_UND_FED' not in df_ranking_ano.columns or df_ranking_ano.empty:
         logging.warning(
             f"Ranking - DESC_UND_FED não encontrada ou df_ranking_ano vazio após processamento para {indicador_id}, ano {selected_year}")
@@ -2757,22 +2845,32 @@ def find_best_initial_var(df_dados, df_variavel_filtrado):
     Output({'type': 'download-csv', 'index': MATCH}, 'data'),
     Input({'type': 'btn-csv', 'index': MATCH}, 'n_clicks'),
     State({'type': 'download-data', 'index': MATCH}, 'data'),
+    State({'type': 'btn-csv', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
     prevent_initial_call=True
 )
-def download_csv(n_clicks, data_json):
+def download_csv(n_clicks, data_json, btn_id):
     """Gera o arquivo CSV para download com os dados da tabela."""
     if n_clicks is None or data_json is None:
         raise PreventUpdate
     
     try:
+        # Obtém o ID do indicador do botão
+        indicador_id = btn_id.get('index', '')
+        
+        # Formata o nome do arquivo: indicador sem espaços, pontos substituídos por underscores
+        indicador_formatado = str(indicador_id).replace(' ', '').replace('.', '_')
+        
         # Converte JSON para DataFrame
         from io import StringIO
         df = pd.read_json(StringIO(data_json), orient='split')
         
-        # Retorna conteúdo CSV
+        # Log para verificar os campos presentes na exportação
+        logging.info(f"Campos disponíveis na exportação CSV: {df.columns.tolist()}")
+        
+        # Retorna conteúdo CSV com nome de arquivo incluindo o indicador
         return dict(
             content=df.to_csv(index=False, encoding='utf-8-sig'),
-            filename=f'dados_detalhados_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+            filename=f'{indicador_formatado}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
         )
     except Exception as e:
         logging.exception("Erro ao gerar CSV: %s", str(e))
@@ -2783,17 +2881,27 @@ def download_csv(n_clicks, data_json):
     Output({'type': 'download-excel', 'index': MATCH}, 'data'),
     Input({'type': 'btn-excel', 'index': MATCH}, 'n_clicks'),
     State({'type': 'download-data', 'index': MATCH}, 'data'),
+    State({'type': 'btn-excel', 'index': MATCH}, 'id'),  # Para obter o ID do indicador
     prevent_initial_call=True
 )
-def download_excel(n_clicks, data_json):
+def download_excel(n_clicks, data_json, btn_id):
     """Gera o arquivo Excel para download com os dados da tabela."""
     if n_clicks is None or data_json is None:
         raise PreventUpdate
     
     try:
+        # Obtém o ID do indicador do botão
+        indicador_id = btn_id.get('index', '')
+        
+        # Formata o nome do arquivo: indicador sem espaços, pontos substituídos por underscores
+        indicador_formatado = str(indicador_id).replace(' ', '').replace('.', '_')
+        
         # Converte JSON para DataFrame
         from io import StringIO
         df = pd.read_json(StringIO(data_json), orient='split')
+        
+        # Log para verificar os campos presentes na exportação
+        logging.info(f"Campos disponíveis na exportação Excel: {df.columns.tolist()}")
         
         # Cria buffer de memória para o Excel
         output = io.BytesIO()
@@ -2823,8 +2931,8 @@ def download_excel(n_clicks, data_json):
         # Coloca o ponteiro do buffer no início
         output.seek(0)
         
-        # Retorna conteúdo Excel
-        return dcc.send_bytes(output.read(), f'dados_detalhados_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+        # Retorna conteúdo Excel com nome de arquivo incluindo o indicador
+        return dcc.send_bytes(output.read(), f'{indicador_formatado}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
     except Exception as e:
         logging.exception("Erro ao gerar Excel: %s", str(e))
         return no_update
