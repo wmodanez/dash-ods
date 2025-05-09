@@ -27,6 +27,7 @@ from flask_cors import CORS
 import constants 
 import logging
 import math
+import io
 
 load_dotenv()
 
@@ -765,7 +766,7 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
                         grafico_linha_val = pd.to_numeric(indicador_info['GRAFICO_LINHA'].iloc[0], errors='coerce')
                         if not pd.isna(grafico_linha_val): grafico_linha_flag = int(grafico_linha_val)
                     except (ValueError, TypeError):
-                        pass  # Mantém padr
+                        pass  # Mantém padrão
                 # --- Adicionado: Lê RANKING_ORDEM ---
                 if 'RANKING_ORDEM' in indicador_info.columns:
                     try:
@@ -1202,24 +1203,40 @@ def create_visualization(df, indicador_id=None, selected_var=None, selected_filt
             dbc.Col(dbc.Card(visualization_card_content, className="mb-4"), width=12)
         ]))
 
-        # Adiciona Tabela Detalhada sempre
+        # --- Adiciona Tabela Detalhada sempre
         graph_layout.append(dbc.Row([
             dbc.Col(dbc.Card([
-                html.H5("Dados Detalhados", className="mt-4", style={'marginLeft': '20px'}),
-                dbc.CardBody(dag.AgGrid(
-                    id={'type': 'detail-table', 'index': indicador_id},
-                    # Usa df_original_for_table para a tabela AG Grid
-                    rowData=df_original_for_table.to_dict('records'),
-                    columnDefs=columnDefs,
-                    defaultColDef=defaultColDef,
-                    dashGridOptions={
-                        "pagination": True, "paginationPageSize": 10,
-                        "paginationPageSizeSelector": [5, 10, 20, 50, 100],
-                        "domLayout": "autoHeight", "suppressMovableColumns": True,
-                        "animateRows": True, "suppressColumnVirtualisation": True
-                    },
-                    style={"width": "100%"}
-                ))
+                html.Div([
+                    html.H5("Dados Detalhados", className="mt-4 d-inline-block", style={'marginLeft': '20px'}),
+                    html.Div([
+                        dbc.Button("Baixar CSV", id={'type': 'btn-csv', 'index': indicador_id}, 
+                                   color="success", size="sm", className="me-2"),
+                        dbc.Button("Baixar Excel", id={'type': 'btn-excel', 'index': indicador_id}, 
+                                   color="primary", size="sm"),
+                        # Componentes de download
+                        dcc.Download(id={'type': 'download-csv', 'index': indicador_id}),
+                        dcc.Download(id={'type': 'download-excel', 'index': indicador_id})
+                    ], className="float-end me-3 mt-4")
+                ], className="d-flex justify-content-between w-100"),
+                dbc.CardBody([
+                    dag.AgGrid(
+                        id={'type': 'detail-table', 'index': indicador_id},
+                        # Usa df_original_for_table para a tabela AG Grid
+                        rowData=df_original_for_table.to_dict('records'),
+                        columnDefs=columnDefs,
+                        defaultColDef=defaultColDef,
+                        dashGridOptions={
+                            "pagination": True, "paginationPageSize": 10,
+                            "paginationPageSizeSelector": [5, 10, 20, 50, 100],
+                            "domLayout": "autoHeight", "suppressMovableColumns": True,
+                            "animateRows": True, "suppressColumnVirtualisation": True
+                        },
+                        style={"width": "100%"}
+                    ),
+                    # Armazena dados da tabela para download
+                    dcc.Store(id={'type': 'download-data', 'index': indicador_id}, 
+                              data=df_original_for_table.to_json(date_format='iso', orient='split'))
+                ])
             ]), className="mt-4")
         ]))
         return graph_layout
@@ -2733,6 +2750,84 @@ def find_best_initial_var(df_dados, df_variavel_filtrado):
 
     # Se não encontrar, usa a primeira variável
     return df_variavel_filtrado['CODG_VAR'].iloc[0]
+
+
+# Callback para download de CSV
+@app.callback(
+    Output({'type': 'download-csv', 'index': MATCH}, 'data'),
+    Input({'type': 'btn-csv', 'index': MATCH}, 'n_clicks'),
+    State({'type': 'download-data', 'index': MATCH}, 'data'),
+    prevent_initial_call=True
+)
+def download_csv(n_clicks, data_json):
+    """Gera o arquivo CSV para download com os dados da tabela."""
+    if n_clicks is None or data_json is None:
+        raise PreventUpdate
+    
+    try:
+        # Converte JSON para DataFrame
+        from io import StringIO
+        df = pd.read_json(StringIO(data_json), orient='split')
+        
+        # Retorna conteúdo CSV
+        return dict(
+            content=df.to_csv(index=False, encoding='utf-8-sig'),
+            filename=f'dados_detalhados_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        )
+    except Exception as e:
+        logging.exception("Erro ao gerar CSV: %s", str(e))
+        return no_update
+
+# Callback para download de Excel
+@app.callback(
+    Output({'type': 'download-excel', 'index': MATCH}, 'data'),
+    Input({'type': 'btn-excel', 'index': MATCH}, 'n_clicks'),
+    State({'type': 'download-data', 'index': MATCH}, 'data'),
+    prevent_initial_call=True
+)
+def download_excel(n_clicks, data_json):
+    """Gera o arquivo Excel para download com os dados da tabela."""
+    if n_clicks is None or data_json is None:
+        raise PreventUpdate
+    
+    try:
+        # Converte JSON para DataFrame
+        from io import StringIO
+        df = pd.read_json(StringIO(data_json), orient='split')
+        
+        # Cria buffer de memória para o Excel
+        output = io.BytesIO()
+        
+        # Tenta usar xlsxwriter, com fallback para openpyxl
+        try:
+            excel_engine = 'xlsxwriter'
+            with pd.ExcelWriter(output, engine=excel_engine) as writer:
+                df.to_excel(writer, sheet_name='Dados', index=False)
+                
+                # Auto-ajusta largura das colunas (apenas com xlsxwriter)
+                worksheet = writer.sheets['Dados']
+                for i, col in enumerate(df.columns):
+                    # Encontra a largura máxima da coluna
+                    column_len = max(
+                        df[col].astype(str).map(len).max(),
+                        len(str(col))
+                    ) + 2  # adiciona um espaço extra
+                    worksheet.set_column(i, i, column_len)
+        except ImportError:
+            # Fallback para openpyxl se xlsxwriter não estiver disponível
+            excel_engine = 'openpyxl'
+            with pd.ExcelWriter(output, engine=excel_engine) as writer:
+                df.to_excel(writer, sheet_name='Dados', index=False)
+                logging.info("Usando engine openpyxl para Excel (sem auto-ajuste de colunas)")
+        
+        # Coloca o ponteiro do buffer no início
+        output.seek(0)
+        
+        # Retorna conteúdo Excel
+        return dcc.send_bytes(output.read(), f'dados_detalhados_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+    except Exception as e:
+        logging.exception("Erro ao gerar Excel: %s", str(e))
+        return no_update
 
 
 server = app.server
