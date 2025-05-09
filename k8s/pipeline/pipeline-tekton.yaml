@@ -1,0 +1,88 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: painel-ods-pipeline
+spec:
+  workspaces:
+    - name: shared-workspace # Para o código fonte e arquivos k8s
+  params:
+    - name: repo-url
+      type: string
+      description: A URL do repositório git
+      default: "https://github.com/wmodanez/dash-ods.git"
+    - name: repo-revision
+      type: string
+      description: A revisão do git (branch, tag, commit)
+      default: "develop"
+    - name: buildconfig-name
+      type: string
+      description: O nome do BuildConfig no OpenShift
+      default: "painel-ods"
+    - name: namespace
+      type: string
+      description: O namespace do OpenShift para build e deploy
+      default: "colocation-imb"
+    - name: k8s-dir-path # Caminho para os manifestos k8s dentro do repo clonado
+      type: string
+      description: O caminho para o diretório dos arquivos k8s no repositório
+      default: "k8s"
+
+  tasks:
+    - name: fetch-repo
+      taskRef:
+        name: git-clone # Assumindo que você tem uma Task 'git-clone' cluster-wide ou no namespace
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
+        - name: subdirectory # Para colocar o código em uma subpasta dentro do workspace
+          value: "source"
+
+    - name: build-image
+      taskRef:
+        name: openshift-client # Task que tem o 'oc' client
+      runAfter:
+        - fetch-repo # Executa após o clone
+      params:
+        - name: SCRIPT
+          value: |
+            oc start-build $(params.buildconfig-name) -n $(params.namespace) --follow
+            echo "Build concluído."
+
+    - name: deploy-app
+      taskRef:
+        name: openshift-client # Task que tem o 'oc' client
+      runAfter:
+        - build-image # Executa após o build
+      workspaces:
+        - name: source # Onde os arquivos k8s estão
+          workspace: shared-workspace
+      params:
+        - name: SCRIPT # Script para aplicar os manifestos
+          value: |
+            echo "Iniciando deploy no namespace $(params.namespace)..."
+            MANIFEST_PATH="source/$(params.k8s-dir-path)" # Ajusta o caminho para os manifestos
+
+            echo "Aplicando PVC..."
+            oc apply -n $(params.namespace) -f ${MANIFEST_PATH}/pvc.yaml
+
+            echo "Aplicando ConfigMap..."
+            oc apply -n $(params.namespace) -f ${MANIFEST_PATH}/configmap.yaml
+
+            echo "Aplicando Deployment..."
+            oc apply -n $(params.namespace) -f ${MANIFEST_PATH}/deployment.yaml
+
+            # Esperar o deployment ficar pronto (opcional, mas recomendado)
+            # oc rollout status deployment/painel-ods -n $(params.namespace) --timeout=5m
+
+            echo "Aplicando Service..."
+            oc apply -n $(params.namespace) -f ${MANIFEST_PATH}/service.yaml
+
+            echo "Aplicando Rota Externa..."
+            oc apply -n $(params.namespace) -f ${MANIFEST_PATH}/route-external.yaml
+
+            echo "Deploy concluído!"

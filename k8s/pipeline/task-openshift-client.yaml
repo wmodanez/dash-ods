@@ -1,0 +1,28 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: openshift-client
+spec:
+  description: >-
+    Esta Task executa comandos oc CLI do OpenShift.
+    Ela usa a imagem oficial openshift/client.
+  params:
+    - name: SCRIPT
+      type: string
+      description: O script de comandos oc para executar.
+      default: "oc version"
+    - name: VERSION
+      type: string
+      description: A versão da imagem openshift/client a ser usada.
+      default: "latest" # Ou uma versão específica como "4.10"
+  workspaces:
+    - name: source # Opcional, para tasks que precisam acessar arquivos (ex: manifestos)
+      optional: true
+  steps:
+    - name: run-oc-commands
+      image: quay.io/openshift/origin-cli:$(params.VERSION) # Imagem oficial
+      script: |
+        #!/bin/bash
+        set -eo pipefail
+        $(params.SCRIPT)
+      workingDir: $(workspaces.source.path) # Executa no contexto do workspace se fornecido

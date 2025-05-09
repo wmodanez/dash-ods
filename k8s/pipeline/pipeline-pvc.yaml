@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: painel-ods-pipeline-pvc
+  namespace: colocation-imb
+spec:
+  accessModes:
+    - ReadWriteOnce # Deve ser compatível com o que seu storage provisiona
+  resources:
+    requests:
+      storage: 1Gi # Tamanho suficiente para o código e pequenos artefatos

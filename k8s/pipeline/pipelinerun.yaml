@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  # name: painel-ods-pipeline-run-$(uid) # Se o seu Tekton suportar $(uid)
+  generateName: painel-ods-pipeline-run- # Recomendado para nomes únicos
+  namespace: colocation-imb # Namespace onde o Pipeline, Tasks, PVC e SA estão
+spec:
+  pipelineRef:
+    name: painel-ods-pipeline # Nome do nosso Pipeline (k8s/pipeline/pipeline-tekton.yaml)
+  
+  serviceAccountName: pipeline-runner # ServiceAccount que criamos e demos permissões
+
+  workspaces:
+    - name: shared-workspace # Nome do workspace definido no Pipeline
+      persistentVolumeClaim:
+        claimName: painel-ods-pipeline-pvc # Nome do PVC que você confirmou que já existe
+
+  params:
+    # Parâmetros para o pipeline. Ajuste conforme necessário.
+    - name: repo-url
+      value: "https://github.com/wmodanez/dash-ods.git"
+    - name: repo-revision
+      value: "develop" # Mude para a branch/commit que você quer construir/implantar
+    - name: buildconfig-name
+      value: "painel-ods"
+    - name: namespace # Namespace onde a aplicação será implantada pelas tasks
+      value: "colocation-imb" 
+    - name: k8s-dir-path # Caminho para os manifestos k8s dentro do repositório clonado
+      value: "k8s" # Assumindo que seus YAMLs da aplicação estão na pasta 'k8s' do repo
+
+  podTemplate:
+    securityContext:
+      fsGroup: 1001 # Ou outro GID que tenha permissão de escrita, ou um GID associado ao usuário do contêiner git-clone
